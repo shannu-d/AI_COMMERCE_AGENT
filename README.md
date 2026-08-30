@@ -21,7 +21,7 @@ fails, blocks the Razorpay order, and requires fresh approval with a fresh idemp
 | Phase 0 — inspection | Done → [`docs/implementation-status.md`](docs/implementation-status.md) |
 | Phase 1 — decisions | Done → [`docs/decisions/`](docs/decisions/) (ADR-001 … ADR-014) |
 | **M0 — foundation** | **Done** — app boots, config, migrations infrastructure, logging, tests |
-| **M1 — catalog database** | In progress — schema, migrations and seed land in the next commits |
+| **M1 — catalog database** | **Done** — 7 catalog tables + compatibility targets, 2 migrations, 32-SKU seed, tests |
 | M2 … M15 | Not started |
 
 Work stops after M1 by design. `architecture.md` D§39 restricts the first implementation task to the
@@ -150,7 +150,8 @@ AI_COMMERCE/
 ├── docs/
 │   ├── implementation-status.md Phase 0 assessment
 │   ├── analysis/                prior analysis of the specification
-│   └── decisions/               ADR-001 … ADR-014
+│   ├── decisions/               ADR-001 … ADR-014
+│   └── notes/deviations.md      every departure from the specification, indexed
 │
 └── backend/
     ├── alembic.ini
