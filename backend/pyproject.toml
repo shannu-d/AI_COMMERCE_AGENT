@@ -59,3 +59,19 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["app/seed/data/*"]
+
+[tool.coverage.report]
+show_missing = true
+# __repr__ helpers and the seed CLI entrypoint are exercised by hand, not by the
+# suite; excluding them keeps the number meaningful rather than decorative.
+exclude_also = [
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

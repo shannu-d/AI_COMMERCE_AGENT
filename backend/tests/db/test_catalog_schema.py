@@ -365,6 +365,34 @@ def test_every_orm_relationship_resolves() -> None:
     AmbiguousForeignKeysError — so configuration is forced here instead of
     being discovered at runtime.
     """
-    from sqlalchemy.orm import configure_mappers
+    from sqlalchemy.orm import class_mapper, configure_mappers
+
+    from app.db.models import (
+        Category,
+        CompatibilityRule,
+        Inventory,
+        Merchant,
+        Product,
+        ProductRelationship,
+        ProductVariant,
+    )
 
     configure_mappers()
+
+    # configure_mappers() raising is the real guard, but assert the join
+    # conditions actually resolved so the test cannot pass vacuously if
+    # configuration was already done and cached by an earlier test.
+    checked = 0
+    for model in (
+        Merchant,
+        Category,
+        Product,
+        ProductVariant,
+        Inventory,
+        CompatibilityRule,
+        ProductRelationship,
+    ):
+        for relation in class_mapper(model).relationships:
+            assert relation.primaryjoin is not None, f"{model.__name__}.{relation.key}"
+            checked += 1
+    assert checked >= 15, f"only {checked} relationships checked; models may have been removed"
