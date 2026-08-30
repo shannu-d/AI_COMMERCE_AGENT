@@ -176,8 +176,8 @@ an ADR (Phase 1) or explicitly deferred with a named owner.
 | E3 | Canonical `/api/chat` contract | **Closed** — ADR-010 |
 | F12 | The CircuitCraft seed catalog is referenced but never supplied | **Closed by authoring** — see §12 and ADR-002 |
 | **U1** | Is `L:\RazorPay\backend` intended to be this project's starting point? | **Open.** Requires the project owner. Assumed *no* — it is SQLite-backed, contradicting D§2/D§38, and lies outside the working directory. |
-| **U2** | The external project brief defining the MUST-WORK / SHOULD-WORK tiers and the "pre-submission gate" (F11) | **Open.** Cited fourteen times by `architecture.md` and not part of it. Nothing in M0 or M1 depends on it; scope beyond M1 may. |
-| **U3** | How PostgreSQL is to be provisioned on this machine (no Docker, no server installed) | **Open.** See §11. |
+| **U2** | The external project brief defining the MUST-WORK / SHOULD-WORK tiers and the "pre-submission gate" (F11) | **Open external-input gap; blocks nothing.** Searched for on 2026-08-31 and genuinely absent. The six brief-derived requirements the supplied documents do state are preserved verbatim in `docs/notes/external-brief-gap.md`. |
+| **U3** | How PostgreSQL is to be provisioned on this machine (no Docker, no server installed) | **Resolved in practice.** See §11. |
 
 ## 10. Adopted plan
 

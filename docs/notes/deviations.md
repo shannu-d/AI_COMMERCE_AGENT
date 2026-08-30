@@ -79,10 +79,16 @@ implemented in a later milestone.
 | F7 | The frontend | F§37 STEP 11 sequences the frontend after the APIs it consumes exist. Nothing is scaffolded at M0. | — |
 | F8 | GIN indexes on `products.tags` / `products.attributes` | D§24 says to add them when real query patterns justify them. M2/M3 will show whether they do. | — |
 
-## 5. Still open — needs the project owner
+## 5. Still open
 
-| # | Question | Impact |
+Superseded by [`open-questions-status.md`](open-questions-status.md), which carries the verified
+status of all 45 analysis questions plus the three project-level items. In summary:
+
+| # | Question | Status |
 | --- | --- | --- |
-| U1 | Is `L:\RazorPay\backend` intended to be this project's starting point? It is a separate SQLite-backed FastAPI application outside this working directory. Assumed **no**: SQLite contradicts D§2/D§38, and it is not referenced by any source document. | None on M0/M1. Would change scope if the answer is yes. |
-| U2 | The external project brief defining the MUST-WORK / SHOULD-WORK tiers and the "pre-submission gate" (open question F11). `architecture.md` cites it repeatedly and does not contain it. | None on M0/M1. May change priorities from M2 onward. |
-| U3 | How PostgreSQL is provisioned on this machine — there is no Docker and no server installed. | The 26 database-backed tests skip until one is available. Everything else is verified. |
+| U1 | Is `L:\RazorPayackend` part of this project? | **RESOLVED: no.** `L:\AI_COMMERCE` is the sole project root. That directory is a separate, unrelated project and must not be inspected, copied, imported, merged, referenced or depended on. Verified: no source file, test, migration or configuration file in this repository references it. |
+| U2 | The external project brief (MUST-WORK / SHOULD-WORK tiers, pre-submission gate) | **Open external-input gap, blocks nothing.** Searched for and genuinely absent. The six brief-derived requirements the supplied documents actually state are preserved verbatim in [`external-brief-gap.md`](external-brief-gap.md). No requirement has been invented. |
+| U3 | PostgreSQL provisioning on this machine | **Resolved in practice.** A throwaway PostgreSQL 16.4 runs from the session scratchpad; `docker-compose.yml` remains the supported path. |
+
+Of the 45 analysis questions, nine remain open. None blocks M2 or M3. The next decision owed is
+**F1**, the LLM test-double strategy, due before M4.
