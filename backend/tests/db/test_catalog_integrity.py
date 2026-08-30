@@ -499,10 +499,20 @@ def test_a_product_cannot_use_another_merchants_category(session: Session) -> No
 
 
 def test_attributes_must_be_a_json_object(session: Session) -> None:
-    session.execute(
-        text(
-            "INSERT INTO products (merchant_id, category_id, name, slug, attributes) "
-            "VALUES (:m, :c, 'Bad', 'bad_attributes', '[1,2,3]'::jsonb)"
-        ).bindparams(m=DEFAULT_MERCHANT_ID, c=seed_id("category", "phone_case"))
-    )
-    _expect_integrity_error(session, "ck_products_attributes_is_object")
+    """JSONB accepts arrays and scalars; the schema does not (D§7).
+
+    Raw SQL rather than the ORM, because the ORM would serialise a Python list
+    into a JSON array anyway and this asserts the database's own guard. The
+    error surfaces at execute time rather than at flush, so it is caught here
+    directly.
+    """
+    statement = text(
+        "INSERT INTO products (merchant_id, category_id, name, slug, attributes) "
+        "VALUES (:m, :c, 'Bad', 'bad_attributes', '[1,2,3]'::jsonb)"
+    ).bindparams(m=DEFAULT_MERCHANT_ID, c=seed_id("category", "phone_case"))
+
+    with pytest.raises(IntegrityError) as exc_info:
+        session.execute(statement)
+
+    assert "ck_products_attributes_is_object" in str(exc_info.value)
+    session.rollback()

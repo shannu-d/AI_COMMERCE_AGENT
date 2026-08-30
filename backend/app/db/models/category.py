@@ -58,7 +58,12 @@ class Category(Base, TimestampMixin):
         back_populates="children", remote_side="Category.id"
     )
     children: Mapped[list[Category]] = relationship(back_populates="parent")
-    products: Mapped[list[Product]] = relationship(back_populates="category")
+    # products carries two foreign key paths to categories: the plain
+    # category_id key D§22 specifies, and the composite merchant-scoping key
+    # (ADR-002). The plain one is the relationship.
+    products: Mapped[list[Product]] = relationship(
+        back_populates="category", foreign_keys="Product.category_id"
+    )
 
     def __repr__(self) -> str:
         return f"<Category {self.slug!r}>"

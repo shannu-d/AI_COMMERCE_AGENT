@@ -348,3 +348,23 @@ def test_index_space_names_are_unique_across_the_schema() -> None:
         )
         names.extend(ix.name for ix in table(name).indexes if ix.name)
     assert len(names) == len(set(names))
+
+
+# --------------------------------------------------------------------------
+# Mapper configuration
+# --------------------------------------------------------------------------
+
+
+def test_every_orm_relationship_resolves() -> None:
+    """Catches ambiguous joins without needing a database.
+
+    SQLAlchemy configures mappers lazily, on first use, so a relationship whose
+    join condition is ambiguous stays silent until something actually queries
+    it. The composite merchant-scoping foreign keys (ADR-002) give several table
+    pairs two foreign key paths, which is exactly the situation that produces
+    AmbiguousForeignKeysError — so configuration is forced here instead of
+    being discovered at runtime.
+    """
+    from sqlalchemy.orm import configure_mappers
+
+    configure_mappers()

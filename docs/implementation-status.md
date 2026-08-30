@@ -84,7 +84,7 @@ Toolchain actually available on this machine (verified, not assumed):
 **This is the single most important environmental fact in this assessment.** The specification
 requires PostgreSQL (D§2, D§38) and the schema depends on PostgreSQL-only types — `UUID`, `JSONB`,
 `TEXT[]`. There is no PostgreSQL server on this machine and no Docker with which to start one.
-The consequences for what can and cannot be *verified* in M1 are stated in §11.
+How M0 and M1 were nevertheless verified against a real PostgreSQL is described in §11.
 
 ## 6. Which parts of architecture.md are already implemented
 
@@ -188,31 +188,51 @@ application root. No duplicate application root is created.
 This session delivers **Phase 0 (this document), Phase 1 (ADR-001 … ADR-014), M0 (foundation) and
 M1 (catalog database)**, and stops. M2 onward is not started.
 
-## 11. Verification reality for M0 and M1
+## 11. How M0 and M1 were verified
 
-Both milestones have exit criteria phrased as *"migrations run"* and *"tests pass"*. Because there
-is no PostgreSQL server and no Docker on this machine, those must be split into what can be proven
-here and what cannot:
+Both milestones have exit criteria phrased as *"migrations run"* and *"tests pass"*, and this
+machine has neither Docker nor an installed PostgreSQL. Rather than report those criteria as
+unproven, a **throwaway PostgreSQL 16.4** was provisioned from the official Windows binary archive
+into the session scratchpad — `initdb` plus `pg_ctl` in user space, no installer, no Windows
+service, nothing written outside the temporary directory. The full suite then ran against it.
 
-**Provable without a database server, and proven:**
+**Result: 153 tests pass, 0 fail, 0 skip.** Two defects surfaced only under a live database and were
+fixed:
 
-- Alembic renders the complete schema from zero in offline mode (`alembic upgrade head --sql`),
-  which executes the migration scripts and emits the exact PostgreSQL DDL.
-- Every constraint, index, foreign key and check is asserted directly against the SQLAlchemy
-  metadata and against the compiled PostgreSQL DDL.
-- The seed catalog is validated as data: SKU uniqueness, slug format, referential closure of every
-  product/category/variant/compatibility reference, monetary values parsed as `Decimal` and never
-  as `float`, alias tokens already in canonical form.
-- The FastAPI application imports, boots, and serves its health endpoint.
+1. `Category.products` was ambiguous, because the composite merchant-scoping foreign key gives
+   `categories` and `products` two foreign-key paths. SQLAlchemy configures mappers lazily, so
+   nothing had triggered it. Fixed by naming the foreign key, and a new offline test now calls
+   `configure_mappers()` so this class of error is caught without a database.
+2. A raw-SQL constraint test expected the violation at flush time; PostgreSQL raises it at execute
+   time. The constraint itself was working; the assertion was in the wrong place.
 
-**Not provable without a database server, and therefore not claimed:**
+**Verified without a database** (127 of the 153):
 
-- That the migration applies against a live PostgreSQL instance.
-- That the seed loader writes rows and that the database rejects constraint violations at runtime.
+- Alembic renders the complete schema from zero in offline mode, and the rendered DDL is diffed
+  clause by clause against the compiled SQLAlchemy metadata — constraint names included — so the
+  models and the migrations cannot drift apart.
+- Every constraint, index, foreign key and check is asserted against the metadata and against the
+  compiled PostgreSQL DDL.
+- The seed catalog is validated as data: SKU uniqueness, slug and token form, referential closure,
+  monetary values parsed as `Decimal` and never as `float`, aliases already normalized, and every
+  compatibility constraint predicate satisfied by its own product.
+- The FastAPI application imports, boots through its lifespan, and serves its health endpoint.
 
-Tests in the second category exist, are marked `requires_db`, and **skip with an explicit reason**
-when `DATABASE_URL` is unreachable. They are never reported as passes. `docker-compose.yml` and the
-runbook in `README.md` provide the one command that makes them run, on any machine that has Docker.
+**Verified against the live PostgreSQL 16.4** (the remaining 26):
+
+- `alembic upgrade head` applies from zero and `alembic downgrade base` rolls back cleanly.
+- The seed loads all 136 rows, and loading it a second time changes nothing.
+- Fourteen constraint violations are each rejected by the constraint named in the assertion.
+- The worked-example candidate query returns the right SKUs and excludes the out-of-stock,
+  wrong-device and over-budget ones, with prices as `Decimal`.
+
+The documented workflow was also run end to end: `alembic upgrade head`,
+`python -m app.seed.circuitcraft`, a second seed run, `--summary`, then `uvicorn app.main:app` with
+`GET /api/health` returning `200 {"status":"ok", ...}`.
+
+Those 26 tests are marked `requires_db` and **skip with an explicit reason** when no PostgreSQL is
+reachable. They are never reported as passes. `docker-compose.yml` and the runbook in `README.md`
+give the one command that makes them run on any machine with Docker.
 
 ## 12. Note on seed data authorship
 
