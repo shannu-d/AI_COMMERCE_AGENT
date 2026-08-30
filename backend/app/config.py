@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     db_pool_size: int = Field(default=5, ge=1, le=50)
     db_connect_timeout_seconds: int = Field(default=5, ge=1, le=60)
 
+    # -- Catalog read services (M2) -----------------------------------------
+    # ADR-009 lists IN_STOCK / LOW_STOCK / OUT_OF_STOCK without fixing the
+    # boundary between the first two. It is configuration rather than a literal
+    # so the M2 tests do not depend on the production default.
+    low_stock_threshold: int = Field(default=5, ge=0, le=1000)
+
     # -- Merchant scoping (ADR-002) -----------------------------------------
     # Resolved server-side and injected into every service call. Never read from
     # model output; never taken from a client request body.
