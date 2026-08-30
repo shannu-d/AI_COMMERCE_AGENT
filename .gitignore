@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Secrets — never commit real credentials.
+# .env.example is the committed template and contains placeholders only.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.python-version
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---------------------------------------------------------------------------
+# Node / frontend (arrives at M14)
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+frontend/dist/
+frontend/build/
+npm-debug.log*
+yarn-error.log*
+
+# ---------------------------------------------------------------------------
+# Databases — PostgreSQL is the source of truth and runs in a container.
+# A local database file in this tree would mean something has gone wrong.
+# ---------------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------------
+# Local scratch
+# ---------------------------------------------------------------------------
+scratch/
+tmp/
+*.log
