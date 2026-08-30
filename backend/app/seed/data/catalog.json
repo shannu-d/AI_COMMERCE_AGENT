@@ -1,0 +1,463 @@
+{
+  "_readme": [
+    "CircuitCraft catalog — seed data for the Phase-1 schema.",
+    "",
+    "architecture.md refers to a 30-36 SKU CircuitCraft prototype but supplies only one",
+    "complete record: AeroCase Pro / CASE-IP16-BLK / 999 / quantity 20 / compatible with",
+    "iphone_16 / cross-sells a screen protector (D§34). It also names a few prices in",
+    "worked examples: ShieldCase Premium 1299 with stock 5 (R§10), a 30W charger at 1499",
+    "with SKU CHARGER-30W (L§20, L§21), and a screen protector at 299 (L§25).",
+    "",
+    "Every one of those values is reproduced here exactly. The remaining products are",
+    "authored, because the catalog does not exist anywhere else, and they are authored",
+    "under a rule: each is a fictional CircuitCraft own-brand item described only by",
+    "structural attributes - material, colour, wattage, port type, cable length, capacity,",
+    "battery hours, ANC yes/no. No certifications, ratings, review counts, test results,",
+    "warranty terms or real third-party brand names appear anywhere in this file.",
+    "",
+    "Money is a STRING, never a JSON number: json.loads would turn 999.00 into a float",
+    "before any validation could intervene, and no float ever touches a price (ADR-008).",
+    "",
+    "The catalog is shaped so that every hard constraint in ADR-005 is individually",
+    "testable: an out-of-stock variant (CASE-IP16-CLR, SLV-14-NVY), an iPhone 15 case that",
+    "must be excluded from iPhone 16 searches (CASE-IP15-BLK), products either side of the",
+    "1500 budget line, earbuds with no compatibility rules at all, and pixel_9 as a",
+    "resolvable device with zero compatible products - which is the R§14 no-match path",
+    "rather than the ADR-003 unresolvable-device path."
+  ],
+
+  "merchant": {
+    "name": "CircuitCraft",
+    "description": "Consumer electronics accessories.",
+    "currency": "INR"
+  },
+
+  "categories": [
+    { "slug": "electronics",        "name": "Electronics",          "parent": null },
+    { "slug": "mobile_accessories", "name": "Mobile Accessories",   "parent": "electronics" },
+    { "slug": "laptop_accessories", "name": "Laptop Accessories",   "parent": "electronics" },
+    { "slug": "phone_case",         "name": "Phone Cases",          "parent": "mobile_accessories" },
+    { "slug": "screen_protector",   "name": "Screen Protectors",    "parent": "mobile_accessories" },
+    { "slug": "charger",            "name": "Chargers & Adapters",  "parent": "mobile_accessories" },
+    { "slug": "usb_cable",          "name": "USB Cables",           "parent": "mobile_accessories" },
+    { "slug": "power_bank",         "name": "Power Banks",          "parent": "mobile_accessories" },
+    { "slug": "earbuds",            "name": "Earbuds",              "parent": "mobile_accessories" },
+    { "slug": "laptop_sleeve",      "name": "Laptop Sleeves",       "parent": "laptop_accessories" }
+  ],
+
+  "compatibility_targets": [
+    {
+      "target_type": "phone_model",
+      "canonical_identifier": "iphone_16",
+      "display_name": "iPhone 16",
+      "aliases": ["iphone16", "apple_iphone_16"]
+    },
+    {
+      "target_type": "phone_model",
+      "canonical_identifier": "iphone_15",
+      "display_name": "iPhone 15",
+      "aliases": ["iphone15", "apple_iphone_15"]
+    },
+    {
+      "target_type": "phone_model",
+      "canonical_identifier": "pixel_9",
+      "display_name": "Google Pixel 9",
+      "aliases": ["pixel9", "google_pixel_9"]
+    },
+    {
+      "target_type": "laptop_model",
+      "canonical_identifier": "macbook_air_m3",
+      "display_name": "MacBook Air M3",
+      "aliases": ["macbookair_m3", "mba_m3", "macbook_air_13_m3"]
+    },
+    {
+      "target_type": "laptop_model",
+      "canonical_identifier": "macbook_pro_14",
+      "display_name": "MacBook Pro 14",
+      "aliases": ["macbookpro_14", "mbp_14"]
+    },
+    {
+      "target_type": "device_port",
+      "canonical_identifier": "usb_c",
+      "display_name": "USB-C",
+      "aliases": ["usbc", "type_c", "usb_type_c"]
+    },
+    {
+      "target_type": "device_port",
+      "canonical_identifier": "lightning",
+      "display_name": "Lightning",
+      "aliases": ["apple_lightning"]
+    }
+  ],
+
+  "products": [
+    {
+      "slug": "aerocase_pro",
+      "name": "AeroCase Pro",
+      "category": "phone_case",
+      "brand": "CircuitCraft",
+      "description": "Slim protective case for compatible smartphones.",
+      "attributes": { "material": "TPU", "protection": "shock_resistant", "profile": "slim" },
+      "tags": ["iphone", "protective", "slim"],
+      "variants": [
+        { "sku": "CASE-IP16-BLK", "name": "Black", "price": "999.00", "quantity": 20, "attributes": { "color": "black" } },
+        { "sku": "CASE-IP16-BLU", "name": "Blue",  "price": "999.00", "quantity": 12, "attributes": { "color": "blue" } },
+        { "sku": "CASE-IP16-CLR", "name": "Clear", "price": "949.00", "quantity": 0,  "attributes": { "color": "clear" } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+      ]
+    },
+    {
+      "slug": "shieldcase_premium",
+      "name": "ShieldCase Premium",
+      "category": "phone_case",
+      "brand": "CircuitCraft",
+      "description": "Reinforced case with a raised camera lip and corner cushioning.",
+      "attributes": { "material": "polycarbonate_tpu", "protection": "drop_resistant", "profile": "rugged" },
+      "tags": ["iphone", "protective", "premium", "rugged"],
+      "variants": [
+        { "sku": "CASE-IP16-SHD-BLK", "name": "Black", "price": "1299.00", "quantity": 5, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+      ]
+    },
+    {
+      "slug": "aerocase_pro_15",
+      "name": "AeroCase Pro 15",
+      "category": "phone_case",
+      "brand": "CircuitCraft",
+      "description": "Slim protective case cut for the previous-generation body.",
+      "attributes": { "material": "TPU", "protection": "shock_resistant", "profile": "slim" },
+      "tags": ["iphone", "protective", "slim"],
+      "variants": [
+        { "sku": "CASE-IP15-BLK", "name": "Black", "price": "899.00", "quantity": 15, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_15" }
+      ]
+    },
+    {
+      "slug": "leatherline_folio",
+      "name": "LeatherLine Folio",
+      "category": "phone_case",
+      "brand": "CircuitCraft",
+      "description": "Folio case in full-grain leather with two card slots.",
+      "attributes": { "material": "leather", "protection": "folio", "profile": "folio", "card_slots": 2 },
+      "tags": ["iphone", "leather", "premium", "folio"],
+      "variants": [
+        { "sku": "CASE-IP16-LTR-BLK", "name": "Black", "price": "1799.00", "quantity": 10, "attributes": { "color": "black" } },
+        { "sku": "CASE-IP16-LTR-BRN", "name": "Brown", "price": "1799.00", "quantity": 6,  "attributes": { "color": "brown" } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+      ]
+    },
+
+    {
+      "slug": "guardglass_2_5d",
+      "name": "GuardGlass 2.5D",
+      "category": "screen_protector",
+      "brand": "CircuitCraft",
+      "description": "Tempered glass screen protector with rounded edges.",
+      "attributes": { "material": "tempered_glass", "hardness": "9h", "edge": "2_5d" },
+      "tags": ["iphone", "screen", "protection"],
+      "variants": [
+        { "sku": "SPRO-IP16-1", "name": "Single Pack", "price": "299.00", "quantity": 40, "attributes": { "pack_size": 1 } },
+        { "sku": "SPRO-IP16-2", "name": "Twin Pack",   "price": "499.00", "quantity": 25, "attributes": { "pack_size": 2 } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+      ]
+    },
+    {
+      "slug": "guardglass_privacy",
+      "name": "GuardGlass Privacy",
+      "category": "screen_protector",
+      "brand": "CircuitCraft",
+      "description": "Tempered glass screen protector with a narrow viewing angle.",
+      "attributes": { "material": "tempered_glass", "hardness": "9h", "privacy_filter": true },
+      "tags": ["iphone", "screen", "privacy"],
+      "variants": [
+        { "sku": "SPRO-IP16-PRV", "name": "Single Pack", "price": "649.00", "quantity": 10, "attributes": { "pack_size": 1 } }
+      ],
+      "compatibility": [
+        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+      ]
+    },
+
+    {
+      "slug": "voltedge_30w",
+      "name": "VoltEdge 30W USB-C Charger",
+      "category": "charger",
+      "brand": "CircuitCraft",
+      "description": "Single-port 30W USB-C wall charger.",
+      "attributes": { "wattage": 30, "port_type": "usb_c", "fast_charge": true, "ports": 1, "technology": "gan" },
+      "tags": ["charger", "fast_charging", "usb_c", "compact"],
+      "variants": [
+        { "sku": "CHARGER-30W", "name": "White", "price": "1499.00", "quantity": 18, "attributes": { "color": "white" } }
+      ],
+      "compatibility": [
+        {
+          "target_type": "device",
+          "target_identifier": "iphone_16",
+          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+        }
+      ]
+    },
+    {
+      "slug": "voltedge_20w",
+      "name": "VoltEdge 20W USB-C Charger",
+      "category": "charger",
+      "brand": "CircuitCraft",
+      "description": "Single-port 20W USB-C wall charger.",
+      "attributes": { "wattage": 20, "port_type": "usb_c", "fast_charge": true, "ports": 1 },
+      "tags": ["charger", "fast_charging", "usb_c", "budget"],
+      "variants": [
+        { "sku": "CHARGER-20W", "name": "White", "price": "1099.00", "quantity": 30, "attributes": { "color": "white" } }
+      ],
+      "compatibility": [
+        {
+          "target_type": "device",
+          "target_identifier": "iphone_16",
+          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+        }
+      ]
+    },
+    {
+      "slug": "voltedge_65w_gan_dual",
+      "name": "VoltEdge 65W GaN Dual-Port Charger",
+      "category": "charger",
+      "brand": "CircuitCraft",
+      "description": "Two-port GaN wall charger rated at 65W total output.",
+      "attributes": { "wattage": 65, "port_type": "usb_c", "fast_charge": true, "ports": 2, "technology": "gan" },
+      "tags": ["charger", "fast_charging", "usb_c", "laptop", "gan"],
+      "variants": [
+        { "sku": "CHARGER-65W-WHT", "name": "White", "price": "2799.00", "quantity": 9, "attributes": { "color": "white" } },
+        { "sku": "CHARGER-65W-BLK", "name": "Black", "price": "2799.00", "quantity": 7, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        {
+          "target_type": "device",
+          "target_identifier": "macbook_air_m3",
+          "constraints": { "minimum_wattage": 30 }
+        },
+        {
+          "target_type": "device",
+          "target_identifier": "iphone_16",
+          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+        }
+      ]
+    },
+    {
+      "slug": "voltedge_100w_gan",
+      "name": "VoltEdge 100W GaN Charger",
+      "category": "charger",
+      "brand": "CircuitCraft",
+      "description": "Two-port GaN wall charger rated at 100W total output.",
+      "attributes": { "wattage": 100, "port_type": "usb_c", "fast_charge": true, "ports": 2, "technology": "gan" },
+      "tags": ["charger", "fast_charging", "usb_c", "laptop", "gan", "high_power"],
+      "variants": [
+        { "sku": "CHARGER-100W", "name": "Black", "price": "3999.00", "quantity": 5, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        {
+          "target_type": "device",
+          "target_identifier": "macbook_air_m3",
+          "constraints": { "minimum_wattage": 30 }
+        },
+        {
+          "target_type": "device",
+          "target_identifier": "macbook_pro_14",
+          "constraints": { "minimum_wattage": 60 }
+        }
+      ]
+    },
+
+    {
+      "slug": "linkcord_usb_c",
+      "name": "LinkCord USB-C to USB-C Cable",
+      "category": "usb_cable",
+      "brand": "CircuitCraft",
+      "description": "Charge and sync cable with USB-C connectors at both ends.",
+      "attributes": { "connector_a": "usb_c", "connector_b": "usb_c", "max_wattage": 60, "data_speed": "usb_2_0" },
+      "tags": ["cable", "usb_c", "charging"],
+      "variants": [
+        { "sku": "CABLE-CC-1M", "name": "1 m", "price": "499.00", "quantity": 50, "attributes": { "length_m": 1 } },
+        { "sku": "CABLE-CC-2M", "name": "2 m", "price": "699.00", "quantity": 35, "attributes": { "length_m": 2 } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "usb_c" }
+      ]
+    },
+    {
+      "slug": "linkcord_usb_c_lightning",
+      "name": "LinkCord USB-C to Lightning Cable",
+      "category": "usb_cable",
+      "brand": "CircuitCraft",
+      "description": "Charge and sync cable with a USB-C plug and a Lightning plug.",
+      "attributes": { "connector_a": "usb_c", "connector_b": "lightning", "max_wattage": 20 },
+      "tags": ["cable", "lightning", "charging"],
+      "variants": [
+        { "sku": "CABLE-CL-1M", "name": "1 m", "price": "899.00", "quantity": 20, "attributes": { "length_m": 1 } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "lightning" },
+        { "target_type": "device", "target_identifier": "iphone_15" }
+      ]
+    },
+    {
+      "slug": "linkcord_braided_100w",
+      "name": "LinkCord Braided USB-C Cable 100W",
+      "category": "usb_cable",
+      "brand": "CircuitCraft",
+      "description": "Braided USB-C cable rated for 100W charging.",
+      "attributes": { "connector_a": "usb_c", "connector_b": "usb_c", "max_wattage": 100, "jacket": "braided_nylon" },
+      "tags": ["cable", "usb_c", "charging", "durable", "high_power"],
+      "variants": [
+        { "sku": "CABLE-CC-100W-2M", "name": "2 m", "price": "999.00", "quantity": 14, "attributes": { "length_m": 2 } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "usb_c" }
+      ]
+    },
+
+    {
+      "slug": "powercell_10000",
+      "name": "PowerCell 10000",
+      "category": "power_bank",
+      "brand": "CircuitCraft",
+      "description": "10000 mAh portable battery with two output ports.",
+      "attributes": { "capacity_mah": 10000, "output_wattage": 22, "port_type": "usb_c", "ports": 2 },
+      "tags": ["power_bank", "portable", "usb_c"],
+      "variants": [
+        { "sku": "PWRB-10K", "name": "Black", "price": "1999.00", "quantity": 22, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "usb_c" }
+      ]
+    },
+    {
+      "slug": "powercell_20000_pd",
+      "name": "PowerCell 20000 PD",
+      "category": "power_bank",
+      "brand": "CircuitCraft",
+      "description": "20000 mAh portable battery with 45W USB-C output.",
+      "attributes": { "capacity_mah": 20000, "output_wattage": 45, "port_type": "usb_c", "ports": 3 },
+      "tags": ["power_bank", "portable", "usb_c", "fast_charging", "laptop"],
+      "variants": [
+        { "sku": "PWRB-20K-BLK", "name": "Black", "price": "3299.00", "quantity": 11, "attributes": { "color": "black" } },
+        { "sku": "PWRB-20K-GRY", "name": "Grey",  "price": "3299.00", "quantity": 8,  "attributes": { "color": "grey" } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "usb_c" }
+      ]
+    },
+    {
+      "slug": "powercell_slim_5000",
+      "name": "PowerCell Slim 5000",
+      "category": "power_bank",
+      "brand": "CircuitCraft",
+      "description": "5000 mAh pocket battery with a single USB-C port.",
+      "attributes": { "capacity_mah": 5000, "output_wattage": 18, "port_type": "usb_c", "ports": 1, "profile": "slim" },
+      "tags": ["power_bank", "portable", "slim", "usb_c"],
+      "variants": [
+        { "sku": "PWRB-5K", "name": "Black", "price": "1299.00", "quantity": 16, "attributes": { "color": "black" } }
+      ],
+      "compatibility": [
+        { "target_type": "device_port", "target_identifier": "usb_c" }
+      ]
+    },
+
+    {
+      "slug": "sonicbuds_air",
+      "name": "SonicBuds Air",
+      "category": "earbuds",
+      "brand": "CircuitCraft",
+      "description": "Wireless earbuds with a USB-C charging case.",
+      "attributes": { "anc": false, "battery_hours": 24, "driver_mm": 10, "port_type": "usb_c", "bluetooth": "5.3" },
+      "tags": ["earbuds", "wireless", "bluetooth"],
+      "variants": [
+        { "sku": "BUDS-AIR-WHT", "name": "White", "price": "2499.00", "quantity": 20, "attributes": { "color": "white" } },
+        { "sku": "BUDS-AIR-BLK", "name": "Black", "price": "2499.00", "quantity": 18, "attributes": { "color": "black" } }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "sonicbuds_pro_anc",
+      "name": "SonicBuds Pro ANC",
+      "category": "earbuds",
+      "brand": "CircuitCraft",
+      "description": "Wireless earbuds with active noise cancellation.",
+      "attributes": { "anc": true, "battery_hours": 30, "driver_mm": 11, "port_type": "usb_c", "bluetooth": "5.3" },
+      "tags": ["earbuds", "wireless", "bluetooth", "anc", "premium"],
+      "variants": [
+        { "sku": "BUDS-PRO-BLK", "name": "Black", "price": "4499.00", "quantity": 12, "attributes": { "color": "black" } },
+        { "sku": "BUDS-PRO-IVY", "name": "Ivory", "price": "4499.00", "quantity": 6,  "attributes": { "color": "ivory" } }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "sonicbuds_lite",
+      "name": "SonicBuds Lite",
+      "category": "earbuds",
+      "brand": "CircuitCraft",
+      "description": "Entry-level wireless earbuds with a USB-C charging case.",
+      "attributes": { "anc": false, "battery_hours": 18, "driver_mm": 8, "port_type": "usb_c", "bluetooth": "5.2" },
+      "tags": ["earbuds", "wireless", "bluetooth", "budget"],
+      "variants": [
+        { "sku": "BUDS-LITE", "name": "Black", "price": "1499.00", "quantity": 30, "attributes": { "color": "black" } }
+      ],
+      "compatibility": []
+    },
+
+    {
+      "slug": "feltfolio_sleeve_13",
+      "name": "FeltFolio Sleeve 13-inch",
+      "category": "laptop_sleeve",
+      "brand": "CircuitCraft",
+      "description": "Wool-felt laptop sleeve with a magnetic closure.",
+      "attributes": { "material": "wool_felt", "fits_inches": 13, "closure": "magnetic" },
+      "tags": ["sleeve", "laptop", "felt"],
+      "variants": [
+        { "sku": "SLV-13-GRY", "name": "Grey", "price": "1199.00", "quantity": 14, "attributes": { "color": "grey" } },
+        { "sku": "SLV-13-NVY", "name": "Navy", "price": "1199.00", "quantity": 9,  "attributes": { "color": "navy" } }
+      ],
+      "compatibility": [
+        { "target_type": "laptop_model", "target_identifier": "macbook_air_m3" }
+      ]
+    },
+    {
+      "slug": "feltfolio_sleeve_14",
+      "name": "FeltFolio Sleeve 14-inch",
+      "category": "laptop_sleeve",
+      "brand": "CircuitCraft",
+      "description": "Wool-felt laptop sleeve with a magnetic closure.",
+      "attributes": { "material": "wool_felt", "fits_inches": 14, "closure": "magnetic" },
+      "tags": ["sleeve", "laptop", "felt"],
+      "variants": [
+        { "sku": "SLV-14-GRY", "name": "Grey", "price": "1399.00", "quantity": 11, "attributes": { "color": "grey" } },
+        { "sku": "SLV-14-NVY", "name": "Navy", "price": "1399.00", "quantity": 0,  "attributes": { "color": "navy" } }
+      ],
+      "compatibility": [
+        { "target_type": "laptop_model", "target_identifier": "macbook_pro_14" }
+      ]
+    }
+  ],
+
+  "relationships": [
+    { "source": "aerocase_pro",          "target": "guardglass_2_5d",       "type": "cross_sell", "priority": 1 },
+    { "source": "aerocase_pro",          "target": "voltedge_30w",          "type": "cross_sell", "priority": 2 },
+    { "source": "shieldcase_premium",    "target": "guardglass_2_5d",       "type": "cross_sell", "priority": 1 },
+    { "source": "leatherline_folio",     "target": "guardglass_privacy",    "type": "cross_sell", "priority": 1 },
+    { "source": "voltedge_30w",          "target": "linkcord_usb_c",        "type": "bundle",     "priority": 1 },
+    { "source": "voltedge_65w_gan_dual", "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
+    { "source": "voltedge_100w_gan",     "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
+    { "source": "powercell_20000_pd",    "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
+    { "source": "feltfolio_sleeve_13",   "target": "voltedge_65w_gan_dual", "type": "cross_sell", "priority": 1 },
+    { "source": "feltfolio_sleeve_14",   "target": "voltedge_100w_gan",     "type": "cross_sell", "priority": 1 },
+    { "source": "sonicbuds_air",         "target": "sonicbuds_pro_anc",     "type": "related",    "priority": 1 },
+    { "source": "sonicbuds_pro_anc",     "target": "powercell_slim_5000",   "type": "cross_sell", "priority": 2 }
+  ]
+}
