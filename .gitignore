@@ -70,3 +70,8 @@ desktop.ini
 scratch/
 tmp/
 *.log
+
+# ---------------------------------------------------------------------------
+# Claude Code — per-developer local settings are not shared
+# ---------------------------------------------------------------------------
+.claude/settings.local.json

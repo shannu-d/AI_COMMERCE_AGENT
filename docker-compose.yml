@@ -1,0 +1,37 @@
+# Local development database.
+#
+# architecture.md D§2 and D§38 fix PostgreSQL as the store; ADR-002 rules out
+# substituting a different engine, including in tests. This file is the
+# supported way to obtain one.
+#
+#   docker compose up -d db
+#   cd backend && alembic upgrade head && python -m app.seed.circuitcraft
+#
+# The credentials here are local-development values for a container that binds
+# to localhost. They are not secrets and are deliberately identical to the
+# defaults in .env.example so a fresh clone works without editing anything.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ai_commerce_db
+    environment:
+      POSTGRES_USER: ai_commerce
+      POSTGRES_PASSWORD: ai_commerce
+      POSTGRES_DB: ai_commerce
+      # Deterministic collation, so ORDER BY does not depend on the host locale.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/scripts/init-test-db.sql:/docker-entrypoint-initdb.d/10-init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_commerce -d ai_commerce"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
