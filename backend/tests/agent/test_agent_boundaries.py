@@ -111,17 +111,20 @@ def test_only_the_client_module_is_the_runtimes_route_to_a_model(path: pathlib.P
 
 
 def test_no_money_moving_module_has_appeared_in_the_runtime() -> None:
-    """M7 gives the runtime a cart tool. It gives it nothing that moves money.
+    """M8 gives the runtime an approval tool. It still gives it nothing that
+    moves money.
 
-    A cart is a draft: it authorizes nothing, and an order needs an `approvals`
-    row the runtime cannot write. An order, payment, policy or approval module
-    here would mean the money path was started before its milestone (D§36,
-    D§39) - and `create_order` is not a tool at any milestone at all.
+    The distinction the guard now rests on is the one ADR-007 is about: the
+    runtime may *ask* for approval and cannot grant it, so `approval.py` is
+    allowed here while `order`, `payment` and `policy` are not. What makes that
+    safe is not this list - it is that `ApprovalService.request` has no
+    parameter through which APPROVED could arrive, which
+    `test_tools_approval.py` asserts directly.
     """
     premature = [
         path.name
         for path in agent_modules()
-        if any(word in path.stem for word in ("order", "payment", "policy", "approval"))
+        if any(word in path.stem for word in ("order", "payment", "policy"))
     ]
 
     assert premature == []

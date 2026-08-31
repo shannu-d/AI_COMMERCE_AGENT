@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -287,6 +288,54 @@ class StubCarts:
 
 
 @dataclass
+class StubApprovals:
+    """An in-memory stand-in for `ApprovalService`.
+
+    It keeps the one property `request_approval` must not be able to violate:
+    `request` writes PENDING and has no parameter through which any other status
+    could arrive. A stub that accepted a status would let a test pass against a
+    service that accepted one too.
+    """
+
+    requested: list[Any] = field(default_factory=list)
+
+    def request(self, session_id: uuid.UUID, cart):
+        from app.domain.approval import ApprovalView, items_fingerprint, lines_from
+        from app.domain.commerce import ApprovalStatus
+        from app.services.approval_service import ApprovalError
+
+        if cart.is_empty:
+            raise ApprovalError.__new__(ApprovalError) if False else _empty_cart_error()
+
+        now = datetime.now(UTC)
+        view = ApprovalView(
+            id=uuid.uuid4(),
+            session_id=session_id,
+            cart_id=cart.id,
+            cart_version=cart.version,
+            approved_total=cart.total,
+            currency=cart.currency,
+            items_fingerprint=items_fingerprint(lines_from(cart.items)),
+            status=ApprovalStatus.PENDING,
+            created_at=now,
+            approved_at=None,
+            expires_at=now + timedelta(minutes=15),
+        )
+        self.requested.append(view)
+        return view
+
+    def current(self, cart_id: uuid.UUID):
+        return None
+
+
+def _empty_cart_error():
+    from app.domain.approval import ApprovalFailure
+    from app.services.approval_service import ApprovalError
+
+    return ApprovalError(ApprovalFailure.CART_EMPTY, "there is nothing in the cart")
+
+
+@dataclass
 class StubSessions:
     """An in-memory stand-in for `SessionService`.
 
@@ -398,7 +447,14 @@ def carts() -> StubCarts:
 
 
 @pytest.fixture
-def context(catalog, carts, compatibility, inventory, recommendations, sessions) -> AgentContext:
+def approvals() -> StubApprovals:
+    return StubApprovals()
+
+
+@pytest.fixture
+def context(
+    catalog, carts, approvals, compatibility, inventory, recommendations, sessions
+) -> AgentContext:
     """An `AgentContext` whose services are stubs.
 
     Constructed field-by-field rather than through `from_session`, because that
@@ -409,6 +465,7 @@ def context(catalog, carts, compatibility, inventory, recommendations, sessions)
         merchant_id=MERCHANT_ID,
         catalog=catalog,  # type: ignore[arg-type]
         carts=carts,  # type: ignore[arg-type]
+        approvals=approvals,  # type: ignore[arg-type]
         compatibility=compatibility,  # type: ignore[arg-type]
         inventory=inventory,  # type: ignore[arg-type]
         recommendations=recommendations,  # type: ignore[arg-type]

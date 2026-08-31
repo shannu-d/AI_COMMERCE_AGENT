@@ -203,18 +203,22 @@ def test_reading_a_cart_that_does_not_exist_is_a_404(api, session_id):
 # --------------------------------------------------------------------------
 
 
-def test_the_cart_surface_is_exactly_f26s_four_names():
+def test_the_cart_surface_is_exactly_f26s_names():
     """F§26: do not create duplicate APIs where equivalent services exist.
 
     There is no "recalculate" route because every one of these recalculates, and
     no "set totals" route because nobody may set one. `POST /api/cart/approve`
-    is M8's and is deliberately absent until its ADR is implemented.
+    arrived with M8 and is the **only** path that writes an APPROVED row.
     """
     paths = set(create_app().openapi()["paths"])
     cart_paths = {p for p in paths if p.startswith("/api/cart")}
 
-    assert cart_paths == {"/api/cart", "/api/cart/items", "/api/cart/items/{item_id}"}
-    assert "/api/cart/approve" not in paths
+    assert cart_paths == {
+        "/api/cart",
+        "/api/cart/items",
+        "/api/cart/items/{item_id}",
+        "/api/cart/approve",
+    }
 
 
 def test_no_cart_response_field_carries_a_stock_quantity(api, session_id, case):
@@ -243,3 +247,140 @@ def test_a_price_change_is_reported_to_the_client(api, session, session_id, case
 
     assert body["price_changes"]
     assert body["price_changes"][0]["increased"] is True
+
+
+# --------------------------------------------------------------------------
+# POST /api/cart/approve — the only path that writes an APPROVED row (M8)
+# --------------------------------------------------------------------------
+
+
+def _add(api, session_id, case, quantity=1):
+    return api.post(
+        "/api/cart/items",
+        json={"session_id": str(session_id), "variant_id": str(case.id), "quantity": quantity},
+    ).json()
+
+
+def test_approving_the_current_version_records_an_approval(api, session_id, case):
+    cart = _add(api, session_id, case)
+
+    response = api.post(
+        "/api/cart/approve",
+        json={"session_id": str(session_id), "cart_version": cart["cart_version"]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "APPROVED"
+    assert body["cart_version"] == cart["cart_version"]
+    assert body["approved_at"] is not None
+
+
+def test_approving_a_stale_version_is_a_409(api, session_id, case, merchant_id, variant_id):
+    """M8's exit condition, at the edge. The buyer's screen said version N; they
+    added something; the cart is N+1. A 409 rather than a 422 because the
+    request was well-formed and the world moved."""
+    first = _add(api, session_id, case)
+    _add(api, session_id, case)  # the cart moves underneath them
+
+    response = api.post(
+        "/api/cart/approve",
+        json={"session_id": str(session_id), "cart_version": first["cart_version"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "CART_VERSION_STALE"
+
+
+def test_a_stated_total_that_no_longer_matches_is_a_409(api, session_id, case):
+    cart = _add(api, session_id, case)
+
+    response = api.post(
+        "/api/cart/approve",
+        json={
+            "session_id": str(session_id),
+            "cart_version": cart["cart_version"],
+            "expected_total": "1.00",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "TOTAL_CHANGED"
+
+
+def test_a_price_change_before_approval_is_caught_at_the_edge(api, session, session_id, case):
+    """A§28's scenario, entering through the front door.
+
+    The route re-prices the cart *before* checking the version. A catalog change
+    since the buyer's screen was drawn therefore bumps the version, and the
+    version they submitted no longer matches - so they are asked to look again
+    rather than authorizing a total that is no longer real.
+    """
+    cart = _add(api, session_id, case)
+    session.execute(
+        text("UPDATE product_variants SET price = price + 400 WHERE id = :i"), {"i": case.id}
+    )
+
+    response = api.post(
+        "/api/cart/approve",
+        json={"session_id": str(session_id), "cart_version": cart["cart_version"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "CART_VERSION_STALE"
+
+
+def test_the_approval_response_carries_the_cart_it_approved(api, session_id, case):
+    """An approval is a claim about a specific cart state; returning one without
+    that state would make it unverifiable by the client that just made it."""
+    cart = _add(api, session_id, case)
+
+    body = api.post(
+        "/api/cart/approve",
+        json={"session_id": str(session_id), "cart_version": cart["cart_version"]},
+    ).json()
+
+    assert body["cart"]["cart_version"] == body["cart_version"]
+    assert body["approved_total"] == body["cart"]["total"]
+
+
+def test_the_request_has_no_field_for_a_total_the_client_computed(api, session_id, case):
+    """`expected_total` is a *string* the client says it rendered, not an amount
+    it computed. A float would already have been rounded by its parser."""
+    cart = _add(api, session_id, case)
+
+    response = api.post(
+        "/api/cart/approve",
+        json={
+            "session_id": str(session_id),
+            "cart_version": cart["cart_version"],
+            "subtotal": "1.00",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_changing_the_cart_after_approval_supersedes_it(api, session, session_id, case):
+    """ADR-007 invalidation rule 1, end to end."""
+    cart = _add(api, session_id, case)
+    api.post(
+        "/api/cart/approve",
+        json={"session_id": str(session_id), "cart_version": cart["cart_version"]},
+    )
+
+    _add(api, session_id, case)
+
+    live = session.execute(
+        text("SELECT count(*) FROM approvals WHERE cart_id = :c AND status = 'APPROVED'"),
+        {"c": cart["cart_id"]},
+    ).scalar_one()
+    assert live == 0
+
+
+def test_approving_a_cart_that_does_not_exist_is_a_404(api, session_id):
+    response = api.post(
+        "/api/cart/approve", json={"session_id": str(session_id), "cart_version": 1}
+    )
+
+    assert response.status_code == 404

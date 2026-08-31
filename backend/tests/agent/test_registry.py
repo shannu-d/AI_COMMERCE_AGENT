@@ -64,15 +64,18 @@ def test_no_handler_module_is_named_for_a_forbidden_tool() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_registry_is_the_read_tools_plus_propose_cart() -> None:
-    """M5 registered the five read tools; M7 adds `propose_cart`.
+def test_the_registry_is_the_read_tools_plus_cart_and_approval() -> None:
+    """M5 registered the five read tools; M7 added `propose_cart`, M8
+    `request_approval`.
 
-    Nothing that authorizes anything is registered, and nothing that moves money
-    is registered at any milestone.
+    Nothing that *grants* an authorization is registered, and nothing that moves
+    money is registered at any milestone.
     """
     registry = build_registry()
 
-    assert registry.names() == tuple(sorted((*READ_ONLY_TOOL_NAMES, "propose_cart")))
+    assert registry.names() == tuple(
+        sorted((*READ_ONLY_TOOL_NAMES, "propose_cart", "request_approval"))
+    )
 
 
 def test_every_read_tool_is_low_tier_and_propose_cart_is_medium() -> None:
@@ -107,17 +110,17 @@ def test_every_read_tool_has_both_a_schema_and_a_handler(name: str) -> None:
 
 
 def test_a_tool_is_exposed_only_once_it_can_run() -> None:
-    """`request_approval` has a schema from M4 and no handler until M8.
+    """`get_order_status` has a schema from M4 and no handler until M11.
 
     Exposing it now would offer the model a tool that fails on arrival, which is
     worse than not offering it: the model would plan around a capability that
     does not exist.
     """
-    assert "request_approval" in TOOL_SCHEMAS
-    assert "request_approval" not in HANDLERS
+    assert "get_order_status" in TOOL_SCHEMAS
+    assert "get_order_status" not in HANDLERS
 
     with pytest.raises(KeyError, match="no handler"):
-        build_registry(("request_approval",))
+        build_registry(("get_order_status",))
 
 
 def test_the_registry_is_a_strict_subset_of_what_m4_defined() -> None:

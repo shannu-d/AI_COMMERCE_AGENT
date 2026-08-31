@@ -89,7 +89,9 @@ def test_no_commerce_service_has_been_created_early() -> None:
     which was right while none of them had a table. M6 gave them tables and it
     narrowed to services. M7 writes carts - a cart moves no money and needs no
     approval - so it narrows again to what does: the Policy Engine, the Order
-    Service, the audit writer and the Razorpay-facing routes.
+    Service, the audit writer and the Razorpay-facing routes. M8 adds approvals -
+    which authorize but do not charge - and it narrows no further, because what
+    remains is exactly the money.
 
     What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
     same thing, and this is where "not yet" is checkable.
