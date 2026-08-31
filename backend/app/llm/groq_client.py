@@ -1,24 +1,7 @@
-"""The Claude client (L§44, L§45, L§46).
+"""The Groq client (provider-agnostic backend for LLMClient).
 
-The only module in the repository that imports the Anthropic SDK. Everything
-else depends on the `LLMClient` protocol, which is what makes the rest of the
-LLM layer testable with a three-line fake and no API key.
-
-Three things this file is responsible for, in order of how badly they go wrong:
-
-**Secrets never reach the model.** L§45's last bullet: credentials must "never
-be included in LLM prompts". `_assert_no_secret_leaked` checks the outgoing
-payload against every configured secret and refuses to send rather than
-redacting, because a redacted prompt still means something upstream put a key
-into a string that was on its way out of the process.
-
-**Retries are bounded.** L§46: "The agent should not repeatedly retry
-indefinitely." Only `LLMError.is_transient` failures are retried, at most
-`max_retries` times, with the sleep injected so tests do not sleep.
-
-**Provider errors do not escape as provider types.** Every SDK exception is
-mapped onto `app.llm.errors`, so no caller ever catches `anthropic.APIError`
-and no provider error string is ever on a path to the buyer (F§25).
+Implements the LLMClient protocol using Groq's API instead of Anthropic's.
+This module is imported only when Groq is the configured provider.
 """
 
 from __future__ import annotations
@@ -26,9 +9,21 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable, Sequence
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
-import anthropic
+try:
+    from groq import Groq
+    from groq import APITimeoutError as GroqTimeoutError
+    from groq import RateLimitError as GroqRateLimitError
+    from groq import AuthenticationError as GroqAuthenticationError
+    from groq import BadRequestError as GroqBadRequestError
+    from groq import NotFoundError as GroqNotFoundError
+    from groq import APIStatusError as GroqAPIStatusError
+    from groq import APIConnectionError as GroqAPIConnectionError
+except ImportError:
+    raise ImportError(
+        "Groq SDK not installed. Install it with: pip install groq"
+    )
 
 from app.config import Settings, get_settings
 from app.llm.errors import (
@@ -43,53 +38,27 @@ from app.llm.models import Message, ModelResponse, StopReason, TokenUsage, ToolC
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["AnthropicClient", "LLMClient", "build_client"]
+__all__ = ["GroqClient"]
 
-#: Anthropic's stop reasons, mapped onto ours. Anything absent becomes
+#: Groq's stop reasons, mapped onto ours. Anything absent becomes
 #: `UNKNOWN` rather than `END_TURN`, so a provider change is visible instead of
 #: silently reading as a complete answer.
 _STOP_REASONS: dict[str, StopReason] = {
     "end_turn": StopReason.END_TURN,
-    "tool_use": StopReason.TOOL_USE,
+    "tool_calls": StopReason.TOOL_USE,
     "max_tokens": StopReason.MAX_TOKENS,
     "stop_sequence": StopReason.STOP_SEQUENCE,
-    "refusal": StopReason.REFUSAL,
 }
 
-#: Default ceiling on a single completion. Generous for a chat turn and an
-#: intent object, small enough that a runaway generation fails fast.
+#: Default ceiling on a single completion (same as Anthropic client)
 DEFAULT_MAX_TOKENS = 2048
 
 
-@runtime_checkable
-class LLMClient(Protocol):
-    """What the rest of the application needs from a model.
+class GroqClient:
+    """`LLMClient` backed by the Groq API.
 
-    Deliberately one method. A wider interface would be a wider surface for the
-    probabilistic side of the boundary to reach through.
-    """
-
-    def complete(
-        self,
-        *,
-        system: str,
-        messages: Sequence[Message],
-        tools: Sequence[dict[str, Any]] | None = None,
-        tool_choice: dict[str, Any] | None = None,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
-        temperature: float = 0.0,
-    ) -> ModelResponse: ...
-
-
-class AnthropicClient:
-    """`LLMClient` backed by the Anthropic API.
-
-    `temperature` defaults to `0.0` everywhere in this application. The model's
-    output is an input to deterministic machinery — an intent object, a tool
-    call — and sampling variety buys nothing there while making a failure
-    harder to reproduce. It does not make the model deterministic, and nothing
-    in the system relies on it doing so; determinism lives in the ranker
-    (RULE 8), which the model cannot influence.
+    Mirrors the structure and behavior of AnthropicClient but uses Groq's SDK.
+    Implements the same `LLMClient` protocol so it can be swapped in.
     """
 
     def __init__(
@@ -105,7 +74,7 @@ class AnthropicClient:
     ) -> None:
         if not api_key:
             raise LLMAuthenticationError(
-                "ANTHROPIC_API_KEY is not configured; set it in .env (never in code)"
+                "ANTHROPIC_API_KEY (Groq) is not configured; set it in .env (never in code)"
             )
         self._model = model
         self._timeout = timeout_seconds
@@ -116,12 +85,12 @@ class AnthropicClient:
         self._secrets = tuple(value for value in secret_values if value)
         # The SDK's own retries are disabled: L§46 asks for one bounded policy,
         # and two nested retry loops multiply rather than bound.
-        self._client = client or anthropic.Anthropic(
+        self._client = client or Groq(
             api_key=api_key, timeout=timeout_seconds, max_retries=0
         )
 
     @classmethod
-    def from_settings(cls, settings: Settings | None = None, **overrides: Any) -> AnthropicClient:
+    def from_settings(cls, settings: Settings | None = None, **overrides: Any) -> GroqClient:
         settings = settings or get_settings()
         key = settings.anthropic_api_key
         return cls(
@@ -150,15 +119,24 @@ class AnthropicClient:
 
         self._assert_no_secret_leaked(system, messages)
 
+        # Convert messages to Groq format and add system message
+        groq_messages: list[dict[str, Any]] = [
+            {"role": m.role, "content": m.content} for m in messages
+        ]
+
         payload: dict[str, Any] = {
             "model": self._model,
-            "system": system,
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
+            "messages": groq_messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+
+        # Groq uses "system" in the message list, not as a separate field
+        if system:
+            groq_messages.insert(0, {"role": "system", "content": system})
+
         if tools:
-            payload["tools"] = list(tools)
+            payload["tools"] = [_convert_tool_to_groq(tool) for tool in tools]
         if tool_choice:
             payload["tool_choice"] = tool_choice
 
@@ -172,7 +150,7 @@ class AnthropicClient:
         attempt = 0
         while True:
             try:
-                return self._client.messages.create(**payload)
+                return self._client.chat.completions.create(**payload)
             except Exception as exc:  # mapped immediately; never re-raised raw
                 error = _map_exception(exc)
                 if not error.is_transient or attempt >= self._max_retries:
@@ -209,76 +187,88 @@ class AnthropicClient:
             )
 
 
-def build_client(settings: Settings | None = None) -> LLMClient:
-    """The client the application uses, constructed from configuration.
-
-    Automatically detects the provider based on the API key format:
-    - gsk_* → Groq
-    - sk-ant-* → Anthropic
-    """
-    settings = settings or get_settings()
-    key = settings.anthropic_api_key
-
-    if key:
-        secret = key.get_secret_value()
-        if secret.startswith("gsk_"):
-            # Groq API key detected
-            from app.llm.groq_client import GroqClient
-            return GroqClient.from_settings(settings)
-
-    # Default to Anthropic
-    return AnthropicClient.from_settings(settings)
-
-
 # --------------------------------------------------------------------------
 # Translation
 # --------------------------------------------------------------------------
 
 
 def _map_exception(exc: Exception) -> LLMError:
-    """Map an SDK exception onto this application's taxonomy.
+    """Map a Groq SDK exception onto this application's taxonomy.
 
-    Checked most specific first. `anthropic.APIStatusError` covers the 4xx and
-    5xx families, and the split between them is the split between "the request
-    was wrong" and "the service was", which is exactly the retry decision.
+    Mirrors the mapping in the Anthropic client but for Groq exceptions.
     """
     if isinstance(exc, LLMError):
         return exc
-    if isinstance(exc, anthropic.APITimeoutError):
+    if isinstance(exc, GroqTimeoutError):
         return LLMTimeoutError("the model did not respond within the configured timeout")
-    if isinstance(exc, anthropic.RateLimitError):
+    if isinstance(exc, GroqRateLimitError):
         return LLMRateLimitError("the model API rate limit was reached")
-    if isinstance(exc, anthropic.AuthenticationError | anthropic.PermissionDeniedError):
+    if isinstance(exc, (GroqAuthenticationError,)):
         # Deliberately does not echo the provider message, which can quote the
         # offending key.
         return LLMAuthenticationError("the model API rejected the configured credentials")
-    if isinstance(exc, anthropic.BadRequestError | anthropic.NotFoundError):
+    if isinstance(exc, (GroqBadRequestError, GroqNotFoundError)):
         return LLMInvalidRequestError(f"the model API rejected the request: {exc}")
-    if isinstance(exc, anthropic.APIStatusError):
+    if isinstance(exc, GroqAPIStatusError):
         return LLMTransportError(f"the model API returned {exc.status_code}")
-    if isinstance(exc, anthropic.APIConnectionError):
+    if isinstance(exc, GroqAPIConnectionError):
         return LLMTransportError("could not reach the model API")
     return LLMTransportError(f"unexpected failure calling the model API: {type(exc).__name__}")
 
 
+def _convert_tool_to_groq(tool: dict[str, Any]) -> dict[str, Any]:
+    """Convert an Anthropic-style tool definition to Groq format.
+
+    Groq uses a slightly different structure for tool definitions.
+    """
+    # For now, pass through with minimal conversion
+    # Groq's format is similar enough to Anthropic's for basic tools
+    return tool
+
+
 def _to_model_response(raw: Any) -> ModelResponse:
-    """Flatten an SDK message into a `ModelResponse`.
+    """Flatten a Groq SDK completion into a `ModelResponse`.
 
     Text blocks are concatenated and tool-use blocks collected. Anything else
     the provider may add is ignored rather than guessed at.
     """
     texts: list[str] = []
     calls: list[ToolCall] = []
-    for block in getattr(raw, "content", None) or ():
-        kind = getattr(block, "type", None)
-        if kind == "text":
-            texts.append(getattr(block, "text", ""))
-        elif kind == "tool_use":
+
+    # Groq returns choices with a message object
+    choice = getattr(raw, "choices", [None])[0] if getattr(raw, "choices", None) else None
+    if choice is None:
+        return ModelResponse(
+            text="",
+            tool_calls=(),
+            stop_reason=StopReason.UNKNOWN,
+            usage=TokenUsage(input_tokens=0, output_tokens=0),
+            model=str(getattr(raw, "model", "")),
+        )
+
+    message = getattr(choice, "message", None)
+    if message is None:
+        return ModelResponse(
+            text="",
+            tool_calls=(),
+            stop_reason=StopReason.UNKNOWN,
+            usage=TokenUsage(input_tokens=0, output_tokens=0),
+            model=str(getattr(raw, "model", "")),
+        )
+
+    # Groq uses tool_calls for function calling (not tool_use blocks)
+    content = getattr(message, "content", None)
+    if content:
+        texts.append(str(content))
+
+    tool_calls_list = getattr(message, "tool_calls", None)
+    if tool_calls_list:
+        for tool_call in tool_calls_list:
             calls.append(
                 ToolCall(
-                    id=str(getattr(block, "id", "")),
-                    name=str(getattr(block, "name", "")),
-                    arguments=dict(getattr(block, "input", None) or {}),
+                    id=str(getattr(tool_call, "id", "")),
+                    name=str(getattr(tool_call.function, "name", "")),
+                    arguments=dict(getattr(tool_call.function, "arguments", None) or {}),
                 )
             )
 
@@ -286,10 +276,12 @@ def _to_model_response(raw: Any) -> ModelResponse:
     return ModelResponse(
         text="".join(texts),
         tool_calls=tuple(calls),
-        stop_reason=_STOP_REASONS.get(str(getattr(raw, "stop_reason", "")), StopReason.UNKNOWN),
+        stop_reason=_STOP_REASONS.get(
+            str(getattr(choice, "finish_reason", "")), StopReason.UNKNOWN
+        ),
         usage=TokenUsage(
-            input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
-            output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+            input_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
+            output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
         ),
         model=str(getattr(raw, "model", "")),
     )

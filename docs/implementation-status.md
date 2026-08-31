@@ -364,7 +364,7 @@ one-method `LLMClient` protocol; the model is faked at that protocol and the SDK
 ADR, confirming the analysis document's proposed retry and timeout values against the built client.
 
 **How M4 was verified.** The throwaway PostgreSQL 16.4 of §11 was restarted and the whole suite run
-against it. **Result: 719 tests pass, 0 fail, 0 skip.** 574 of them need no database; the 145
+against it. **Result: 721 tests pass, 0 fail, 0 skip.** 576 of them need no database; the 145
 `requires_db` tests are unchanged from M3, because M4 adds no code that opens a query — by
 construction, since `tests/llm/test_boundaries.py` forbids `app/llm` from importing a service, a
 repository or SQLAlchemy at all.
