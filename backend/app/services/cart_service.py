@@ -26,6 +26,12 @@ incident.
 `unit_price_snapshot` is display and drift-detection state, never authority
 (RULE 6, RULE 12). Every read path in this module re-reads the live price; the
 snapshot exists so the difference can be *shown* to the buyer.
+
+**Every version bump supersedes the cart's approvals**, from inside
+`_recompute` - the one place the version is ever assigned. Doing it there rather
+than at each call site is what makes it unconditional: a mutation added later
+cannot forget, because the only way to change a cart is through the function
+that also invalidates its authorization (ADR-007).
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ from app.domain.cart import CartItemView, CartView, PriceDrift
 from app.domain.commerce import CartStatus
 from app.domain.inventory import StockStatus
 from app.repositories.cart_repository import CartRepository
+from app.services.approval_service import ApprovalService
 from app.services.catalog_service import CatalogService
 from app.services.inventory_service import InventoryService
 
@@ -78,6 +85,7 @@ class CartService:
         self._carts = CartRepository(session)
         self._catalog = CatalogService(session)
         self._inventory = InventoryService(session)
+        self._approvals = ApprovalService(session)
 
     # -- reads ---------------------------------------------------------------
 
@@ -268,6 +276,14 @@ class CartService:
         cart.total_amount = subtotal
         if changed:
             cart.version += 1
+            # ADR-007 invalidation rules 1 and 2, applied by the code path that
+            # made the change rather than by a sweeper. That is what makes
+            # invalidation *immediate*: there is no window in which a changed
+            # cart still carries a valid approval. It runs for a price decrease
+            # too - the buyer approved a specific total, and charging a
+            # different one, cheaper or not, is charging an amount nobody
+            # authorized.
+            self._approvals.supersede_for_cart(cart.id, reason="the cart changed")
         self._session.flush()
         return self._view(merchant_id, cart)
 

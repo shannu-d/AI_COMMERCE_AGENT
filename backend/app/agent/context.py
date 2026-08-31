@@ -25,6 +25,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session as DbSession
 
+from app.services.approval_service import ApprovalService
 from app.services.cart_service import CartService
 from app.services.catalog_service import CatalogService
 from app.services.compatibility_service import CompatibilityService
@@ -42,6 +43,7 @@ class AgentContext:
     merchant_id: uuid.UUID
     catalog: CatalogService
     carts: CartService
+    approvals: ApprovalService
     compatibility: CompatibilityService
     inventory: InventoryService
     recommendations: RecommendationService
@@ -58,6 +60,7 @@ class AgentContext:
             merchant_id=merchant_id,
             catalog=CatalogService(db),
             carts=CartService(db),
+            approvals=ApprovalService(db),
             compatibility=CompatibilityService(db),
             inventory=InventoryService(db),
             recommendations=RecommendationService(db),

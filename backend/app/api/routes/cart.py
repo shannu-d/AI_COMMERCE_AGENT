@@ -20,14 +20,24 @@ only path that may write an `APPROVED` row, and it mints the idempotency key
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
 from app.agent.errors import ApiErrorCode
-from app.api.schemas.cart import AddItemRequest, CartResponse, UpdateItemRequest
+from app.api.schemas.cart import (
+    AddItemRequest,
+    ApprovalResponse,
+    ApproveCartRequest,
+    CartResponse,
+    UpdateItemRequest,
+)
 from app.config import Settings, get_settings
 from app.db.session import get_db
+from app.domain.approval import ApprovalFailure
+from app.domain.conversation import ConversationState
+from app.services.approval_service import ApprovalError, ApprovalService
 from app.services.cart_service import CartError, CartService
 from app.services.session_service import SessionService
 
@@ -68,6 +78,43 @@ def _handle(error: CartError) -> HTTPException:
     return HTTPException(
         status_code=codes.get(error.code, status.HTTP_422_UNPROCESSABLE_CONTENT),
         detail={"code": error.code, "message": error.message, "details": error.details},
+    )
+
+
+def _handle_approval(error: Exception) -> HTTPException:
+    """An approval failure as an HTTP status.
+
+    A stale version or a changed total is a **409**: the request was well-formed
+    and the world moved underneath it. The frontend renders that as "the cart
+    changed, please review it again" - a recovery flow, not a bug report - which
+    is the same reasoning ADR-010 applies to keeping business outcomes out of the
+    client's network-error path.
+    """
+    if isinstance(error, InvalidOperation):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": ApiErrorCode.VALIDATION_ERROR.value,
+                "message": "expected_total is not a valid amount",
+            },
+        )
+    conflicts = {
+        ApprovalFailure.CART_VERSION_STALE,
+        ApprovalFailure.TOTAL_CHANGED,
+        ApprovalFailure.ITEMS_CHANGED,
+    }
+    code = (
+        status.HTTP_409_CONFLICT
+        if error.failure in conflicts
+        else status.HTTP_422_UNPROCESSABLE_CONTENT
+    )
+    return HTTPException(
+        status_code=code,
+        detail={
+            "code": error.failure.value,
+            "message": error.message,
+            "details": error.details,
+        },
     )
 
 
@@ -163,3 +210,78 @@ def remove_item(
         raise _handle(error) from error
     db.commit()
     return CartResponse.of(cart)
+
+
+@router.post(
+    "/cart/approve",
+    response_model=ApprovalResponse,
+    status_code=status.HTTP_200_OK,
+    summary="The buyer authorizes one exact cart version and total",
+    responses={
+        404: {"description": "Unknown session, or no active cart."},
+        409: {"description": "The cart changed since the buyer saw it (CART_VERSION_STALE)."},
+    },
+)
+def approve_cart(
+    request: ApproveCartRequest,
+    db: DbSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> ApprovalResponse:
+    """**The only path in the system that writes an APPROVED approval** (ADR-007).
+
+    It exists so that the authorization signal originates from a buyer's
+    deliberate action rather than from a model's judgement about what "yeah,
+    sure" meant. `request_approval()` can ask; only this can answer.
+
+    A stale `cart_version` is a `409`, not a `422`: the request was well-formed
+    and the world moved. The frontend renders that as "the cart changed, please
+    review it again", which is a recovery flow rather than a bug report.
+    """
+    merchant_id = settings.default_merchant_id
+    session_id = _require_session(db, merchant_id, request.session_id)
+
+    carts = CartService(db)
+    cart = carts.get_active(merchant_id, session_id)
+    if cart is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": ApiErrorCode.VALIDATION_ERROR.value,
+                "message": "this session has no active cart",
+            },
+        )
+
+    # Re-priced first, deliberately. If the catalog moved since the buyer's
+    # screen was drawn, this bumps the version and supersedes any earlier
+    # approval - so the version check below then fails, and the buyer is asked
+    # to look again rather than authorizing a total that is no longer real
+    # (ADR-007, ADR-014, A§28).
+    cart = carts.refresh(merchant_id, cart.id)
+
+    approvals = ApprovalService(db, ttl_seconds=settings.approval_ttl_seconds)
+    try:
+        approval = approvals.approve(
+            session_id,
+            cart,
+            cart_version=request.cart_version,
+            expected_total=(
+                None if request.expected_total is None else Decimal(request.expected_total)
+            ),
+        )
+    except (ApprovalError, InvalidOperation) as error:
+        db.rollback()
+        raise _handle_approval(error) from error
+
+    SessionService(db).set_state(merchant_id, session_id, ConversationState.APPROVED)
+    db.commit()
+
+    return ApprovalResponse(
+        approval_id=approval.id,
+        status=approval.status.value,
+        cart_version=approval.cart_version,
+        approved_total=str(approval.approved_total.quantize(Decimal("0.01"))),
+        currency=approval.currency,
+        approved_at=approval.approved_at.isoformat() if approval.approved_at else None,
+        expires_at=approval.expires_at.isoformat(),
+        cart=CartResponse.of(cart),
+    )

@@ -20,8 +20,8 @@ in a log rather than looking like a typo.
 **A tool is exposed only once it can run.** `build_registry` refuses a name it
 has no handler for, so the model is never offered a capability it would plan
 around and then find missing. M5 registered the five read tools; M7 adds
-`propose_cart`. `request_approval` and `get_order_status` have schemas in
-`app/llm` and no handler here until M8 and M11.
+`propose_cart` and M8 `request_approval`. `get_order_status` has a schema in
+`app/llm` and no handler here until M11. M8 adds `request_approval`.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.agent.context import AgentContext, TurnMemory
+from app.agent.tools.approval import request_approval
 from app.agent.tools.cart import propose_cart
 from app.agent.tools.catalog import get_product, search_catalog
 from app.agent.tools.compatibility import get_compatible_products
@@ -62,6 +63,10 @@ HANDLERS: Mapping[str, ToolHandler] = {
     "get_upsell_candidates": get_upsell_candidates,
     # M7. MEDIUM tier: writes cart state, computes nothing, authorizes nothing.
     "propose_cart": propose_cart,
+    # M8. MEDIUM tier, and the one whose name most suggests otherwise: it asks
+    # for approval and cannot grant it. The service method it calls has no
+    # parameter through which APPROVED could arrive (ADR-007).
+    "request_approval": request_approval,
 }
 
 

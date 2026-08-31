@@ -26,6 +26,8 @@ from app.domain.cart import CartView
 
 __all__ = [
     "AddItemRequest",
+    "ApprovalResponse",
+    "ApproveCartRequest",
     "CartItemResponse",
     "CartResponse",
     "PriceChange",
@@ -124,3 +126,50 @@ class CartResponse(BaseModel):
         payload["status"] = cart.status.value
         payload.setdefault("price_changes", [])
         return cls.model_validate(payload)
+
+
+class ApproveCartRequest(BaseModel):
+    """A buyer's authorization of one exact cart state (ADR-007).
+
+    `cart_version` is **required**, and it is what the buyer's screen was
+    showing rather than what the cart is now. Submitting it is the whole
+    mechanism by which a stale view becomes detectable instead of being silently
+    applied to whatever the cart has since become (A§26, A§27).
+
+    `expected_total` is optional and checked when supplied — the same idea said
+    twice, because a client that renders a total should be able to say which one
+    it rendered. It is a **string**, so a client cannot send a float that a
+    parser has already rounded.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: uuid.UUID
+    cart_version: int = Field(
+        ge=1, description="The version the buyer was looking at, not the current one."
+    )
+    expected_total: str | None = Field(
+        default=None,
+        description='The total the buyer saw, as a fixed-scale string, e.g. "1499.00".',
+    )
+
+
+class ApprovalResponse(BaseModel):
+    """What an approval looks like once recorded.
+
+    The cart travels with it because the confirmation screen and the record must
+    agree: an approval is a claim about a specific cart state, and returning one
+    without that state would make it unverifiable by the client that just made
+    it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    approval_id: uuid.UUID
+    status: str
+    cart_version: int
+    approved_total: str
+    currency: str
+    approved_at: str | None
+    expires_at: str
+    cart: CartResponse
