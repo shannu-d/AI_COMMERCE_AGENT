@@ -41,6 +41,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, uuid_pk
+from app.db.models._enums import in_list
 from app.domain.conversation import CONVERSATION_STATES, ConversationState
 
 if TYPE_CHECKING:
@@ -52,18 +53,13 @@ if TYPE_CHECKING:
 SESSION_MESSAGE_ROLES: tuple[str, ...] = ("user", "assistant", "tool")
 
 
-def _in_list(column: str, values: tuple[str, ...]) -> str:
-    rendered = ", ".join(f"'{value}'" for value in values)
-    return f"{column} IN ({rendered})"
-
-
 class Session(Base, TimestampMixin):
     """One buyer conversation. The ``session_id`` every API response carries."""
 
     __tablename__ = "sessions"
     __table_args__ = (
         CheckConstraint(
-            _in_list("conversation_state", CONVERSATION_STATES),
+            in_list("conversation_state", CONVERSATION_STATES),
             name="conversation_state_is_known",
         ),
         # A§37: the accumulated intent is an object, never a scalar or a list.
@@ -120,7 +116,7 @@ class SessionMessage(Base):
     __tablename__ = "session_messages"
     __table_args__ = (
         UniqueConstraint("session_id", "sequence"),
-        CheckConstraint(_in_list("role", SESSION_MESSAGE_ROLES), name="role_is_known"),
+        CheckConstraint(in_list("role", SESSION_MESSAGE_ROLES), name="role_is_known"),
         CheckConstraint("sequence >= 0", name="sequence_is_not_negative"),
         # A message is prose or a structured payload. A row with neither records
         # nothing, and the constraint says so rather than leaving it to callers.

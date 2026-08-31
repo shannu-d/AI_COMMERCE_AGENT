@@ -32,12 +32,25 @@ question C3 is closed as *PostgreSQL* and the task breakdown gives AGENT-01 - th
 M5 runtime skeleton - the job of closing it, which a dictionary cannot do. They
 carry no money, no cart and no approval, so the D§36/D§39 line still holds.
 
-**Phase 2 - commerce (M6).** Designed at column level in ADR-006 and not
-implemented: ``carts``, ``cart_items``, ``approvals``, ``idempotency_keys``,
-``orders``, ``order_items``, ``payments``, ``webhook_events``, ``audit_events``.
-D§36 and D§39 explicitly exclude them from the first catalog milestone.
+**Phase 2 - commerce (M6).** The nine tables ADR-006 designs at column level,
+created by migration ``0004``:
+
+===========================  ========================================
+``carts``, ``cart_items``    the working set; totals backend-computed
+``approvals``                the authorization artefact (ADR-007)
+``idempotency_keys``         replay safety for order creation (ADR-013)
+``orders``, ``order_items``  the immutable financial record
+``payments``                 written only from a verified webhook
+``webhook_events``           raw body, and the dedupe constraint
+``audit_events``             append-only; the durable record
+===========================  ========================================
+
+The load-bearing one is ``orders.approval_id NOT NULL``: the database itself
+refuses to store an unapproved order.
 """
 
+from app.db.models.approval import Approval
+from app.db.models.cart import Cart, CartItem
 from app.db.models.category import Category
 from app.db.models.compatibility import (
     COMPATIBILITY_RULE_TYPES,
@@ -50,6 +63,8 @@ from app.db.models.compatibility_target import (
 )
 from app.db.models.inventory import Inventory
 from app.db.models.merchant import Merchant
+from app.db.models.order import IdempotencyKey, Order, OrderItem
+from app.db.models.payment import AuditEvent, Payment, WebhookEvent
 from app.db.models.product import Product
 from app.db.models.relationship import PRODUCT_RELATIONSHIP_TYPES, ProductRelationship
 from app.db.models.session import SESSION_MESSAGE_ROLES, Session, SessionMessage
@@ -70,22 +85,45 @@ CATALOG_TABLES: tuple[str, ...] = (
 #: state, not catalog.
 SESSION_TABLES: tuple[str, ...] = ("sessions", "session_messages")
 
+#: The nine tables M6 adds, in dependency order.
+COMMERCE_TABLES: tuple[str, ...] = (
+    "carts",
+    "cart_items",
+    "approvals",
+    "idempotency_keys",
+    "orders",
+    "order_items",
+    "payments",
+    "webhook_events",
+    "audit_events",
+)
+
 __all__ = [
     "CATALOG_TABLES",
+    "COMMERCE_TABLES",
     "COMPATIBILITY_RULE_TYPES",
     "COMPATIBILITY_TARGET_KINDS",
     "COMPATIBILITY_TARGET_TYPES",
     "PRODUCT_RELATIONSHIP_TYPES",
     "SESSION_MESSAGE_ROLES",
     "SESSION_TABLES",
+    "Approval",
+    "AuditEvent",
+    "Cart",
+    "CartItem",
     "Category",
     "CompatibilityRule",
     "CompatibilityTarget",
+    "IdempotencyKey",
     "Inventory",
     "Merchant",
+    "Order",
+    "OrderItem",
+    "Payment",
     "Product",
     "ProductRelationship",
     "ProductVariant",
     "Session",
     "SessionMessage",
+    "WebhookEvent",
 ]
