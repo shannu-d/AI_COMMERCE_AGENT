@@ -84,7 +84,7 @@ def _to_response(result: TurnResult) -> ChatResponse:
         state=result.state,
         message=result.message,
         recommendations=[Recommendation.model_validate(item) for item in result.recommendations],
-        cart=None,  # M7
+        cart=result.cart,
         trace=result.trace,
         error=(
             None

@@ -77,6 +77,9 @@ class TurnResult:
     message: str
     #: Ranked results, from the ranking engine. Never parsed out of `message`.
     recommendations: list[dict[str, Any]] = field(default_factory=list)
+    #: The authoritative cart, backend-computed (F§12). `None` until the buyer
+    #: has one; never assembled from anything the model said.
+    cart: dict[str, Any] | None = None
     error: TurnError | None = None
     #: A§39. Returned per turn and never persisted (ADR-010, closing E6); the
     #: audit log is the durable record.
@@ -128,7 +131,7 @@ class AgentRuntime:
         sessions.touch(merchant_id, session_id)
         sessions.set_state(merchant_id, session_id, ConversationState.UNDERSTANDING_INTENT)
 
-        memory = TurnMemory()
+        memory = TurnMemory(session_id=session_id)
         try:
             reply = self._converse(session_id, message, memory)
         except LLMOutputError as error:
@@ -151,9 +154,11 @@ class AgentRuntime:
             )
 
         recommendations = self._collect_recommendations(memory)
+        cart = self._current_cart(session_id)
         state = next_state(
             memory_has_results=bool(recommendations),
             tool_failed=self._any_tool_failed(memory),
+            has_cart=cart is not None and bool(cart["items"]),
         )
 
         sessions.append_message(merchant_id, session_id, role="assistant", content=reply)
@@ -164,6 +169,7 @@ class AgentRuntime:
             state=state,
             message=reply,
             recommendations=recommendations,
+            cart=cart,
             trace=self._trace(memory),
         )
 
@@ -306,6 +312,19 @@ class AgentRuntime:
                     seen.add(key)
                     out.append(serialize_ranked(candidate))
         return out
+
+    def _current_cart(self, session_id: uuid.UUID) -> dict[str, Any] | None:
+        """The session's cart, re-read after the turn rather than remembered.
+
+        Read from the Cart Service, not from whatever `propose_cart` returned
+        mid-turn: a later tool call may have changed it, and F§12 says the
+        authoritative total is the backend's current one. `None` when the
+        session has no cart, which is different from an empty one.
+        """
+        from app.agent.tools.cart import serialize_cart
+
+        cart = self._context.carts.get_active(self._context.merchant_id, session_id)
+        return None if cart is None else serialize_cart(cart)
 
     @staticmethod
     def _any_tool_failed(memory: TurnMemory) -> bool:

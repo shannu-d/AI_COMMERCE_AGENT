@@ -17,10 +17,11 @@ that does not exist. `FORBIDDEN_TOOL_NAMES` and a standing test keep it out, and
 a call to it reports *forbidden* rather than *unknown*, so the attempt is visible
 in a log rather than looking like a typo.
 
-**Only the read tools are registered in M5.** `propose_cart`, `request_approval`
-and `get_order_status` have schemas in `app/llm` and no handler here until M7, M8
-and M11 respectively. `build_registry` exposes exactly what it can execute, so
-the model is never offered a tool that would fail on arrival.
+**A tool is exposed only once it can run.** `build_registry` refuses a name it
+has no handler for, so the model is never offered a capability it would plan
+around and then find missing. M5 registered the five read tools; M7 adds
+`propose_cart`. `request_approval` and `get_order_status` have schemas in
+`app/llm` and no handler here until M8 and M11.
 """
 
 from __future__ import annotations
@@ -32,18 +33,19 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.agent.context import AgentContext, TurnMemory
+from app.agent.tools.cart import propose_cart
 from app.agent.tools.catalog import get_product, search_catalog
 from app.agent.tools.compatibility import get_compatible_products
 from app.agent.tools.inventory import check_inventory, get_upsell_candidates
 from app.llm.tool_schemas import (
+    EXPOSED_TOOL_NAMES,
     FORBIDDEN_TOOL_NAMES,
-    READ_ONLY_TOOL_NAMES,
     TOOL_SCHEMAS,
     RiskTier,
     ToolDefinition,
 )
 
-__all__ = ["HANDLERS", "RegisteredTool", "ToolRegistry", "build_registry"]
+__all__ = ["AVAILABLE_TOOL_NAMES", "HANDLERS", "RegisteredTool", "ToolRegistry", "build_registry"]
 
 #: The callable a registered tool runs. Every handler has this shape, which is
 #: what lets the executor implement A§19 once rather than once per tool.
@@ -58,7 +60,18 @@ HANDLERS: Mapping[str, ToolHandler] = {
     "get_compatible_products": get_compatible_products,
     "check_inventory": check_inventory,
     "get_upsell_candidates": get_upsell_candidates,
+    # M7. MEDIUM tier: writes cart state, computes nothing, authorizes nothing.
+    "propose_cart": propose_cart,
 }
+
+
+#: What `build_registry` exposes by default: everything with a handler, in the
+#: order `TOOL_SCHEMAS` declares. Derived rather than listed, so adding a handler
+#: is the single edit that makes a tool available - and `build_registry` still
+#: checks the pairing, because a derived list can be derived from a mistake.
+AVAILABLE_TOOL_NAMES: tuple[str, ...] = tuple(
+    name for name in EXPOSED_TOOL_NAMES if name in HANDLERS
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +125,7 @@ class ToolRegistry:
         return iter(self.names())
 
 
-def build_registry(names: tuple[str, ...] = READ_ONLY_TOOL_NAMES) -> ToolRegistry:
+def build_registry(names: tuple[str, ...] = AVAILABLE_TOOL_NAMES) -> ToolRegistry:
     """The registry for this milestone.
 
     Three things are checked at construction rather than at call time, because a

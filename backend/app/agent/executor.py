@@ -156,10 +156,23 @@ class ToolExecutor:
             ) from exc
 
         # 4. Authorization by tier (A§22, A§23). No tool is trusted merely
-        #    because the model asked for it. M5 registers only LOW-tier read
-        #    tools; a MEDIUM one arriving here before its milestone has wired
-        #    its business checks is refused rather than run.
-        if tool.tier is not RiskTier.LOW:
+        #    because the model asked for it.
+        #
+        #    LOW is read-only and needs nothing. MEDIUM writes application state
+        #    and needs an owner for that state: the session this turn belongs
+        #    to, which the *runtime* established from the loaded conversation.
+        #    No tool schema has a `session_id` field, so a model cannot name a
+        #    session; a MEDIUM call in a turn with none is a write with no owner
+        #    and is refused here rather than defaulting to something.
+        #
+        #    There is no HIGH tier. `create_order` would have been the only one
+        #    and it is not a tool at all (ADR-009, closing D6).
+        if tool.tier is RiskTier.MEDIUM and memory.session_id is None:
+            raise ToolError(
+                ToolErrorCode.FORBIDDEN_TOOL,
+                f"{name!r} needs an established conversation and this turn has none.",
+            )
+        if tool.tier not in (RiskTier.LOW, RiskTier.MEDIUM):
             raise ToolError(
                 ToolErrorCode.FORBIDDEN_TOOL,
                 f"{name!r} is not available in this conversation.",

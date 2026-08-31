@@ -25,6 +25,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session as DbSession
 
+from app.services.cart_service import CartService
 from app.services.catalog_service import CatalogService
 from app.services.compatibility_service import CompatibilityService
 from app.services.inventory_service import InventoryService
@@ -40,6 +41,7 @@ class AgentContext:
 
     merchant_id: uuid.UUID
     catalog: CatalogService
+    carts: CartService
     compatibility: CompatibilityService
     inventory: InventoryService
     recommendations: RecommendationService
@@ -55,6 +57,7 @@ class AgentContext:
         return cls(
             merchant_id=merchant_id,
             catalog=CatalogService(db),
+            carts=CartService(db),
             compatibility=CompatibilityService(db),
             inventory=InventoryService(db),
             recommendations=RecommendationService(db),
@@ -81,6 +84,12 @@ class TurnMemory:
     #: Devices resolved this turn, so a second tool call for the same phrase does
     #: not re-ask the buyer a question already answered.
     resolved_devices: dict[str, Any] = field(default_factory=dict)
+    #: Whose turn this is. Set by the runtime from the loaded session, **never**
+    #: from a tool argument - no tool schema has a `session_id` field, so a model
+    #: has no way to write to somebody else's cart. A MEDIUM-tier tool is refused
+    #: outright when this is `None`, because a write with no established session
+    #: is a write with no owner.
+    session_id: uuid.UUID | None = None
 
     def record(self, name: str, arguments: dict[str, Any], result: dict[str, Any]) -> None:
         """Append one call to the trace.
@@ -95,3 +104,13 @@ class TurnMemory:
     @property
     def call_count(self) -> int:
         return len(self.calls)
+
+    def require_session(self) -> uuid.UUID:
+        """The session this turn belongs to, or a refusal.
+
+        Raising rather than returning `None` keeps the check at one site: a tool
+        that needs a session gets one or does not run.
+        """
+        if self.session_id is None:
+            raise LookupError("this turn has no established session")
+        return self.session_id

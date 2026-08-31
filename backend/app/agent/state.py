@@ -25,19 +25,29 @@ from app.domain.conversation import ConversationState
 __all__ = ["next_state"]
 
 
-def next_state(*, memory_has_results: bool, tool_failed: bool) -> ConversationState:
+def next_state(
+    *, memory_has_results: bool, tool_failed: bool, has_cart: bool = False
+) -> ConversationState:
     """Where a completed turn leaves the conversation.
 
-    Ordering is deliberate. Results win over a failed tool: a turn that searched
-    twice, had one call fail and still produced grounded recommendations is a
-    turn that recommended something, and showing the buyer an error state
-    alongside real results would misdescribe what happened.
+    Ordering is deliberate, and reads outward from what the buyer is closest to
+    doing. A cart wins over recommendations: once one exists the buyer is
+    choosing whether to buy, not whether to look. Results win over a failed tool:
+    a turn that searched twice, had one call fail and still produced grounded
+    recommendations is a turn that recommended something, and showing an error
+    state alongside real results would misdescribe what happened.
+
+    `CART_PROPOSED` is as far as M7 can go. `WAITING_FOR_APPROVAL` needs an
+    `approvals` row, which is M8's, and no state here is ever derived from
+    another (ADR-007).
 
     A turn with neither results nor a failure is a conversation still being
     understood — the model asked the buyer something, which A§51 lists as its own
     termination condition and which the buyer sees as a question rather than as
     an empty result set.
     """
+    if has_cart:
+        return ConversationState.CART_PROPOSED
     if memory_has_results:
         return ConversationState.RECOMMENDING
     if tool_failed:
