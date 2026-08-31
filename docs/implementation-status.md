@@ -503,6 +503,57 @@ ADR-006's implementation note calls its migration `0003_commerce_schema`. That n
 session tables in M5, so this is `0004` (deviation A32). Revision numbers follow the order things
 were built; renumbering to match a document would mean rewriting applied history.
 
+### M7 — cart
+
+The Cart Service, the `propose_cart` tool, and the four cart endpoints F§26 names. Its exit
+condition is two claims and both are tests: *the cart total is backend-computed*, and *the version
+increments on mutation*.
+
+**Backend-computed is enforced by absence.** No service method, no tool argument and no request
+model has a price, subtotal or total field. `test_no_method_accepts_an_amount` walks the service's
+signatures and asserts none of them contains a money word, because a method that quietly ignored a
+price would still be a method someone believed they had used; the API models are `extra="forbid"`,
+so a client sending `unit_price` gets a 422 rather than a silently-dropped field.
+
+**The version is what an approval will bind to** (A§27, F§13), so every case where it moves and
+every case where it does not is a case where a stale approval is or is not detected. Adding,
+changing a quantity and removing all increment it. Marking a cart ORDERED does not — the composition
+did not change, and the approval must stay matched to the order it authorized. The subtle one is
+`refresh`: nothing the buyer did changed, but what they would be charged did, so the version moves
+and the old approval goes stale. That is the primary failure scenario the specification names
+(A§28), and M7 handles it as an ordinary cart change rather than as an incident.
+
+**A view reports drift without applying it.** `unit_price_snapshot` is display and drift-detection
+state, never authority (RULE 6, RULE 12): reading a cart re-reads every live price and reports any
+difference as `price_changes`, in both directions, while leaving the stored total alone. Correcting
+it on read would change what the buyer is charged without their seeing it happen; `refresh` is the
+deliberate act that does.
+
+**`propose_cart` is the first MEDIUM-tier tool, and the executor gained the authorization A§22 asks
+for.** MEDIUM writes application state, so it needs an owner for that state: the session the
+*runtime* established, carried on `TurnMemory`. No tool schema has a `session_id` field, so a model
+has no argument through which to name somebody else's cart, and a MEDIUM call in a turn with no
+session is refused rather than defaulted. There is still no HIGH tier and there never will be —
+`create_order` would have been the only one and it is not a tool at all.
+
+The tool computes nothing, authorizes nothing, and replaces rather than appends: a second proposal
+is a correction of the first, because "actually, just the case" must not produce a cart holding it
+twice. Every variant is resolved and every stock level checked before anything is written, so a
+proposal naming one bad variant leaves the existing cart intact rather than half-replaced.
+
+**How M7 was verified.** The throwaway PostgreSQL 16.4 of §11. **Result: 1018 tests pass, 0 fail, 0
+skip**, 761 of them needing no database. The cart service and API tests run against the real seeded
+catalog, so "backend-computed" means computed from what the database actually says.
+
+Two things surfaced and were fixed rather than accommodated. The seeded catalog's charger SKUs are
+`CHARGER-20W` and `CHARGER-30W`, not the `CHG-` prefix a test assumed. And a parametrized bounds
+test carried a `pytest.skip` for its zero case; this project treats a run with skips as an
+incomplete run, so the case was made meaningful instead — `add_item(0)` is not an operation and must
+be refused, which is a different rule from `set_quantity(0)` meaning "remove this line".
+
+`POST /api/cart/approve` is deliberately absent. Approval is M8: it is the only path that may write
+an `APPROVED` row, and it mints the idempotency key (ADR-007, ADR-013).
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as

@@ -20,7 +20,7 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [006](ADR-006-commerce-schema.md) | Commerce Schema (Phase 2) | Accepted, **implemented (M5 sessions, M6 the rest)** | M5 / M6 | C1, C2, C3, C6, C7, E7 |
 | [007](ADR-007-approval-model.md) | The Approval Model | Accepted | M8 | D1, D5 |
 | [008](ADR-008-money-representation.md) | Money Representation | Accepted, **partly implemented (M1)** | M1 / M11 | C4 |
-| [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted, **read tools implemented (M5)** | M5–M11 | B2, B7, D6, E1, E4, E5 |
+| [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted, **read tools (M5) and `propose_cart` (M7) implemented** | M5–M11 | B2, B7, D6, E1, E4, E5 |
 | [010](ADR-010-chat-api-contract.md) | The Chat API Contract | Accepted, **implemented (M5)** | M5 / M14 | E3, E6 |
 | [011](ADR-011-razorpay-order-creation-boundary.md) | The Razorpay Order Creation Boundary | Accepted | M9–M11 | D3, C6 |
 | [012](ADR-012-webhook-as-payment-truth.md) | The Verified Webhook is Payment Truth | Accepted | M12 | D7, D8 |
@@ -41,8 +41,8 @@ Implemented so far: ADR-002 in full for the catalog, ADR-003's reference table, 
 resolution service, ADR-004 and ADR-005 in full (the ranking engine, M3), ADR-008's catalog half
 (`NUMERIC(12,2)`, string-encoded money in seed data, no floats), ADR-009's tool *schemas* and
 exclusions (M4), ADR-009's read tools and validation pipeline plus ADR-010's chat contract and
-ADR-006's two session tables (M5), ADR-006's remaining nine tables (M6), ADR-015 in full, and
-ADR-016 in full.
+ADR-006's two session tables (M5), ADR-006's remaining nine tables (M6), ADR-009's `propose_cart`
+and the cart contract of F§12/F§13 (M7), ADR-015 in full, and ADR-016 in full.
 
 ## Where these ADRs deliberately depart from prior proposals
 
