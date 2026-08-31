@@ -81,20 +81,59 @@ def test_no_payment_or_model_library_reaches_the_read_services(
         assert root not in FORBIDDEN_LIBRARIES, f"{path.name} imports {module}"
 
 
-def test_no_commerce_module_has_been_created_early() -> None:
-    """M3 must not have grown a cart, an order, a policy or a payment.
+def test_no_commerce_service_has_been_created_early() -> None:
+    """M6 added the commerce *schema*. It added no behaviour.
 
-    ADR-006 designs the commerce schema for M6; ADR-011 and ADR-012 own the
-    money path from M9. A module appearing here before its milestone means the
-    boundary moved without a decision.
+    The guard this replaces forbade any module under `app/` whose name mentioned
+    a cart, an order, a payment or a policy - which was right while none of them
+    had a table. M6 gives them tables, so the rule narrows to what it was
+    actually protecting: the money path must not be *coded* before its decisions
+    exist (D§39, A§58, F§37). A table is inert. A service that writes to one is
+    not, and each of these has a milestone and an ADR waiting for it.
     """
     premature = [
         name
-        for name in ("cart", "order", "payment", "policy", "approval", "checkout", "webhook")
-        if list((BACKEND_DIR / "app").rglob(f"*{name}*.py"))
+        for name in (
+            "app/policy",
+            "app/payments",
+            "app/services/cart_service.py",
+            "app/services/order_service.py",
+            "app/services/audit_service.py",
+            "app/api/routes/cart.py",
+            "app/api/routes/orders.py",
+            "app/api/routes/webhooks.py",
+        )
+        if (BACKEND_DIR / name).exists()
     ]
 
-    assert premature == [], f"premature commerce modules: {premature}"
+    assert premature == [], f"premature commerce behaviour: {premature}"
+
+
+def test_the_commerce_models_are_reachable_only_as_schema() -> None:
+    """The other half: the tables exist, and nothing on the read side uses them.
+
+    M2's and M3's services predate the commerce schema and must keep working
+    without it. A read service that started importing `Cart` would be a read
+    service with an opinion about a purchase.
+    """
+    importers = [
+        path.name
+        for package in ("app/services", "app/ranking")
+        for path in python_files(package)
+        if any(
+            module.startswith(
+                (
+                    "app.db.models.cart",
+                    "app.db.models.order",
+                    "app.db.models.payment",
+                    "app.db.models.approval",
+                )
+            )
+            for module in imported_modules(path)
+        )
+    ]
+
+    assert importers == []
 
 
 def test_the_agent_runtime_is_reachable_only_from_the_probabilistic_side() -> None:

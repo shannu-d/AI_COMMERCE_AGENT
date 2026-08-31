@@ -18,7 +18,6 @@ import uuid
 import pytest
 from sqlalchemy.orm import Session
 
-from app.identifiers import seed_id
 from app.services import CatalogService, CompatibilityService, InventoryService
 
 pytestmark = pytest.mark.requires_db
@@ -41,15 +40,3 @@ def compatibility(session: Session) -> CompatibilityService:
 @pytest.fixture
 def inventory(session: Session) -> InventoryService:
     return InventoryService(session)
-
-
-@pytest.fixture
-def variant_id():
-    """Look up a seeded variant's deterministic id by SKU."""
-    return lambda sku: seed_id("variant", sku)
-
-
-@pytest.fixture
-def product_id():
-    """Look up a seeded product's deterministic id by slug."""
-    return lambda slug: seed_id("product", slug)

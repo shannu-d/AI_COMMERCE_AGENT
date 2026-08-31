@@ -20,8 +20,9 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.schema import CreateTable
 
+from app.config import BACKEND_DIR
 from app.db.base import Base
-from app.db.models import CATALOG_TABLES, SESSION_TABLES
+from app.db.models import CATALOG_TABLES, COMMERCE_TABLES, SESSION_TABLES
 
 CATALOG_TABLE_SET = set(CATALOG_TABLES)
 
@@ -60,31 +61,33 @@ def test_the_seven_specified_catalog_tables_exist() -> None:
     assert CATALOG_TABLE_SET <= set(Base.metadata.tables)
 
 
-def test_no_commerce_table_is_defined_yet() -> None:
-    """D§36 and D§39: no milestone before M6 builds a commerce table.
+def test_the_commerce_tables_arrived_with_m6() -> None:
+    """The M6 shape of the guard that used to say these must not exist.
 
-    ADR-006 designs eleven tables at column level. Nine of them remain M6 and
-    are checked here. The two that came forward to M5 - ``sessions`` and
-    ``session_messages`` - are asserted *present* by the test below rather than
-    dropped from the guard, so this narrowing is a statement about which tables
-    moved and not a hole where a check used to be.
-
-    The line D§36 and D§39 draw still falls in the same place. What M6 owns is
-    money, carts, orders, approvals and the audit record; conversation state is
-    none of those.
+    D§36 and D§39 keep commerce out of the *catalog* milestone, and that held
+    through M5. M6 is the milestone that adds it, so "they must not exist" is no
+    longer the rule; what replaces it is that all nine are present, because a
+    schema milestone that shipped eight of them would leave the ninth to be
+    discovered by whichever service needed it first.
     """
-    commerce = {
-        "carts",
-        "cart_items",
-        "approvals",
-        "idempotency_keys",
-        "orders",
-        "order_items",
-        "payments",
-        "webhook_events",
-        "audit_events",
-    }
-    assert commerce & set(Base.metadata.tables) == set()
+    assert set(COMMERCE_TABLES) <= set(Base.metadata.tables)
+
+
+def test_no_commerce_service_or_policy_module_has_been_created_early() -> None:
+    """What the old table guard was really protecting.
+
+    M6 is schema and nothing else. The Cart Service is M7, the Policy Engine M9,
+    the Order Service M10 and the Razorpay client M11, and the specification is
+    emphatic (D§39, A§58, F§37) that the money path must not be coded before its
+    decisions exist. Tables are inert; a service that writes to them is not.
+    """
+    packages = [
+        name
+        for name in ("app/policy", "app/payments", "app/services/cart_service.py")
+        if (BACKEND_DIR / name).exists()
+    ]
+
+    assert packages == []
 
 
 def test_the_session_tables_arrived_with_the_agent_runtime() -> None:
@@ -100,10 +103,15 @@ def test_the_session_tables_arrived_with_the_agent_runtime() -> None:
     assert set(SESSION_TABLES) <= set(Base.metadata.tables)
 
 
-def test_no_table_beyond_the_catalog_the_vocabulary_and_the_session_exists() -> None:
-    """ADR-003 and ADR-006. Any other extra table is unintended scope."""
+def test_no_table_beyond_the_catalog_the_vocabulary_and_the_commerce_schema_exists() -> None:
+    """ADR-003 and ADR-006. Any other extra table is unintended scope.
+
+    Eleven of the twelve additions were designed at column level before a line of
+    them was written; `compatibility_targets` is the twelfth and has ADR-003. A
+    table outside this set is one nobody decided on.
+    """
     extra = set(Base.metadata.tables) - CATALOG_TABLE_SET
-    assert extra == {"compatibility_targets", *SESSION_TABLES}
+    assert extra == {"compatibility_targets", *SESSION_TABLES, *COMMERCE_TABLES}
 
 
 # --------------------------------------------------------------------------

@@ -23,12 +23,12 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import BACKEND_DIR
-from app.identifiers import DEFAULT_MERCHANT_ID
+from app.identifiers import DEFAULT_MERCHANT_ID, seed_id
 from app.seed.circuitcraft import seed_catalog
 from app.seed.schema import CatalogSeed, load_catalog
 
@@ -129,11 +129,15 @@ def seeded_engine(db_engine: Engine, database_url: str, catalog_seed: CatalogSee
     it once, before that teardown, and every later module would query a
     database that no longer has tables.
     """
-    if "products" not in inspect(db_engine).get_table_names():
-        config = Config(str(BACKEND_DIR / "alembic.ini"))
-        config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
-        config.cmd_opts = type("Opts", (), {"x": [f"url={database_url}"]})()  # type: ignore[assignment]
-        command.upgrade(config, "head")
+    # Unconditionally, not "if the catalog is missing". Alembic's upgrade is
+    # idempotent and a no-op at head, and the earlier check only asked whether
+    # *some* schema existed - so a database left at an older revision by another
+    # module stayed there, and every test written against a newer table failed
+    # with "relation does not exist".
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
+    config.cmd_opts = type("Opts", (), {"x": [f"url={database_url}"]})()  # type: ignore[assignment]
+    command.upgrade(config, "head")
 
     factory = sessionmaker(bind=db_engine, expire_on_commit=False, future=True)
     with factory() as session, session.begin():
@@ -158,3 +162,19 @@ def session(seeded_engine: Engine) -> Iterator[Session]:
 @pytest.fixture
 def merchant_id() -> uuid.UUID:
     return DEFAULT_MERCHANT_ID
+
+
+@pytest.fixture
+def variant_id():
+    """Look up a seeded variant's deterministic id by SKU.
+
+    Seeded rows have deterministic UUIDv5 identifiers (`app/identifiers.py`),
+    which is what lets a test name a row without querying for it first.
+    """
+    return lambda sku: seed_id("variant", sku)
+
+
+@pytest.fixture
+def product_id():
+    """Look up a seeded product's deterministic id by slug."""
+    return lambda slug: seed_id("product", slug)
