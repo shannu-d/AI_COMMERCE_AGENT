@@ -23,6 +23,7 @@ from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.identifiers import DEFAULT_MERCHANT_ID
+from app.ranking.weights import DEFAULT_PROFILE_NAME, PROFILE_NAMES
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BACKEND_DIR.parent
@@ -59,6 +60,14 @@ class Settings(BaseSettings):
     # boundary between the first two. It is configuration rather than a literal
     # so the M2 tests do not depend on the production default.
     low_stock_threshold: int = Field(default=5, ge=0, le=1000)
+
+    # -- Ranking engine (M3) -------------------------------------------------
+    # R§17 RULE 14: the weights are configurable implementation parameters, not
+    # permanent business truths. The profiles themselves are data in
+    # `app/ranking/weights.py`; this chooses which one runs by default.
+    ranking_profile: str = DEFAULT_PROFILE_NAME
+    # RULE 11: "a small number of strong candidates, preferably Top 3".
+    ranking_top_k: int = Field(default=3, ge=1, le=20)
 
     # -- Merchant scoping (ADR-002) -----------------------------------------
     # Resolved server-side and injected into every service call. Never read from
@@ -106,6 +115,21 @@ class Settings(BaseSettings):
                 "DATABASE_URL must be a PostgreSQL URL "
                 "(postgresql:// or postgresql+psycopg://); "
                 f"got {value.split(':', 1)[0]!r}. See ADR-002."
+            )
+        return value
+
+    @field_validator("ranking_profile")
+    @classmethod
+    def _profile_must_exist(cls, value: str) -> str:
+        """Reject an unknown profile name at startup rather than at request time.
+
+        A typo here would otherwise fall back to some default and silently
+        change how every product is ordered — the exact failure RULE 8
+        (determinism) and RULE 14 (configurability) are meant to prevent.
+        """
+        if value not in PROFILE_NAMES:
+            raise ValueError(
+                f"RANKING_PROFILE must be one of {', '.join(PROFILE_NAMES)}; got {value!r}"
             )
         return value
 

@@ -87,6 +87,17 @@ class CatalogService:
     ) -> list[VariantView]:
         return [to_variant_view(v) for v in self._variants.get_many(merchant_id, variant_ids)]
 
+    def get_variants_for_products(
+        self, merchant_id: uuid.UUID, product_ids: Sequence[uuid.UUID]
+    ) -> list[VariantView]:
+        """Every active variant of each product, ordered by SKU, in one query.
+
+        The cross-sell path (R§15) needs the sellable versions of a handful of
+        related products at once; asking per product would be a query per
+        relationship for a list that is never long.
+        """
+        return [to_variant_view(v) for v in self._variants.for_products(merchant_id, product_ids)]
+
     def get_authoritative_price(
         self, merchant_id: uuid.UUID, variant_id: uuid.UUID
     ) -> tuple[Decimal, str] | None:

@@ -25,11 +25,11 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Iterable, Sequence
-from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.attributes import attributes_satisfy
 from app.canonical import normalize_token
 from app.db.models import COMPATIBILITY_TARGET_KINDS
 from app.domain import (
@@ -212,59 +212,11 @@ def constraints_satisfied(product_attributes: dict[str, Any], constraints: dict[
     "fast_charge": true}` on a charger reads "compatible with this device
     provided this product supplies at least 20W and supports fast charging".
 
-    Three predicate forms, and nothing else:
-
-    * `minimum_<attr>` — the product's `<attr>` must be >= the value;
-    * `maximum_<attr>` — must be <= the value;
-    * anything else — the attribute must equal the value.
-
-    A missing attribute fails. That direction is deliberate: a rule asserting a
-    requirement the catalog cannot evidence is a rule that has not been shown to
-    hold, and compatibility is the one constraint that is never relaxed to
-    produce a result.
+    The predicate forms and the missing-attribute rule live in `app.attributes`,
+    because the ranking engine's required-specification constraint (ADR-005) has
+    to evaluate exactly the same thing and the two must not drift apart. A
+    missing attribute fails: a rule asserting a requirement the catalog cannot
+    evidence is a rule that has not been shown to hold, and compatibility is the
+    one constraint that is never relaxed to produce a result.
     """
-    for key, expected in constraints.items():
-        if key.startswith("minimum_"):
-            if not _numeric_at_least(
-                product_attributes.get(key.removeprefix("minimum_")), expected
-            ):
-                return False
-        elif key.startswith("maximum_"):
-            if not _numeric_at_most(product_attributes.get(key.removeprefix("maximum_")), expected):
-                return False
-        elif not _equal(product_attributes.get(key), expected):
-            return False
-    return True
-
-
-def _as_decimal(value: Any) -> Decimal | None:
-    """Numbers only. Booleans are excluded: `True >= 20` is not a comparison."""
-    if isinstance(value, bool) or value is None:
-        return None
-    if isinstance(value, int | float | Decimal | str):
-        try:
-            return Decimal(str(value))
-        except (InvalidOperation, ValueError):
-            return None
-    return None
-
-
-def _numeric_at_least(actual: Any, expected: Any) -> bool:
-    left, right = _as_decimal(actual), _as_decimal(expected)
-    return left is not None and right is not None and left >= right
-
-
-def _numeric_at_most(actual: Any, expected: Any) -> bool:
-    left, right = _as_decimal(actual), _as_decimal(expected)
-    return left is not None and right is not None and left <= right
-
-
-def _equal(actual: Any, expected: Any) -> bool:
-    if actual is None:
-        return False
-    if isinstance(actual, bool) or isinstance(expected, bool):
-        # `1 == True` is true in Python and is not what a catalog means.
-        return actual is expected
-    if isinstance(actual, str) and isinstance(expected, str):
-        return actual.casefold() == expected.casefold()
-    return bool(actual == expected)
+    return attributes_satisfy(product_attributes, constraints)

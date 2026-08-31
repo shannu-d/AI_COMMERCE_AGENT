@@ -56,11 +56,25 @@ class VariantView:
     name: str
     price: Decimal
     currency: str
+    #: Who owns this row. Carried on the view, not merely used to fetch it, so
+    #: that the ranking engine's merchant constraint (ADR-005) can be checked
+    #: rather than assumed. Defence in depth: the repository already scopes
+    #: every query, and a leak here would be silent.
+    merchant_id: uuid.UUID
     product_id: uuid.UUID
     product_slug: str
     product_name: str
     category_slug: str
     brand: str | None = None
+    #: The parent product's description. Carried because ADR-004's relevance
+    #: `text_match` is token overlap against the product's name *and*
+    #: description; without it the scorer would be matching a different formula.
+    product_description: str | None = None
+    #: Activity of the variant and of its parent product. Both must be true for
+    #: the variant to be sellable; the repository filters on them unless asked
+    #: not to, and the ranker re-checks (ADR-005 constraint 1).
+    is_active: bool = True
+    product_is_active: bool = True
     attributes: dict[str, Any] = field(default_factory=dict)
     product_attributes: dict[str, Any] = field(default_factory=dict)
     tags: tuple[str, ...] = ()

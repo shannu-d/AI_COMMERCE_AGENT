@@ -55,6 +55,24 @@ def normalize_token(text: str) -> str:
     return collapsed.strip("_")
 
 
+def tokenize(text: str) -> tuple[str, ...]:
+    """Split free text into normalized word tokens.
+
+    The same normalization as `normalize_token`, then split rather than joined,
+    so that text can be *compared* word by word instead of matched as one
+    identifier. The ranking engine's relevance scorer (ADR-004) needs this for
+    its token-overlap terms; nothing about compatibility resolution uses it, and
+    it must never be used to resolve a device — a phrase that tokenizes to
+    ``("iphone", "16")`` is still not evidence that the buyer meant `iphone_16`.
+
+    >>> tokenize("Slim iPhone-16 case")
+    ('slim', 'iphone', '16', 'case')
+    >>> tokenize("???")
+    ()
+    """
+    return tuple(part for part in normalize_token(text).split("_") if part)
+
+
 def is_canonical_token(text: str) -> bool:
     """Whether ``text`` is already in canonical form.
 
