@@ -401,3 +401,21 @@ def test_the_client_is_built_from_settings_including_every_secret(monkeypatch: A
 
     with pytest.raises(LLMInvalidRequestError, match="configured secret"):
         client.complete(system="s", messages=[Message(role="user", content="rzp_secret_value")])
+
+
+def test_build_client_does_not_choose_a_provider_from_the_shape_of_the_key() -> None:
+    """ADR-016. `build_client` reads no prefix and has no provider branch.
+
+    A `gsk_`-shaped value in ANTHROPIC_API_KEY is a misconfiguration, and the
+    right response to one is to fail against Anthropic with that key — not to
+    quietly reach a different model family. Dispatching on the prefix made the
+    variable's name a claim about its contents, and made which model the
+    application talks to a property of a string in `.env` rather than of the
+    code.
+    """
+    from app.config import Settings
+    from app.llm.client import build_client
+
+    settings = Settings(anthropic_api_key="gsk_looks_like_another_provider")
+
+    assert isinstance(build_client(settings), AnthropicClient)

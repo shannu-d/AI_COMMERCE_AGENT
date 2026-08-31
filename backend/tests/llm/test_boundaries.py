@@ -122,3 +122,58 @@ def test_nothing_in_the_layer_writes_to_a_file_or_opens_a_socket() -> None:
                 offenders.append(f"{path.name}:{module}")
 
     assert offenders == []
+
+
+# --------------------------------------------------------------------------
+# ADR-016: Claude is the only model provider
+# --------------------------------------------------------------------------
+
+#: Model SDKs that are not Claude. L§44 names Claude Sonnet and admits a
+#: "supported Claude API interface" — which widens the *interface* (Bedrock,
+#: Vertex) and not the *model*. A provider serving a different model family is
+#: a different AI layer, and L§50's `[ ] Claude Sonnet connected` cannot be
+#: satisfied by connecting one.
+OTHER_MODEL_SDKS = (
+    "groq",
+    "openai",
+    "cohere",
+    "mistralai",
+    "litellm",
+    "ollama",
+    "transformers",
+)
+
+
+def test_anthropic_is_the_only_model_sdk_in_the_repository() -> None:
+    """ADR-016. The companion to the single-importer guard in `test_client.py`.
+
+    That one asserts `anthropic` is imported from exactly one file. This one
+    asserts nothing *else* is imported at all — the case it missed, and the case
+    that actually happened: a Groq client sat beside the Anthropic one for a
+    commit, and the single-importer guard stayed green throughout because Groq
+    is not the Anthropic SDK.
+    """
+    offenders = []
+    for path in sorted((BACKEND_DIR / "app").rglob("*.py")):
+        for module in imported_modules(path):
+            if module.split(".")[0] in OTHER_MODEL_SDKS:
+                offenders.append(f"{path.relative_to(BACKEND_DIR).as_posix()}:{module}")
+
+    assert offenders == []
+
+
+def test_no_test_named_module_lives_outside_the_test_suite() -> None:
+    """ADR-016 obligation 3, and the reason it is worth asserting.
+
+    `testpaths = ["tests"]` means a `test_`-named script at the backend root is
+    never collected, so it is never reviewed as a test and never run as one —
+    while looking exactly like both. The two that existed made live API calls,
+    which ADR-015 forbids of anything the suite might ever pick up.
+    """
+    strays = [
+        path.relative_to(BACKEND_DIR).as_posix()
+        for path in sorted(BACKEND_DIR.rglob("test_*.py"))
+        if "tests" not in path.relative_to(BACKEND_DIR).parts and ".venv" not in path.parts
+    ]
+
+    assert strays == []

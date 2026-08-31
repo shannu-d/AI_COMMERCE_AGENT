@@ -364,7 +364,7 @@ one-method `LLMClient` protocol; the model is faked at that protocol and the SDK
 ADR, confirming the analysis document's proposed retry and timeout values against the built client.
 
 **How M4 was verified.** The throwaway PostgreSQL 16.4 of §11 was restarted and the whole suite run
-against it. **Result: 721 tests pass, 0 fail, 0 skip.** 576 of them need no database; the 145
+against it. **Result: 719 tests pass, 0 fail, 0 skip.** 574 of them need no database; the 145
 `requires_db` tests are unchanged from M3, because M4 adds no code that opens a query — by
 construction, since `tests/llm/test_boundaries.py` forbids `app/llm` from importing a service, a
 repository or SQLAlchemy at all.
@@ -383,3 +383,45 @@ replaces it: `app/agent` still must not exist, and nothing on the trusted side i
 knowable offline; ADR-015 states this cost explicitly. Offline tests prove the application handles
 model output correctly. They cannot prove the model produces good output — which is exactly why no
 correctness property of this system depends on it doing so.
+
+### The provider question, settled after M4 (ADR-016)
+
+A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
+provisional (`3b483ed`), because a Groq key was available on this machine and an Anthropic key was
+not. **ADR-016 removes both.** L§44 names Claude Sonnet as the AI layer, L§48 repeats it as
+DECISION 1, and L§50 and A§56 each make it a box that must be ticked — `[ ] Claude Sonnet
+connected`, `[ ] Runtime can call Claude Sonnet`. "Supported Claude API interface" widens the
+interface, not the model: it admits Bedrock and Vertex, which serve Claude. Groq does not serve
+Claude.
+
+The review that preceded the removal found the client was not merely untested. Its `_STOP_REASONS`
+was the Anthropic table with one key renamed, so against Groq's OpenAI-compatible `finish_reason`
+the value `length` would have mapped to `UNKNOWN` rather than `MAX_TOKENS` — leaving
+`ModelResponse.is_truncated` permanently `False` and letting a **truncated intent pass as a
+complete one**, which is the fabrication L§30 and A§41 forbid. The tool-schema converter was a
+documented no-op, and `ToolCall.arguments` was built with `dict()` over what the OpenAI shape
+returns as a JSON string. These are the defects a fake-SDK suite catches on its first assertion and
+a live smoke test masks, which is ADR-015's argument restated as evidence.
+
+**A gap this leaves open, recorded rather than closed.** This machine has no Anthropic key, so the
+manual live verification of M4 — and L§50's `[ ] Claude Sonnet connected` — has **not been
+performed**. It is not satisfied by connecting a different model. Nothing in the build depends on
+it: no test may call a live model at any milestone (ADR-015), the whole suite runs with no key, and
+M5 needs none either. The item stays open until a Claude key is available and the check is run by
+hand.
+
+Removing `groq_client.py` drops the two `tests/llm/test_boundaries.py` import guards it had added,
+whose parametrization walks the files in `app/llm` — the count is a property of the package's
+contents, not only of the tests written for it. Three new standing guards replace them and then
+some, bringing the suite to **722 tests, 577 of them needing no database**: that no non-Claude model
+SDK is imported anywhere under `app/`, that no `test_`-named module lives outside `tests/`, and that
+`build_client` returns an `AnthropicClient` even when handed a `gsk_`-shaped key.
+
+The first of those closes the hole this episode exposed. `test_client.py`'s single-importer guard
+asserts `anthropic` is imported from exactly one file, and it stayed green for the whole life of the
+Groq client — because Groq is not the Anthropic SDK. "One importer of *this* SDK" was never the same
+claim as "one model SDK".
+
+The two live-network scratch scripts at the backend root, `test_groq_api.py` and
+`test_client_detection.py`, are removed with it. They were never collected (`testpaths = ["tests"]`)
+but were `test_`-named and made real API calls, which is the shape ADR-015 rules out.

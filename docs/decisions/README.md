@@ -27,6 +27,7 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted | M10 / M12 | D4 |
 | [014](ADR-014-price-drift-recovery.md) | Price Drift Recovery | Accepted | M9–M15 | D2, D9 |
 | [015](ADR-015-llm-test-seam.md) | The LLM Test Seam | Accepted, **implemented (M4)** | M4 / M5 | F1, E2 |
+| [016](ADR-016-single-model-provider.md) | Claude Is the Only Model Provider | Accepted, **implemented (M4)** | M4 / M5+ | — |
 
 "Closes" refers to the question IDs in [`docs/analysis/03-open-questions.md`](../analysis/03-open-questions.md).
 
@@ -39,7 +40,7 @@ milestone that will implement it, and lists the tests that milestone must produc
 Implemented so far: ADR-002 in full for the catalog, ADR-003's reference table, seed and
 resolution service, ADR-004 and ADR-005 in full (the ranking engine, M3), ADR-008's catalog half
 (`NUMERIC(12,2)`, string-encoded money in seed data, no floats), ADR-009's tool *schemas* and
-exclusions (M4; the handlers are M5), and ADR-015 in full.
+exclusions (M4; the handlers are M5), ADR-015 in full, and ADR-016 in full.
 
 ## Where these ADRs deliberately depart from prior proposals
 

@@ -210,24 +210,8 @@ class AnthropicClient:
 
 
 def build_client(settings: Settings | None = None) -> LLMClient:
-    """The client the application uses, constructed from configuration.
-
-    Automatically detects the provider based on the API key format:
-    - gsk_* → Groq
-    - sk-ant-* → Anthropic
-    """
-    settings = settings or get_settings()
-    key = settings.anthropic_api_key
-
-    if key:
-        secret = key.get_secret_value()
-        if secret.startswith("gsk_"):
-            # Groq API key detected
-            from app.llm.groq_client import GroqClient
-            return GroqClient.from_settings(settings)
-
-    # Default to Anthropic
-    return AnthropicClient.from_settings(settings)
+    """The client the application uses, constructed from configuration."""
+    return AnthropicClient.from_settings(settings or get_settings())
 
 
 # --------------------------------------------------------------------------

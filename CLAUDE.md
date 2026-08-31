@@ -11,7 +11,7 @@ invariant that every part of the specification restates:
 
 `architecture.md` (16,737 lines, six parts) is the specification. It is **never edited**. Where it
 leaves something open, states it two ways, or requires something it never defines, the resolution is
-an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all fifteen.
+an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all sixteen.
 
 **Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
 engine) and M4 (LLM layer) are complete. M5–M15 are not started.**
@@ -50,7 +50,7 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **721 tests, all passing, none skipped**; 576 of those need no database.
+with a database: **722 tests, all passing, none skipped**; 577 of those need no database.
 
 This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
 to verify M1 and M3 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
@@ -154,7 +154,7 @@ engine is deterministic and the model never computes a score or writes a recomme
 
 `app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
 outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
-worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 576 of the 721
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 577 of the 722
 tests need no database. `RecommendationService` is the only M3 code that opens a query.
 
 **The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`
