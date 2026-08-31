@@ -26,11 +26,16 @@ and kept separate so the specified schema stays auditable in isolation:
                              (ADR-003)
 ===========================  ========================================
 
-**Phase 2 — commerce (M6).** Designed at column level in ADR-006 and not
-implemented: ``sessions``, ``session_messages``, ``carts``, ``cart_items``,
-``approvals``, ``idempotency_keys``, ``orders``, ``order_items``, ``payments``,
-``webhook_events``, ``audit_events``. D§36 and D§39 explicitly exclude them from
-the first catalog milestone.
+**Conversation state (M5).** ``sessions`` and ``session_messages``, created by
+migration ``0003``. ADR-006 designs them alongside the commerce tables, but open
+question C3 is closed as *PostgreSQL* and the task breakdown gives AGENT-01 - the
+M5 runtime skeleton - the job of closing it, which a dictionary cannot do. They
+carry no money, no cart and no approval, so the D§36/D§39 line still holds.
+
+**Phase 2 - commerce (M6).** Designed at column level in ADR-006 and not
+implemented: ``carts``, ``cart_items``, ``approvals``, ``idempotency_keys``,
+``orders``, ``order_items``, ``payments``, ``webhook_events``, ``audit_events``.
+D§36 and D§39 explicitly exclude them from the first catalog milestone.
 """
 
 from app.db.models.category import Category
@@ -47,6 +52,7 @@ from app.db.models.inventory import Inventory
 from app.db.models.merchant import Merchant
 from app.db.models.product import Product
 from app.db.models.relationship import PRODUCT_RELATIONSHIP_TYPES, ProductRelationship
+from app.db.models.session import SESSION_MESSAGE_ROLES, Session, SessionMessage
 from app.db.models.variant import ProductVariant
 
 #: The seven tables architecture.md specifies, in dependency order.
@@ -60,12 +66,18 @@ CATALOG_TABLES: tuple[str, ...] = (
     "product_relationships",
 )
 
+#: The two tables M5 adds. Not part of ``CATALOG_TABLES``: they are conversation
+#: state, not catalog.
+SESSION_TABLES: tuple[str, ...] = ("sessions", "session_messages")
+
 __all__ = [
     "CATALOG_TABLES",
     "COMPATIBILITY_RULE_TYPES",
     "COMPATIBILITY_TARGET_KINDS",
     "COMPATIBILITY_TARGET_TYPES",
     "PRODUCT_RELATIONSHIP_TYPES",
+    "SESSION_MESSAGE_ROLES",
+    "SESSION_TABLES",
     "Category",
     "CompatibilityRule",
     "CompatibilityTarget",
@@ -74,4 +86,6 @@ __all__ = [
     "Product",
     "ProductRelationship",
     "ProductVariant",
+    "Session",
+    "SessionMessage",
 ]
