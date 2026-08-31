@@ -64,19 +64,39 @@ def test_no_handler_module_is_named_for_a_forbidden_tool() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_registry_is_exactly_the_read_only_tools() -> None:
-    """M5 is the read-only agent. Nothing that writes state is registered."""
+def test_the_registry_is_the_read_tools_plus_propose_cart() -> None:
+    """M5 registered the five read tools; M7 adds `propose_cart`.
+
+    Nothing that authorizes anything is registered, and nothing that moves money
+    is registered at any milestone.
+    """
     registry = build_registry()
 
-    assert registry.names() == tuple(sorted(READ_ONLY_TOOL_NAMES))
+    assert registry.names() == tuple(sorted((*READ_ONLY_TOOL_NAMES, "propose_cart")))
 
 
-def test_every_registered_tool_is_low_tier() -> None:
-    """A§23. A MEDIUM tool arriving before its milestone would be one whose
-    business validation has not been written."""
+def test_every_read_tool_is_low_tier_and_propose_cart_is_medium() -> None:
+    """A§23's grading, asserted rather than assumed.
+
+    The tier is what the executor branches on: MEDIUM requires an established
+    session before it may write, and a `propose_cart` that had drifted to LOW
+    would skip that check entirely.
+    """
     registry = build_registry()
 
-    assert all(registry.get(name).tier is RiskTier.LOW for name in registry.names())
+    for name in READ_ONLY_TOOL_NAMES:
+        assert registry.get(name).tier is RiskTier.LOW
+    assert registry.get("propose_cart").tier is RiskTier.MEDIUM
+
+
+def test_nothing_registered_is_above_medium() -> None:
+    """There is no HIGH tier in this system. `create_order` would have been the
+    only one and it is not a tool at all (ADR-009, closing D6)."""
+    registry = build_registry()
+
+    assert all(
+        registry.get(name).tier in (RiskTier.LOW, RiskTier.MEDIUM) for name in registry.names()
+    )
 
 
 @pytest.mark.parametrize("name", READ_ONLY_TOOL_NAMES)
@@ -87,17 +107,17 @@ def test_every_read_tool_has_both_a_schema_and_a_handler(name: str) -> None:
 
 
 def test_a_tool_is_exposed_only_once_it_can_run() -> None:
-    """`propose_cart` has a schema from M4 and no handler until M7.
+    """`request_approval` has a schema from M4 and no handler until M8.
 
     Exposing it now would offer the model a tool that fails on arrival, which is
     worse than not offering it: the model would plan around a capability that
     does not exist.
     """
-    assert "propose_cart" in TOOL_SCHEMAS
-    assert "propose_cart" not in HANDLERS
+    assert "request_approval" in TOOL_SCHEMAS
+    assert "request_approval" not in HANDLERS
 
     with pytest.raises(KeyError, match="no handler"):
-        build_registry(("propose_cart",))
+        build_registry(("request_approval",))
 
 
 def test_the_registry_is_a_strict_subset_of_what_m4_defined() -> None:

@@ -25,6 +25,7 @@ from app.llm.errors import LLMRateLimitError
 from app.main import create_app
 from tests.agent.conftest import (
     FakeClient,
+    StubCarts,
     StubCatalog,
     StubCompatibility,
     StubInventory,
@@ -61,6 +62,7 @@ class FakeDbSession:
 def stubs():
     return {
         "catalog": StubCatalog(),
+        "carts": StubCarts(),
         "compatibility": StubCompatibility(),
         "inventory": StubInventory(),
         "recommendations": StubRecommendations(),
@@ -82,6 +84,7 @@ def chat_client(monkeypatch, stubs):
         return cls(
             merchant_id=merchant_id,
             catalog=stubs["catalog"],
+            carts=stubs["carts"],
             compatibility=stubs["compatibility"],
             inventory=stubs["inventory"],
             recommendations=stubs["recommendations"],

@@ -82,24 +82,28 @@ def test_no_payment_or_model_library_reaches_the_read_services(
 
 
 def test_no_commerce_service_has_been_created_early() -> None:
-    """M6 added the commerce *schema*. It added no behaviour.
+    """The money path must not be coded before its decisions exist.
 
-    The guard this replaces forbade any module under `app/` whose name mentioned
-    a cart, an order, a payment or a policy - which was right while none of them
-    had a table. M6 gives them tables, so the rule narrows to what it was
-    actually protecting: the money path must not be *coded* before its decisions
-    exist (D§39, A§58, F§37). A table is inert. A service that writes to one is
-    not, and each of these has a milestone and an ADR waiting for it.
+    This guard has narrowed twice, each time to exactly what it was still
+    protecting. Before M6 it forbade any module mentioning a cart or an order,
+    which was right while none of them had a table. M6 gave them tables and it
+    narrowed to services. M7 writes carts - a cart moves no money and needs no
+    approval - so it narrows again to what does: the Policy Engine, the Order
+    Service, the audit writer and the Razorpay-facing routes.
+
+    What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
+    same thing, and this is where "not yet" is checkable.
     """
     premature = [
         name
         for name in (
+            # The Policy Engine (M9) and the Razorpay client (M11). Neither has
+            # a line of code yet, and ADR-011 through ADR-014 are what they wait
+            # for rather than a schedule.
             "app/policy",
             "app/payments",
-            "app/services/cart_service.py",
             "app/services/order_service.py",
             "app/services/audit_service.py",
-            "app/api/routes/cart.py",
             "app/api/routes/orders.py",
             "app/api/routes/webhooks.py",
         )

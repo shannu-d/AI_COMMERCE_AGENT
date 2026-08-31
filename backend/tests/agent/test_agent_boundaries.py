@@ -110,13 +110,18 @@ def test_only_the_client_module_is_the_runtimes_route_to_a_model(path: pathlib.P
         )
 
 
-def test_no_commerce_module_has_appeared_in_the_runtime() -> None:
-    """M5 is the read-only agent. A cart, an order or a policy module here would
-    mean the money path was started before its milestone (D§36, D§39)."""
+def test_no_money_moving_module_has_appeared_in_the_runtime() -> None:
+    """M7 gives the runtime a cart tool. It gives it nothing that moves money.
+
+    A cart is a draft: it authorizes nothing, and an order needs an `approvals`
+    row the runtime cannot write. An order, payment, policy or approval module
+    here would mean the money path was started before its milestone (D§36,
+    D§39) - and `create_order` is not a tool at any milestone at all.
+    """
     premature = [
         path.name
         for path in agent_modules()
-        if any(word in path.stem for word in ("cart", "order", "payment", "policy", "approval"))
+        if any(word in path.stem for word in ("order", "payment", "policy", "approval"))
     ]
 
     assert premature == []

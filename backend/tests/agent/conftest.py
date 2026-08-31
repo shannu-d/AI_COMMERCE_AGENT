@@ -30,7 +30,9 @@ from typing import Any
 import pytest
 
 from app.agent.context import AgentContext, TurnMemory
+from app.domain.cart import CartItemView, CartView
 from app.domain.catalog import ProductDetail, VariantView
+from app.domain.commerce import CartStatus
 from app.domain.compatibility import (
     CompatibilityTargetView,
     ResolutionFailure,
@@ -224,6 +226,67 @@ class StubRecommendations:
 
 
 @dataclass
+class StubCarts:
+    """An in-memory stand-in for `CartService`.
+
+    It keeps the two properties the runtime and the tools depend on and nothing
+    else: the totals are summed *here* from the lines, never taken from a
+    caller, and `version` increments on every mutation. A stub that accepted a
+    total would let a test pass against a service that accepted one too.
+    """
+
+    carts: dict[uuid.UUID, Any] = field(default_factory=dict)
+    variants: dict[uuid.UUID, VariantView] = field(default_factory=dict)
+    unavailable: set[uuid.UUID] = field(default_factory=set)
+
+    def get_active(self, merchant_id: uuid.UUID, session_id: uuid.UUID):
+        return self.carts.get(session_id)
+
+    def replace_items(self, merchant_id: uuid.UUID, session_id: uuid.UUID, lines):
+        from app.services.cart_service import CartError
+
+        resolved = []
+        for variant_id, quantity in lines:
+            variant = self.variants.get(variant_id)
+            if variant is None:
+                raise CartError("VARIANT_NOT_FOUND", "that product is not in this catalog")
+            if variant_id in self.unavailable:
+                raise CartError("OUT_OF_STOCK", f"{variant.sku} is not available")
+            resolved.append((variant, quantity))
+
+        previous = self.carts.get(session_id)
+        items = tuple(
+            CartItemView(
+                id=uuid.uuid5(uuid.NAMESPACE_DNS, f"item-{variant.sku}"),
+                variant_id=variant.id,
+                product_id=variant.product_id,
+                sku=variant.sku,
+                product_name=variant.product_name,
+                variant_name=variant.name,
+                quantity=quantity,
+                unit_price=variant.price,
+                line_total=variant.price * quantity,
+                currency=variant.currency,
+                stock_status=StockStatus.IN_STOCK.value,
+            )
+            for variant, quantity in resolved
+        )
+        subtotal = sum((item.line_total for item in items), Decimal("0.00"))
+        cart = CartView(
+            id=previous.id if previous else uuid.uuid4(),
+            session_id=session_id,
+            status=CartStatus.ACTIVE,
+            version=(previous.version + 1) if previous else 2,
+            currency=resolved[0][0].currency if resolved else "INR",
+            subtotal=subtotal,
+            total=subtotal,
+            items=items,
+        )
+        self.carts[session_id] = cart
+        return cart
+
+
+@dataclass
 class StubSessions:
     """An in-memory stand-in for `SessionService`.
 
@@ -330,7 +393,12 @@ def sessions() -> StubSessions:
 
 
 @pytest.fixture
-def context(catalog, compatibility, inventory, recommendations, sessions) -> AgentContext:
+def carts() -> StubCarts:
+    return StubCarts()
+
+
+@pytest.fixture
+def context(catalog, carts, compatibility, inventory, recommendations, sessions) -> AgentContext:
     """An `AgentContext` whose services are stubs.
 
     Constructed field-by-field rather than through `from_session`, because that
@@ -340,6 +408,7 @@ def context(catalog, compatibility, inventory, recommendations, sessions) -> Age
     return AgentContext(
         merchant_id=MERCHANT_ID,
         catalog=catalog,  # type: ignore[arg-type]
+        carts=carts,  # type: ignore[arg-type]
         compatibility=compatibility,  # type: ignore[arg-type]
         inventory=inventory,  # type: ignore[arg-type]
         recommendations=recommendations,  # type: ignore[arg-type]

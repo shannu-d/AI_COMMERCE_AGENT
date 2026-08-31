@@ -76,14 +76,15 @@ def test_the_commerce_tables_arrived_with_m6() -> None:
 def test_no_commerce_service_or_policy_module_has_been_created_early() -> None:
     """What the old table guard was really protecting.
 
-    M6 is schema and nothing else. The Cart Service is M7, the Policy Engine M9,
-    the Order Service M10 and the Razorpay client M11, and the specification is
-    emphatic (D§39, A§58, F§37) that the money path must not be coded before its
-    decisions exist. Tables are inert; a service that writes to them is not.
+    M6 was schema and nothing else. M7 adds the Cart Service, which moves no
+    money. The Policy Engine is M9, the Order Service M10 and the Razorpay client
+    M11, and the specification is emphatic (D§39, A§58, F§37) that the money path
+    must not be coded before its decisions exist. Tables are inert; a service
+    that writes to them is not.
     """
     packages = [
         name
-        for name in ("app/policy", "app/payments", "app/services/cart_service.py")
+        for name in ("app/policy", "app/payments", "app/services/order_service.py")
         if (BACKEND_DIR / name).exists()
     ]
 
