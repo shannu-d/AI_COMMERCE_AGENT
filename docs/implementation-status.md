@@ -452,6 +452,57 @@ on the `LLMClient` protocol and is exercised end to end against a fake, so every
 application does with a model's output is covered; that a live Claude drives the loop is not. It
 stays open until a key is available and the check is run by hand.
 
+### M6 — commerce schema
+
+The money path's storage, created before anything can write to it. Migration `0004` adds ADR-006's
+remaining nine tables — `carts`, `cart_items`, `approvals`, `idempotency_keys`, `orders`,
+`order_items`, `payments`, `webhook_events`, `audit_events` — with the ORM models under
+`app/db/models/` and the enums defined once in `app/domain/commerce.py`.
+
+**M6 adds no behaviour, and a guard now says so.** The old boundary test forbade any module under
+`app/` whose name mentioned a cart, an order, a payment or a policy, which was right while none of
+them had a table. It narrows to what it was actually protecting: `app/policy/`, `app/payments/`,
+`cart_service.py`, `order_service.py`, `audit_service.py` and the cart, order and webhook routes
+must still not exist. A table is inert; a service that writes to one is not. A companion test
+asserts no M2 or M3 read service imports a commerce model.
+
+**Every exit test ADR-006 names is a test that the database refuses**, which is the point of the
+milestone. The load-bearing one is `orders.approval_id NOT NULL`: an order row without an approval
+cannot be inserted, and no code path — reviewed or otherwise — can put one there. The partial unique
+indexes reject a second active cart per session and a second approval of one cart version, while
+still permitting the ORDERED/ABANDONED and SUPERSEDED/EXPIRED history that ADR-014's price-drift
+recovery reads. `UNIQUE(provider, event_id)` rejects a duplicate webhook. Four foreign keys reject
+orphans, and `ON DELETE RESTRICT` stops a variant that appears in a placed order from being deleted
+— the financial record outlives the catalog row.
+
+**The enums are defined once.** ADR-006 requires it, and `tests/db/test_migrations.py` enforces it
+by diffing the rendered DDL against the compiled metadata; `app/db/models/_enums.py` renders every
+`CHECK` from a tuple in `app/domain/commerce.py`, so a new value that never reached a migration
+fails offline. One live test reads `pg_get_constraintdef` back and asserts the constraint is not
+*narrower* than the enum either, which the metadata diff cannot see.
+
+**How M6 was verified.** The same throwaway PostgreSQL 16.4 of §11. **Result: 951 tests pass, 0
+fail, 0 skip**, 735 of them needing no database. `alembic downgrade base` then `alembic upgrade
+head` runs all four migrations in each direction cleanly, and the seed loads afterwards.
+
+Three defects surfaced, all in the test scaffolding rather than the schema, and all only under a
+live database:
+
+1. The seeded-database fixture asked *"does the catalog exist?"* and migrated only if not. A
+   database left at an older revision therefore stayed there, so every test written against a `0004`
+   table failed with "relation does not exist". It now runs `alembic upgrade head` unconditionally,
+   which is idempotent and a no-op at head.
+2. `tests/db/test_migrations.py`'s DDL parser matched `CREATE TABLE` and `CREATE INDEX` but not
+   `CREATE UNIQUE INDEX`, which is not a prefix of either. Every unique index in the schema — the
+   two partial ones ADR-006 relies on included — was being compared against nothing. Widening the
+   parser is a real strengthening of the anti-drift test, not a fix for M6.
+3. `variant_id` and `product_id` lived in the services conftest and the commerce tests needed them;
+   promoted alongside the seeded-database fixtures.
+
+ADR-006's implementation note calls its migration `0003_commerce_schema`. That number went to the
+session tables in M5, so this is `0004` (deviation A32). Revision numbers follow the order things
+were built; renumbering to match a document would mean rewriting applied history.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as

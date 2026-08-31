@@ -14,7 +14,8 @@ leaves something open, states it two ways, or requires something it never define
 an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all sixteen.
 
 **Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
-engine), M4 (LLM layer) and M5 (agent runtime, read-only) are complete. M6–M15 are not started.**
+engine), M4 (LLM layer), M5 (agent runtime, read-only) and M6 (commerce schema) are complete.
+M7–M15 are not started.**
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
@@ -50,10 +51,10 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **920 tests, all passing, none skipped**; 731 of those need no database.
+with a database: **951 tests, all passing, none skipped**; 735 of those need no database.
 
 This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
-to verify M1, M3 and M5 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
+to verify M1, M3, M5 and M6 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
 archive into the session scratchpad (`initdb` + `pg_ctl` in user space, no installer, no service,
 nothing written outside the temp directory), then `TEST_DATABASE_URL` pointed at it. See
 `docs/implementation-status.md` §11.
@@ -154,7 +155,7 @@ engine is deterministic and the model never computes a score or writes a recomme
 
 `app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
 outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
-worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 731 of the 920
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 735 of the 951
 tests need no database. `RecommendationService` is the only M3 code that opens a query.
 
 **The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`
@@ -327,6 +328,11 @@ paths to `categories` (the plain `category_id` key plus the composite merchant-s
 relationships across those pairs need an explicit `foreign_keys=`. SQLAlchemy configures mappers
 lazily, so the error only appears when something queries; `test_every_orm_relationship_resolves`
 forces configuration to catch it offline.
+
+**Four migrations, and the split is deliberate.** `0001` is exactly the seven tables the
+specification defines; `0002` adds `compatibility_targets` (ADR-003); `0003` adds the two session
+tables M5 needed; `0004` adds ADR-006's remaining nine. ADR-006 calls its own migration `0003`, which
+is now taken — the numbering follows the order things were built, not the order they were designed.
 
 **Migration `0001` is exactly the seven tables the specification defines.** `compatibility_targets`
 is in `0002` on purpose, so the specified schema stays auditable on its own. A test enforces the
