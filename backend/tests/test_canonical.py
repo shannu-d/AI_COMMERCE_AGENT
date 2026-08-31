@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.canonical import is_canonical_token, normalize_token
+from app.canonical import is_canonical_token, normalize_token, tokenize
 
 
 @pytest.mark.parametrize(
@@ -79,3 +79,32 @@ def test_normalized_output_is_always_canonical_or_empty() -> None:
     for sample in samples:
         token = normalize_token(sample)
         assert token == "" or is_canonical_token(token), (sample, token)
+
+
+# --------------------------------------------------------------------------
+# tokenize — the relevance scorer's word splitter (M3)
+# --------------------------------------------------------------------------
+
+
+def test_tokenize_splits_normalized_text_into_words() -> None:
+    assert tokenize("Slim iPhone-16 case") == ("slim", "iphone", "16", "case")
+
+
+def test_tokenize_shares_normalization_with_normalize_token() -> None:
+    """One implementation of "what is a word here", so the compatibility
+    pipeline and the relevance scorer cannot drift apart."""
+    assert tokenize("Café  USB-C") == ("cafe", "usb", "c")
+    assert "_".join(tokenize("iPhone 16")) == normalize_token("iPhone 16")
+
+
+def test_tokenize_of_nothing_is_empty_rather_than_a_blank_token() -> None:
+    """A blank token would match every product's blank, which is not a match."""
+    assert tokenize("???") == ()
+    assert tokenize("") == ()
+    assert tokenize("   ") == ()
+
+
+def test_tokenize_does_not_bridge_a_missing_separator() -> None:
+    """The same limit `normalize_token` has, for the same reason: `iphone16` is
+    not evidence of `iphone 16`, and guessing is what aliases exist to avoid."""
+    assert tokenize("iphone16") == ("iphone16",)

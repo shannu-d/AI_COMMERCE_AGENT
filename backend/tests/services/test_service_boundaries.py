@@ -17,9 +17,14 @@ import pathlib
 import pytest
 
 from app.config import BACKEND_DIR
-from app.services import CatalogService, CompatibilityService, InventoryService
+from app.services import (
+    CatalogService,
+    CompatibilityService,
+    InventoryService,
+    RecommendationService,
+)
 
-DETERMINISTIC_PACKAGES = ("app/services", "app/repositories", "app/domain")
+DETERMINISTIC_PACKAGES = ("app/services", "app/repositories", "app/domain", "app/ranking")
 FORBIDDEN_IMPORT_ROOTS = ("app.llm", "app.agent")
 FORBIDDEN_LIBRARIES = ("anthropic", "razorpay", "openai")
 
@@ -49,8 +54,11 @@ def test_deterministic_code_does_not_import_the_probabilistic_side(
 ) -> None:
     """ADR-001: the model proposes; deterministic code decides.
 
-    `app.services`, `app.repositories` and `app.domain` are the trusted side and
-    must remain importable, testable and reasonable-about without a model.
+    `app.services`, `app.repositories`, `app.domain` and `app.ranking` are the
+    trusted side and must remain importable, testable and reasonable-about
+    without a model. R§11 adds a second reason for the ranker specifically: the
+    LLM must not compute a ranking score, and it cannot compute one in a package
+    that cannot import it.
     """
     for module in imported_modules(path):
         assert not module.startswith(FORBIDDEN_IMPORT_ROOTS), (
@@ -63,10 +71,10 @@ def test_deterministic_code_does_not_import_the_probabilistic_side(
 def test_no_payment_or_model_library_reaches_the_read_services(
     path: pathlib.Path,
 ) -> None:
-    """M2 is a read milestone.
+    """M2 and M3 are read milestones.
 
     Razorpay belongs behind the Policy Engine (ADR-011); the Anthropic client
-    belongs to M4. Neither has any business in a catalog read path.
+    belongs to M4. Neither has any business in a catalog read or ranking path.
     """
     for module in imported_modules(path):
         root = module.split(".")[0]
@@ -74,7 +82,7 @@ def test_no_payment_or_model_library_reaches_the_read_services(
 
 
 def test_no_commerce_module_has_been_created_early() -> None:
-    """M2 must not have grown a cart, an order, a policy or a payment.
+    """M3 must not have grown a cart, an order, a policy or a payment.
 
     ADR-006 designs the commerce schema for M6; ADR-011 and ADR-012 own the
     money path from M9. A module appearing here before its milestone means the
@@ -94,7 +102,10 @@ def test_no_llm_or_agent_package_exists_yet() -> None:
         assert not (BACKEND_DIR / package).exists(), f"{package} belongs to M4/M5"
 
 
-@pytest.mark.parametrize("service", [CatalogService, CompatibilityService, InventoryService])
+@pytest.mark.parametrize(
+    "service",
+    [CatalogService, CompatibilityService, InventoryService, RecommendationService],
+)
 def test_every_public_read_method_requires_an_explicit_merchant(service: type) -> None:
     """ADR-002: merchant scoping is injected, never defaulted.
 
@@ -114,7 +125,10 @@ def test_every_public_read_method_requires_an_explicit_merchant(service: type) -
         )
 
 
-@pytest.mark.parametrize("service", [CatalogService, CompatibilityService, InventoryService])
+@pytest.mark.parametrize(
+    "service",
+    [CatalogService, CompatibilityService, InventoryService, RecommendationService],
+)
 def test_services_are_constructed_from_a_session_only(service: type) -> None:
     """No service reaches for a connection, a client, or global state itself."""
     parameters = list(inspect.signature(service.__init__).parameters)
