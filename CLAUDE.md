@@ -11,9 +11,10 @@ invariant that every part of the specification restates:
 
 `architecture.md` (16,737 lines, six parts) is the specification. It is **never edited**. Where it
 leaves something open, states it two ways, or requires something it never defines, the resolution is
-an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all fourteen.
+an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all fifteen.
 
-**Current state: M0 (foundation) and M1 (catalog database) are complete. M2–M15 are not started.**
+**Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
+engine) and M4 (LLM layer) are complete. M5–M15 are not started.**
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
@@ -49,7 +50,13 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **153 tests, all passing**.
+with a database: **719 tests, all passing, none skipped**; 574 of those need no database.
+
+This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
+to verify M1 and M3 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
+archive into the session scratchpad (`initdb` + `pg_ctl` in user space, no installer, no service,
+nothing written outside the temp directory), then `TEST_DATABASE_URL` pointed at it. See
+`docs/implementation-status.md` §11.
 
 ## Rules that are not negotiable
 
@@ -142,6 +149,110 @@ Merchant, activity, category, budget, compatibility, required specification and 
 **filters applied before ranking** (ADR-005). There is no weight configuration in which a cheap
 incompatible product can outrank a compatible one. Ranking weights and formulas are in ADR-004; the
 engine is deterministic and the model never computes a score or writes a recommendation `reason`.
+
+### The ranking engine (M3) — what will bite you
+
+`app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
+outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 574 of the 719
+tests need no database. `RecommendationService` is the only M3 code that opens a query.
+
+**The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`
+profile, AeroCase Pro scores `0.796800` and ShieldCase Premium `0.786800` — the specification's own
+`0.7968` and `0.7868`. If a change moves those numbers, the change is wrong, not the test.
+
+**Scores are `Decimal`, quantized to six places.** A `float` total is not reproducible across
+platforms, and RULE 8 requires determinism. Sorting is `(-final_score, price, sku)` — three keys,
+because scores tie often on a small catalog and price ties across colours of one product.
+
+**`price_denominator` returns `None` for degenerate sets** (empty, single candidate, all one price,
+or a maximum of zero) and `price_score` answers `1.0` for it. That branch governs the *unbudgeted*
+denominator only; a stated budget always uses R§8's formula, so a product priced exactly at the
+budget scores `0.0` on purpose.
+
+**No stated preferences scores `0.0`, not `1.0`** (ADR-004, A4). Ordering is unaffected — a constant
+cannot reorder anything — but no candidate can then exceed the remaining weights. Anyone writing a
+threshold against `FinalScore` has to know this.
+
+**Weights live only in `app/ranking/weights.py`.** RULE 14. No scorer, aggregator or service
+contains a number; they multiply by what a `WeightProfile` says. Profiles are validated to sum to
+exactly `1`. `RANKING_PROFILE` is validated at startup, so a typo fails loudly instead of silently
+reordering every result. The model may pick a profile **by name**; it must never emit a weight.
+
+**Hard constraints eliminate and are checked without weights.** `apply_hard_constraints` takes no
+profile argument at all — that is the structural form of ADR-005's promise that no configuration
+lets a cheap incompatible product outrank a compatible one. Every candidate is evaluated against
+every constraint, not stopped at the first failure, because deciding whether a rejection is an
+honest *alternative* needs to know it failed only a relaxable one.
+
+**Only `BUDGET` and `REQUIRED_SPECIFICATION` are relaxable.** Compatibility never is (a case for a
+different phone is a wrong answer, not a lesser one), inventory never is (RULE 5 — an alternative
+nobody can buy is not an alternative), category never is. Alternatives are re-scored with the budget
+removed, or the clamp would flatten them all to zero and lose their order.
+
+**`ProductRequirement.compatibility_target` is a `ResolvedTarget`, never a string.** That types the
+ADR-003 pipeline shut: a device phrase the model wrote cannot reach the ranker, and resolution
+failure stays a question for the buyer rather than becoming a no-match. `apply_hard_constraints`
+raises if a requirement carries a target but no resolved compatible set was supplied — compatibility
+must not be relaxable by omission.
+
+**`RecommendationService._candidates` pushes only the category into SQL.** Budget, text and
+attributes are deliberately left out: filtering budget in the query would leave the no-match path
+with no real product to offer, and text is a relevance signal (R§9), not a constraint.
+
+**`app/attributes.py` is the single meaning of "attribute satisfies expectation"** — shared by
+compatibility rules, the required-specification constraint and the preference scorer. A missing
+attribute always fails. Do not add a second implementation.
+
+### The LLM layer (M4) — what will bite you
+
+`app/llm/` is the other side of the boundary. Everything in it is **untrusted**: a `BuyerIntent` is
+what the model believes the buyer asked for, a `ToolCall` is something the model would like to
+happen, and neither carries a price, a SKU, a stock level or a compatibility fact.
+
+**`client.py` is the only module allowed to import the Anthropic SDK** (ADR-015). An AST-walking
+test asserts the importer list is exactly that one file. Everything else takes the one-method
+`LLMClient` protocol, which is what makes all 198 LLM tests run with no key and no network.
+
+**No test may call a live model, ever.** Not marked, not skipped-when-absent. The model is faked at
+the protocol (`tests/llm/conftest.py::FakeClient`, which replays a script and records payloads); the
+SDK is faked only inside `tests/llm/test_client.py`, and those doubles raise the SDK's *real*
+exception classes, because `_map_exception` dispatches on class identity.
+
+**Extraction asks for text JSON, not a tool call, and that is deliberate.** Tool arguments arrive
+from the SDK already JSON-decoded, so a budget of `1500.10` would be a `float` before this
+application saw it — and `Decimal` built from a lossy float is still lossy. Text output goes through
+`loads_decimal` with `parse_float=Decimal`. `Budget` rejects a `float` outright, so a shortcut around
+this becomes a test failure rather than a wrong ceiling. Tool arguments have no such interception
+point, which is why `tool_schemas._money_from_model` uses the bounded `Decimal(str(x))` conversion
+instead.
+
+**Carry-forward is by omission; removal is by `null`.** L§26 requires the intent to be updated across
+turns and never defines "update". A top-level field the model leaves out inherits from the previous
+intent; one it sets to `null` is cleared. `merge_intent` iterates `BuyerIntent.model_fields`, so a
+field added later carries forward without anyone remembering to add it to a list.
+
+**Malformed output gets one bounded repair and is never repaired by hand.** The extractor tells the
+model what failed validation and asks once more. It does not coerce a type, fill a missing field, or
+accept a bare intent object instead of the envelope — A§19 forbids executing raw model output, and a
+"helpful" coercion is how a malformed call becomes a real one.
+
+**Truncation, refusal and an unexpected tool call are failures, not empty intents**, and none is
+retried: the same request truncates the same way, and the buyer is waiting.
+
+**`create_order` is not in `TOOL_SCHEMAS` and must not be added.** Not registered-and-failing —
+absent. `FORBIDDEN_TOOL_NAMES` and a standing test keep it out, and `validate_tool_arguments`
+reports a call to it as *forbidden* rather than *unknown*, so the attempt is visible in logs.
+
+**There are no tool handlers in `app/llm/`.** Binding a tool to a service is the agent runtime's job
+(M5, AGENT-02). `tests/llm/test_boundaries.py` fails if a function here is named after a tool, and if
+anything here imports a service, a repository or SQLAlchemy.
+
+**Prompts are Markdown files with per-file versions.** `PROMPT_VERSIONS` has an entry per `.md`, and
+a test asserts every file on disk has one — an unversioned prompt makes every trace that used it
+unattributable. The leading `<!-- -->` block in each file is editorial and is stripped before
+sending. Prompt tests assert *auditability*, never model behaviour: per L§29 and ADR-009, the wording
+makes the agent behave well and is not what stops it behaving badly.
 
 ## Working on the schema and migrations
 

@@ -19,13 +19,18 @@ fails, blocks the Razorpay order, and requires fresh approval with a fresh idemp
 | Milestone | Status |
 | --- | --- |
 | Phase 0 — inspection | Done → [`docs/implementation-status.md`](docs/implementation-status.md) |
-| Phase 1 — decisions | Done → [`docs/decisions/`](docs/decisions/) (ADR-001 … ADR-014) |
+| Phase 1 — decisions | Done → [`docs/decisions/`](docs/decisions/) (ADR-001 … ADR-015) |
 | **M0 — foundation** | **Done** — app boots, config, migrations infrastructure, logging, tests |
 | **M1 — catalog database** | **Done** — 7 catalog tables + compatibility targets, 2 migrations, 32-SKU seed, tests |
-| M2 … M15 | Not started |
+| **M2 — catalog read services** | **Done** — repositories, `CatalogService`, `CompatibilityService`, `InventoryService`, canonical target resolution |
+| **M3 — ranking engine** | **Done** — hard-constraint filter, four scorers, weight profiles, Top-K, explanations, combinations, cross-sell, `RecommendationService`. The R§10 worked example reproduces exactly. |
+| **M4 — LLM layer** | **Done** — Claude client, structured buyer intent, intent extraction across turns, two version-controlled prompts, the eight tool schemas and their argument validation. Every test runs with no API key and no network. |
+| M5 … M15 | Not started |
 
-Work stops after M1 by design. `architecture.md` D§39 restricts the first implementation task to the
-catalog foundation, and the money path is not written before its decisions exist.
+Work stops after M4 by design. The money path is not written before its decisions exist, and M5 —
+the agent runtime — is the first milestone that binds a tool to a service. Everything up to here is
+verifiable offline: `app/ranking/` is pure, and `app/llm/` depends on a one-method client protocol
+rather than on the Anthropic SDK, so no test in this repository calls a live model (ADR-015).
 
 ---
 
@@ -126,7 +131,13 @@ then the schema, seed and configuration tests ran but the live-database tests di
 database and run again for a complete result.
 
 What runs without a database: SQLAlchemy metadata assertions, the compiled PostgreSQL DDL, seed-data
-integrity, configuration rules, log redaction, and the application boot with its health endpoint.
+integrity, configuration rules, log redaction, the application boot with its health endpoint, and
+**the whole ranking engine** — `app/ranking/` takes domain values and returns domain values, so
+ADR-004's exit test (the R§10 worked example) is an ordinary unit test — and **the whole LLM
+layer**, which is faked at the `LLMClient` protocol rather than at the network.
+
+**Current result: 719 tests, all passing, none skipped** against PostgreSQL 16.4 — 574 of them
+without any database at all, and the 198 LLM tests without an API key or a network either.
 
 ### Lint and format
 
@@ -162,6 +173,13 @@ AI_COMMERCE/
     │   ├── logging_config.py    logging with secret redaction
     │   ├── main.py              FastAPI application factory
     │   ├── db/                  declarative base, session, models
+    │   ├── domain/              frozen result types the services return
+    │   ├── repositories/        data access; every method is merchant-scoped
+    │   ├── attributes.py        one shared meaning for "attribute satisfies expectation"
+    │   ├── canonical.py         token normalization and tokenization
+    │   ├── services/            catalog, compatibility, inventory (M2), recommendation (M3)
+    │   ├── ranking/             filters, scorers, weights, ranker, explain, combinations (M3)
+    │   ├── llm/                 client, intent schema, extractor, tool schemas, prompts (M4)
     │   ├── seed/                CircuitCraft catalog and loader
     │   └── api/routes/          health (chat, cart, orders, webhooks arrive later)
     └── tests/

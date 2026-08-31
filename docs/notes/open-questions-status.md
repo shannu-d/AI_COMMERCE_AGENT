@@ -102,7 +102,7 @@ Docker.
 | ID | Question | Status |
 | --- | --- | --- |
 | E1 | Tool-call loop limit | **CLOSED** — ADR-009 (8 per turn) |
-| E2 | LLM retry / timeout values | **CLOSED by implementation, not by ADR** — `Settings.anthropic_timeout_seconds = 60`, `anthropic_max_retries = 2`, matching the analysis proposal. Confirm or supersede when M4 builds the client. |
+| E2 | LLM retry / timeout values | **CLOSED** — ADR-015. Confirmed at M4 against the built client: 60s timeout, 2 retries, `0.5 × 2ⁿ` backoff, transient failures only, and the SDK's own retry loop disabled so the policy is bounded once rather than twice. |
 | E3 | Two `/api/chat` response shapes | **CLOSED** — ADR-010 |
 | E4 | Tool naming inconsistency | **CLOSED** — ADR-009 (`search_catalog`) |
 | E5 | Stock disclosure granularity | **CLOSED** — ADR-009, ADR-010 (coarse `stock_status` to the buyer) |
@@ -113,7 +113,7 @@ Docker.
 
 | ID | Gap | Status |
 | --- | --- | --- |
-| F1 | **LLM test-double strategy** | **OPEN. Blocks M4/M5 deterministic CI.** Nothing has been decided about how agent tests run without live model calls. `backend/tests/fixtures/` exists as the agreed home for test doubles, and that is all. **This is the one genuinely blocking open question ahead**, and it needs an ADR before M4. |
+| F1 | **LLM test-double strategy** | **CLOSED** — ADR-015, implemented in M4. The seam is the one-method `LLMClient` protocol; the model is faked at that protocol by `tests/llm/conftest.py::FakeClient`, and the SDK is faked only inside `tests/llm/test_client.py`. No test calls a live model at any milestone, and one AST-walking test holds `app/llm/client.py` as the sole importer of the SDK. Recorded cassettes were considered and rejected. |
 | F2 | Test framework and DB fixture strategy | **CLOSED by implementation** — pytest, `requires_db` marker, transactional fixtures against a real PostgreSQL |
 | F3 | Local dev orchestration | **CLOSED by implementation** — `docker-compose.yml`, plus the scratchpad fallback in U3 |
 | F4 | CI pipeline | **OPEN. Blocks nothing; slows everything.** No workflow exists. Lint, format, type-check and the full suite all run locally in one command each, so a workflow is mechanical whenever it is wanted. |
@@ -130,16 +130,15 @@ Docker.
 
 ## What is open, and what it blocks
 
-Nine items remain open. **None blocks M2, and none blocks M3.**
+Seven items remain open. **None blocks M5.**
 
 | Open item | Blocks | Needed by |
 | --- | --- | --- |
-| F1 LLM test-double strategy | deterministic CI for agent tests | **before M4** — the first thing to decide after the read services |
 | F9 evaluation harness format | the SHOULD-WORK evaluation suite | before M15 |
 | F6 frontend framework | the frontend | before M14 |
 | F4 CI pipeline | nothing | whenever wanted |
 | U2 / F11 external brief | nothing | external input; see the gap note |
 | F5, F8, F10 | nothing | out of MVP scope |
-| E2 retry values | nothing | confirm or supersede at M4 |
 
-The next decision this project owes itself is **F1**, and it is due before M4, not before M2.
+F1 and E2 are closed by ADR-015. The next thing this project owes itself is not a decision but an
+implementation: **E3**'s union `/api/chat` contract, decided in ADR-010 and built in M5.

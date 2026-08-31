@@ -185,8 +185,14 @@ The milestone sequence from `docs/analysis/02-dependency-map.md` is adopted unch
 repository layout from `docs/analysis/05-proposed-repo-structure.md` is adopted as the single
 application root. No duplicate application root is created.
 
-This session delivers **Phase 0 (this document), Phase 1 (ADR-001 … ADR-014), M0 (foundation) and
-M1 (catalog database)**, and stops. M2 onward is not started.
+The first session delivered **Phase 0 (this document), Phase 1 (ADR-001 … ADR-014), M0
+(foundation) and M1 (catalog database)**. Subsequent sessions have added **M2 (catalog read
+services)** and **M3 (ranking engine)**. M4 onward is not started.
+
+> **This document is a dated Phase-0 assessment and is not rewritten as work lands.** It records
+> what the repository looked like before any code existed, and how each milestone was verified.
+> §13 below is the running record of milestones completed since. The live status table is in
+> `README.md`; every departure from the specification is indexed in `docs/notes/deviations.md`.
 
 ## 11. How M0 and M1 were verified
 
@@ -234,6 +240,7 @@ Those 26 tests are marked `requires_db` and **skip with an explicit reason** whe
 reachable. They are never reported as passes. `docker-compose.yml` and the runbook in `README.md`
 give the one command that makes them run on any machine with Docker.
 
+
 ## 12. Note on seed data authorship
 
 `architecture.md` refers to a "30–36 SKU CircuitCraft prototype" but supplies only one complete
@@ -247,3 +254,132 @@ battery hours, ANC yes/no. No certifications, ratings, review counts, test resul
 or real third-party brand names appear anywhere in the seed. Every value the specification does give
 is reproduced exactly. This satisfies "do not fabricate arbitrary product claims" while still
 producing a catalog the ranking engine and the compatibility service can be tested against.
+
+## 13. Milestones completed after this assessment
+
+### M2 — catalog read services
+
+`app/repositories/` (product, variant, inventory, compatibility) and `app/services/`
+(`CatalogService`, `CompatibilityService`, `InventoryService`), returning frozen `app/domain/` types
+rather than ORM rows. Compatibility resolution implements ADR-003 end to end: a device phrase is
+normalized, resolved against `compatibility_targets`, and either yields a canonical identifier or a
+first-class `UnresolvedTarget` the caller must handle. Nothing guesses.
+
+### M3 — ranking engine
+
+The whole of `architecture.md` Part R, in `app/ranking/` — `weights.py`, `filters.py`, `scorers.py`,
+`ranker.py`, `explain.py`, `combinations.py` — plus `RecommendationService`, which is the only part
+of M3 that opens a query.
+
+**Exit condition (ADR-004): met exactly.** The R§10 worked example reproduces under the
+`explainability_demo` profile — AeroCase Pro `0.796800`, ShieldCase Premium `0.786800`, against the
+specification's stated `0.7968` and `0.7868` — and R§8's own price examples (`0.67`/`0.33`, and
+`0.334`/`0.134`) come out of the scorer rather than the fixture.
+
+Task coverage against `docs/analysis/04-task-breakdown.md`:
+
+| Task | Delivered in |
+| --- | --- |
+| RANK-01 weight profiles as configuration | `app/ranking/weights.py`, `RANKING_PROFILE` / `RANKING_TOP_K` settings |
+| RANK-02 hard-constraint filter | `app/ranking/filters.py` — one function per constraint |
+| RANK-03 PreferenceScore | `app/ranking/scorers.py` |
+| RANK-04 PriceScore | `app/ranking/scorers.py`, incl. every degenerate branch |
+| RANK-05 RelevanceScore | `app/ranking/scorers.py` — the formula ADR-004 supplies, since R§9 gives none |
+| RANK-06 aggregator + Top-K | `app/ranking/ranker.py` |
+| RANK-07 structured explanation | `app/ranking/explain.py`, `Explanation`, `RecommendationLabel` |
+| RANK-08 multi-product budget combination | `app/ranking/combinations.py` |
+| RANK-09 cross-sell candidates | `RecommendationService.cross_sell_candidates` |
+| RANK-10 no-match behaviour | `RecommendationOutcome`, `relaxed_constraints`, `alternatives` |
+| RANK-11 ranking tests | `tests/ranking/` (164 tests) + `tests/services/test_recommendation_service.py` (20) |
+
+**How M3 was verified.** A throwaway PostgreSQL 16.4 was provisioned exactly as described in §11 —
+unpacked from the official Windows binary archive into the session scratchpad, `initdb` plus
+`pg_ctl` in user space, listening on a non-default port, nothing written outside the temporary
+directory.
+
+**Result: 520 tests pass, 0 fail, 0 skip.** 375 of them need no database at all, because
+`app/ranking/` is pure by design; the remaining 145 ran against the live server, including 20 new
+`RecommendationService` integration tests that exercise the seed catalog's deliberately-planted
+cases — the cheaper iPhone 15 case that must never appear, the zero-quantity clear case, the
+₹1,799 leather folio offered as a labelled over-budget alternative, and `pixel_9` as a resolvable
+device with no compatible products.
+
+One change to existing code was needed and is recorded as A17 in `docs/notes/deviations.md`: the
+attribute-comparison predicates moved out of `CompatibilityService` into `app/attributes.py` so the
+ranker's required-specification constraint could share them. `constraints_satisfied` remains as a
+thin wrapper, and all eighteen of the M2 suite's predicate assertions are now also asserted in
+`tests/test_attributes.py`, which runs without a database.
+
+### M4 — LLM layer
+
+`app/llm/` — the probabilistic side of the boundary, and the first code in this repository that
+talks to a model. Six modules and two prompts:
+
+| Module | What it is |
+| --- | --- |
+| `models.py` | Provider-agnostic transport types — `Message`, `ModelResponse`, `ToolCall`, `TokenUsage`, `StopReason` |
+| `errors.py` | The six failure modes L§46 names, as types, with `is_transient` deciding retries |
+| `client.py` | The Anthropic client. The **only** module in the repository that imports the SDK |
+| `schemas.py` | The structured buyer intent (L§5), as Pydantic, with `loads_decimal` |
+| `extractor.py` | `IntentExtractor` — natural language in, validated intent out (LLM-03, LLM-07) |
+| `tool_schemas.py` | The eight tools' names, descriptions, argument models and validation (LLM-05) |
+| `prompts/system_prompt.md` | The twelve behavioural rules (LLM-04), version-controlled |
+| `prompts/intent_extraction.md` | The extraction contract, version-controlled separately |
+
+**Exit condition: met.** `docs/analysis/02-dependency-map.md` states M4's as *"natural language →
+validated structured intent, offline-testable"*. All 198 LLM tests run with no API key, no network
+and no database, in under a second.
+
+Task coverage against `docs/analysis/04-task-breakdown.md`:
+
+| Task | Delivered in |
+| --- | --- |
+| LLM-01 Claude client — env key, timeout, bounded retry, error handling | `app/llm/client.py` |
+| LLM-02 structured intent schema | `app/llm/schemas.py` |
+| LLM-03 intent extraction, clarification detection, no catalog facts | `app/llm/extractor.py` |
+| LLM-04 system prompt, version-controlled | `app/llm/prompts/system_prompt.md` |
+| LLM-05 tool schema definitions | `app/llm/tool_schemas.py` |
+| LLM-06 tool-call handling — **parse and validate only** | `validate_tool_arguments`; execution is M5's `AGENT-02` |
+| LLM-07 conversation context — preserve and update intent, avoid unnecessary context | `merge_intent`, `IntentExtractor.max_history` |
+| LLM-08…LLM-12 | Not M4. They need the runtime (M5), the cart (M7) and the Policy Engine (M9). |
+
+Three decisions were made here and are recorded in `docs/notes/deviations.md`:
+
+1. **Extraction asks for text JSON, not a tool call** (R29). Tool arguments arrive from the SDK
+   already JSON-decoded, so `1500.10` would be a `float` before this application saw it, and a
+   `Decimal` built from a lossy binary float is still lossy. Text output can be parsed with
+   `parse_float=Decimal`. This is the only interception point that exists, and `Budget` rejects a
+   `float` outright so that any future shortcut around it becomes a test failure.
+2. **Carry-forward is by omission; removal is by `null`** (R27). L§26 requires the intent to be
+   updated across turns and never says what updating means. A field the model leaves out inherits;
+   a field it sets to `null` is cleared. Both are needed — L§26's own "Around 1500" example must
+   inherit the device, and a buyer withdrawing a budget must be able to.
+3. **One bounded repair attempt** (A26). The extractor tells the model what failed validation and
+   asks once more. It never edits the output, never coerces a wrong type, and never accepts a
+   differently-shaped payload.
+
+**Open question F1 is closed by ADR-015**, which was owed before this milestone. The seam is the
+one-method `LLMClient` protocol; the model is faked at that protocol and the SDK only inside
+`tests/llm/test_client.py`; no test calls a live model at any milestone. E2 is closed by the same
+ADR, confirming the analysis document's proposed retry and timeout values against the built client.
+
+**How M4 was verified.** The throwaway PostgreSQL 16.4 of §11 was restarted and the whole suite run
+against it. **Result: 719 tests pass, 0 fail, 0 skip.** 574 of them need no database; the 145
+`requires_db` tests are unchanged from M3, because M4 adds no code that opens a query — by
+construction, since `tests/llm/test_boundaries.py` forbids `app/llm` from importing a service, a
+repository or SQLAlchemy at all.
+
+The 198 new tests break down as: 43 on the tool registry (that `create_order` is absent, that no
+tool accepts a price or a stock level, that `request_approval` has no field capable of expressing
+approval), 32 on the extractor, 30 on the client (bounded retries, mapped provider errors, and the
+L§45 refusal to send a prompt containing a configured secret), 29 on the schema, 29 on the prompts,
+19 boundary guards, and 16 on the transport types and the error taxonomy.
+
+One existing test changed. `tests/services/test_service_boundaries.py` asserted that `app/llm` did
+not exist — true through M3, and the wrong rule from M4 onward. It now asserts the rule that
+replaces it: `app/agent` still must not exist, and nothing on the trusted side imports `app.llm`.
+
+**What M4 does not prove.** No test here shows that Claude obeys the prompts, because that is not
+knowable offline; ADR-015 states this cost explicitly. Offline tests prove the application handles
+model output correctly. They cannot prove the model produces good output — which is exactly why no
+correctness property of this system depends on it doing so.
