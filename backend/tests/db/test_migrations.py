@@ -100,7 +100,7 @@ def test_migration_chain_is_linear_and_starts_from_nothing() -> None:
     script = ScriptDirectory.from_config(alembic_config())
     revisions = list(script.walk_revisions())
 
-    assert [rev.revision for rev in revisions] == ["0002", "0001"]
+    assert [rev.revision for rev in revisions] == ["0003", "0002", "0001"]
     assert revisions[-1].down_revision is None
     assert len(script.get_heads()) == 1, "a branched history would make `head` ambiguous"
 

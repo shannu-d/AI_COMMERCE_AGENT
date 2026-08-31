@@ -97,15 +97,46 @@ def test_no_commerce_module_has_been_created_early() -> None:
     assert premature == [], f"premature commerce modules: {premature}"
 
 
-def test_the_agent_runtime_has_not_been_created_early() -> None:
-    """`app/llm` arrived with M4; `app/agent` is M5 and must not have.
+def test_the_agent_runtime_is_reachable_only_from_the_probabilistic_side() -> None:
+    """The M5 shape of the guard that used to say `app/agent` must not exist.
 
-    The runtime is where a tool schema is bound to a service and where the loop
-    that executes a model's requests lives. It appearing before its milestone
-    would mean the executing half of the boundary was written without the
-    decisions (ADR-009 onward) that say what it may execute.
+    It exists from M5, so "it must not" is no longer the rule. What replaces it
+    is the rule that survives: the runtime may import both sides - that is its
+    job, binding a tool schema to a service - but nothing on the trusted side
+    may import *it*. A service that reached into the runtime would be a service
+    whose behaviour depended on a conversation.
     """
-    assert not (BACKEND_DIR / "app/agent").exists(), "app/agent belongs to M5"
+    assert (BACKEND_DIR / "app/agent").is_dir()
+
+    importers = [
+        path.name
+        for package in DETERMINISTIC_PACKAGES
+        for path in python_files(package)
+        if any(module.startswith("app.agent") for module in imported_modules(path))
+    ]
+
+    assert importers == []
+
+
+def test_the_runtime_is_the_only_place_the_two_sides_meet() -> None:
+    """ADR-001, stated positively rather than as a prohibition.
+
+    The per-file guards above say what may not import what. This says where the
+    exception lives: exactly one package imports both `app.llm` and a service,
+    and it is the one whose whole purpose is to validate the first before
+    letting it reach the second (A§19). If a second such package appears, the
+    boundary has two doors and only one of them has been reviewed.
+    """
+    both_sides = []
+    for path in sorted((BACKEND_DIR / "app").rglob("*.py")):
+        modules = imported_modules(path)
+        touches_model = any(module.startswith("app.llm") for module in modules)
+        trusted = ("app.services", "app.repositories")
+        touches_services = any(module.startswith(trusted) for module in modules)
+        if touches_model and touches_services:
+            both_sides.append(path.relative_to(BACKEND_DIR).as_posix())
+
+    assert all(name.startswith(("app/agent/", "app/api/")) for name in both_sides), both_sides
 
 
 def test_the_llm_layer_is_reachable_only_from_the_probabilistic_side() -> None:

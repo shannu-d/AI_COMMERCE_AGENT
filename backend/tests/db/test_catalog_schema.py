@@ -21,7 +21,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.schema import CreateTable
 
 from app.db.base import Base
-from app.db.models import CATALOG_TABLES
+from app.db.models import CATALOG_TABLES, SESSION_TABLES
 
 CATALOG_TABLE_SET = set(CATALOG_TABLES)
 
@@ -61,13 +61,19 @@ def test_the_seven_specified_catalog_tables_exist() -> None:
 
 
 def test_no_commerce_table_is_defined_yet() -> None:
-    """D§36 and D§39: the first catalog milestone builds no commerce tables.
+    """D§36 and D§39: no milestone before M6 builds a commerce table.
 
-    ADR-006 designs all eleven at column level; M6 implements them.
+    ADR-006 designs eleven tables at column level. Nine of them remain M6 and
+    are checked here. The two that came forward to M5 - ``sessions`` and
+    ``session_messages`` - are asserted *present* by the test below rather than
+    dropped from the guard, so this narrowing is a statement about which tables
+    moved and not a hole where a check used to be.
+
+    The line D§36 and D§39 draw still falls in the same place. What M6 owns is
+    money, carts, orders, approvals and the audit record; conversation state is
+    none of those.
     """
     commerce = {
-        "sessions",
-        "session_messages",
         "carts",
         "cart_items",
         "approvals",
@@ -81,10 +87,23 @@ def test_no_commerce_table_is_defined_yet() -> None:
     assert commerce & set(Base.metadata.tables) == set()
 
 
-def test_the_only_addition_is_the_compatibility_target_vocabulary() -> None:
-    """ADR-003. Any other extra table is unintended scope."""
+def test_the_session_tables_arrived_with_the_agent_runtime() -> None:
+    """The other half of the guard above, and the reason the two moved.
+
+    Open question C3 - session and approval persistence - is closed by ADR-006
+    as *PostgreSQL*, and `04-task-breakdown.md` gives AGENT-01, the M5 runtime
+    skeleton, the job of closing it. A runtime cannot close C3 with a
+    dictionary, and ADR-006 states the objection to trying: in-memory session
+    state would make the price-drift and duplicate-request scenarios untestable
+    across processes.
+    """
+    assert set(SESSION_TABLES) <= set(Base.metadata.tables)
+
+
+def test_no_table_beyond_the_catalog_the_vocabulary_and_the_session_exists() -> None:
+    """ADR-003 and ADR-006. Any other extra table is unintended scope."""
     extra = set(Base.metadata.tables) - CATALOG_TABLE_SET
-    assert extra == {"compatibility_targets"}
+    assert extra == {"compatibility_targets", *SESSION_TABLES}
 
 
 # --------------------------------------------------------------------------
