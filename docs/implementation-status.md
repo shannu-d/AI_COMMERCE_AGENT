@@ -554,6 +554,56 @@ be refused, which is a different rule from `set_quantity(0)` meaning "remove thi
 `POST /api/cart/approve` is deliberately absent. Approval is M8: it is the only path that may write
 an `APPROVED` row, and it mints the idempotency key (ADR-007, ADR-013).
 
+### M8 — approval
+
+The record that says a human authorized a payment, and the machinery that decides when it stops
+being true. Its exit condition is one sentence — *a stale approval is rejected by test* — and
+ADR-007 names six tests; all six exist.
+
+**Only a buyer action writes `APPROVED`, and that is a property of the type system.**
+`ApprovalService.request` - what the agent's `request_approval` calls - has parameters
+`(self, session_id, cart)` and no `status`. There is no argument, no overload and no refactor of the
+tool that produces an authorization, which `test_request_has_no_parameter_that_could_write_approved`
+asserts by walking the signature rather than by trying and failing to persuade it. A test that
+called the tool and checked the result came back `PENDING` would pass against an implementation that
+wrote `APPROVED` under some other condition; this one does not.
+
+`POST /api/cart/approve` is the only path that can answer. P§9 is the sentence the split enforces:
+"Show me the cart" is not approval, and neither is "How much is it?".
+
+**An approval binds to five things** and each test breaks exactly one of them, because a check that
+only fires when everything changes at once is a check that never fires. The fingerprint is the
+interesting one: a total is not a composition, and ₹1,499 + ₹299 reaches the same ₹1,798 as ₹1,299 +
+₹499 while being a completely different order. `items_fingerprint` is defined once in
+`app/domain/approval.py` because ADR-007 requires the writer and the Policy Engine to share it - two
+implementations would eventually disagree, and the disagreement would present as an approval that
+silently stopped matching its own cart.
+
+**Invalidation happens inside `CartService._recompute`**, the one place a cart version is ever
+assigned. Putting it there rather than at each call site is what makes it unconditional: a mutation
+added in some later milestone cannot forget, because the only way to change a cart is through the
+function that also invalidates its authorization. A price *decrease* supersedes too (ADR-007 rule 2,
+closing D2) - the buyer approved a specific total, and charging a different one, cheaper or not, is
+charging an amount nobody authorized.
+
+**Expiry is evaluated at the moment of use.** `ApprovalView.authorizes` refuses an elapsed row
+whether or not `expire_stale` ever ran, so a sweeper is an optimization and never the mechanism.
+`expires_at` is stored rather than computed at read time, so changing `APPROVAL_TTL_SECONDS` never
+retroactively revives or kills an approval that already exists.
+
+**The approve route re-prices before it checks the version**, deliberately. A catalog change since
+the buyer's screen was drawn bumps the version, so the version they submitted no longer matches and
+they are asked to look again rather than authorizing a total that is no longer real. That is A§28's
+scenario entering through the front door, and `test_a_price_change_before_approval_is_caught_at_the_edge`
+is it end to end.
+
+**How M8 was verified.** The throwaway PostgreSQL 16.4 of §11. **Result: 1071 tests pass, 0 fail, 0
+skip**, 781 of them needing no database.
+
+**One gap, recorded rather than closed.** ADR-007 calls for an `APPROVAL_SUPERSEDED` audit event on
+every supersession. `audit_events` exists from M6; the Audit Service is M13. `supersede_for_cart` is
+written to be the single place that emission hooks into, and no audit row is written yet.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as

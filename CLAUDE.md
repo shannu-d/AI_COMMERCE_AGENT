@@ -14,8 +14,8 @@ leaves something open, states it two ways, or requires something it never define
 an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all sixteen.
 
 **Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
-engine), M4 (LLM layer), M5 (agent runtime, read-only), M6 (commerce schema) and M7 (cart) are
-complete. M8–M15 are not started.**
+engine), M4 (LLM layer), M5 (agent runtime, read-only), M6 (commerce schema), M7 (cart) and M8
+(approval) are complete. M9–M15 are not started.**
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
@@ -51,10 +51,10 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **1018 tests, all passing, none skipped**; 761 of those need no database.
+with a database: **1071 tests, all passing, none skipped**; 781 of those need no database.
 
 This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
-to verify M1, M3 and M5 through M7 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
+to verify M1, M3 and M5 through M8 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
 archive into the session scratchpad (`initdb` + `pg_ctl` in user space, no installer, no service,
 nothing written outside the temp directory), then `TEST_DATABASE_URL` pointed at it. See
 `docs/implementation-status.md` §11.
@@ -155,7 +155,7 @@ engine is deterministic and the model never computes a score or writes a recomme
 
 `app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
 outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
-worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 761 of the 1018
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 781 of the 1071
 tests need no database. `RecommendationService` is the only M3 code that opens a query.
 
 **The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`
