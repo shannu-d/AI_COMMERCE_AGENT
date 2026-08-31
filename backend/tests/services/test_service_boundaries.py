@@ -97,9 +97,34 @@ def test_no_commerce_module_has_been_created_early() -> None:
     assert premature == [], f"premature commerce modules: {premature}"
 
 
-def test_no_llm_or_agent_package_exists_yet() -> None:
-    for package in ("app/llm", "app/agent"):
-        assert not (BACKEND_DIR / package).exists(), f"{package} belongs to M4/M5"
+def test_the_agent_runtime_has_not_been_created_early() -> None:
+    """`app/llm` arrived with M4; `app/agent` is M5 and must not have.
+
+    The runtime is where a tool schema is bound to a service and where the loop
+    that executes a model's requests lives. It appearing before its milestone
+    would mean the executing half of the boundary was written without the
+    decisions (ADR-009 onward) that say what it may execute.
+    """
+    assert not (BACKEND_DIR / "app/agent").exists(), "app/agent belongs to M5"
+
+
+def test_the_llm_layer_is_reachable_only_from_the_probabilistic_side() -> None:
+    """The M4 shape of the same guard the import tests above enforce per file.
+
+    `app/llm` exists from M4, so "it must not exist" is no longer the rule. What
+    replaces it is that nothing on the trusted side may import it — which is
+    checked per module above, and stated here so the intent survives the change.
+    """
+    assert (BACKEND_DIR / "app/llm").is_dir()
+
+    importers = [
+        path.name
+        for package in DETERMINISTIC_PACKAGES
+        for path in python_files(package)
+        if any(module.startswith("app.llm") for module in imported_modules(path))
+    ]
+
+    assert importers == []
 
 
 @pytest.mark.parametrize(

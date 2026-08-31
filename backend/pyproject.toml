@@ -5,7 +5,8 @@ description = "Merchant AI Commerce Agent — backend (catalog foundation)"
 requires-python = ">=3.12"
 
 # The stack is fixed by architecture.md D§38 and L§44:
-# PostgreSQL, FastAPI, SQLAlchemy, Alembic, psycopg, Pydantic.
+# PostgreSQL, FastAPI, SQLAlchemy, Alembic, psycopg, Pydantic, and the Anthropic
+# API for Claude Sonnet. Nothing else is added.
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.34",
@@ -14,6 +15,9 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
+    # L§44: "Anthropic API / supported Claude API interface". Imported only by
+    # `app/llm/client.py`; a test asserts no deterministic package imports it.
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
