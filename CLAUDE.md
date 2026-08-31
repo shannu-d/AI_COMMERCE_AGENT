@@ -14,7 +14,7 @@ leaves something open, states it two ways, or requires something it never define
 an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all sixteen.
 
 **Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
-engine) and M4 (LLM layer) are complete. M5–M15 are not started.**
+engine), M4 (LLM layer) and M5 (agent runtime, read-only) are complete. M6–M15 are not started.**
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
@@ -50,10 +50,10 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **722 tests, all passing, none skipped**; 577 of those need no database.
+with a database: **920 tests, all passing, none skipped**; 731 of those need no database.
 
 This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
-to verify M1 and M3 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
+to verify M1, M3 and M5 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
 archive into the session scratchpad (`initdb` + `pg_ctl` in user space, no installer, no service,
 nothing written outside the temp directory), then `TEST_DATABASE_URL` pointed at it. See
 `docs/implementation-status.md` §11.
@@ -154,7 +154,7 @@ engine is deterministic and the model never computes a score or writes a recomme
 
 `app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
 outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
-worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 577 of the 722
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 731 of the 920
 tests need no database. `RecommendationService` is the only M3 code that opens a query.
 
 **The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`
@@ -253,6 +253,63 @@ a test asserts every file on disk has one — an unversioned prompt makes every 
 unattributable. The leading `<!-- -->` block in each file is editorial and is stripped before
 sending. Prompt tests assert *auditability*, never model behaviour: per L§29 and ADR-009, the wording
 makes the agent behave well and is not what stops it behaving badly.
+
+### The agent runtime (M5) — what will bite you
+
+`app/agent/` is the only package that imports both `app.llm` and a service. That is its job, and a
+standing guard asserts it is the *only* one: a second package touching both sides would be a second
+door onto the boundary, and only one of them has been reviewed.
+
+**`recommendations[]` is built from `TurnMemory`, never from the model's reply.** The tools write
+what `RecommendationService` returned; the response builder serializes that. A model that describes
+a product it was never shown produces a turn whose structured half simply does not contain it — and
+a test scripts exactly that. Prose goes in `message`; nothing is parsed out of it (F§9).
+
+**`create_order` is absent four ways**, and each is a separate test: not in the registry, not in
+`HANDLERS`, no module named for it under `app/agent/tools/`, and `build_registry` raises if asked.
+The executor reports a call to it as **forbidden**, not unknown, so an injection attempt is legible
+in a log instead of looking like a typo.
+
+**The executor implements A§19 once, and the order of its stages matters.** The call limit is
+checked *before* the registry lookup, so a call that cannot be afforded is never validated,
+authorized or run — a test asserts this using a nonexistent tool, which would otherwise answer
+`UNKNOWN_TOOL`. A failed call still consumes one of the eight, or a model making only bad calls
+would loop forever.
+
+**Tool errors are returned, never raised.** `ToolExecutor.execute` always yields a payload. One
+conversion site means the rule can only be wrong in one place. An unexpected exception becomes
+`INTERNAL_ERROR` with a generic sentence; its text never reaches the model (F§25).
+
+**Two error vocabularies, one mapping.** `ToolErrorCode` is internal and may grow; `ApiErrorCode` is
+F§25's closed eleven and may not. `to_api_code` is the only bridge, and an internal failure never
+narrows onto a business code — telling a client to run an out-of-stock recovery flow for a registry
+bug would be worse than a generic error.
+
+**Only LOW-tier tools run.** The tier check is real, not implied by which tools happen to be
+registered: a test wires a MEDIUM tool in by hand and asserts it is refused. `propose_cart` has had
+a schema since M4 and gets a handler in M7; `build_registry` refuses to expose a tool it cannot
+execute.
+
+**`sessions` and `session_messages` arrived in M5, not M6** (deviation A28). C3 is closed as
+PostgreSQL and AGENT-01 is the task that closes it. The other nine ADR-006 tables are still M6, and
+the guard in `test_catalog_schema.py` was narrowed to those nine *and* paired with a test asserting
+these two are present — so the narrowing is a statement, not a hole.
+
+**`ConversationState` lives in `app/domain/`, not `app/agent/`.** The ORM model builds its `CHECK`
+from it and the runtime drives transitions with it; neither layer may depend on the other. All
+twenty values are defined now because widening a `CHECK` costs a migration, and `REACHABLE_FROM`
+records which milestone first produces each.
+
+**The seeded-database fixtures are module-scoped, and that is load-bearing.**
+`tests/db/test_catalog_integrity.py` downgrades to base at its own teardown — proving a fresh
+database can be built from the migrations is the point of that module — so anything running
+afterwards must re-ensure the schema. A session- or package-wide cache ensures it once, before that
+teardown, and every later module then queries a database with no tables.
+
+**The seed's category slugs are `phone_case`, `charger`, `usb_cable`, `earbuds` — not**
+**`phone-cases`.** `search_catalog` and `get_compatible_products` validate the slug against the
+merchant's real categories and answer `CATEGORY_NOT_FOUND` for anything else, so a wrong slug in a
+test looks like a broken tool.
 
 ## Working on the schema and migrations
 

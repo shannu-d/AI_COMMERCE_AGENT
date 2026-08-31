@@ -76,7 +76,7 @@ Docker.
 | --- | --- | --- |
 | C1 | Phase-2 tables have no columns | **CLOSED** — ADR-006 (all eleven, column level). Implemented in M6. |
 | C2 | No user/identity model | **CLOSED** — ADR-006 (session-only identity) |
-| C3 | Session and approval persistence | **CLOSED** — ADR-006, ADR-007 (PostgreSQL) |
+| C3 | Session and approval persistence | **CLOSED** — ADR-006, ADR-007 (PostgreSQL); `sessions` and `session_messages` implemented in M5, approvals still M8 |
 | C4 | Money representation | **CLOSED** — ADR-008; catalog half shipped in M1 |
 | C5 | `reserved_quantity` lifecycle | **DEFERRED** — ADR-005; stays `0`, race closed by a row lock in ADR-011 |
 | C6 | Concurrency between policy check and order creation | **CLOSED** — ADR-011 (one transaction, `SELECT ... FOR UPDATE`) |
@@ -91,7 +91,7 @@ Docker.
 | D3 | Spending-limit scope | **CLOSED** — ADR-011 (per transaction, config) |
 | D4 | Idempotency key minting, scope, TTL | **CLOSED** — ADR-013 |
 | D5 | `request_approval` semantics | **CLOSED** — ADR-007, ADR-009 |
-| D6 | Is `create_order` exposed to the model | **CLOSED** — ADR-009 (not registered at all) |
+| D6 | Is `create_order` exposed to the model | **CLOSED** — ADR-009 (not registered at all); asserted four ways against the M5 registry |
 | D7 | Which webhook events to subscribe | **CLOSED** — ADR-012 |
 | D8 | Payment-failure recovery | **CLOSED** — ADR-012 (same path as price drift) |
 | D9 | Price change while Checkout is open | **CLOSED** — ADR-014 (Razorpay amount final at creation) |
@@ -101,9 +101,9 @@ Docker.
 
 | ID | Question | Status |
 | --- | --- | --- |
-| E1 | Tool-call loop limit | **CLOSED** — ADR-009 (8 per turn) |
+| E1 | Tool-call loop limit | **CLOSED** — ADR-009 (8 per turn); enforced in `app/agent/executor.py` from M5 |
 | E2 | LLM retry / timeout values | **CLOSED** — ADR-015. Confirmed at M4 against the built client: 60s timeout, 2 retries, `0.5 × 2ⁿ` backoff, transient failures only, and the SDK's own retry loop disabled so the policy is bounded once rather than twice. |
-| E3 | Two `/api/chat` response shapes | **CLOSED** — ADR-010 |
+| E3 | Two `/api/chat` response shapes | **CLOSED** — ADR-010; the union shape is served and tested from M5 |
 | E4 | Tool naming inconsistency | **CLOSED** — ADR-009 (`search_catalog`) |
 | E5 | Stock disclosure granularity | **CLOSED** — ADR-009, ADR-010 (coarse `stock_status` to the buyer) |
 | E6 | Agent trace persistence | **CLOSED** — ADR-010 (per turn, not persisted) |
@@ -130,7 +130,7 @@ Docker.
 
 ## What is open, and what it blocks
 
-Seven items remain open. **None blocks M5.**
+Seven items remain open. **None blocks M6.**
 
 | Open item | Blocks | Needed by |
 | --- | --- | --- |
@@ -140,5 +140,13 @@ Seven items remain open. **None blocks M5.**
 | U2 / F11 external brief | nothing | external input; see the gap note |
 | F5, F8, F10 | nothing | out of MVP scope |
 
-F1 and E2 are closed by ADR-015. The next thing this project owes itself is not a decision but an
-implementation: **E3**'s union `/api/chat` contract, decided in ADR-010 and built in M5.
+F1 and E2 are closed by ADR-015. E3's union `/api/chat` contract was decided in ADR-010 and is
+**built and tested as of M5**, along with the eight other questions the runtime turns from decisions
+into code: A7 (the ranker writes the reason), B2 (category slugs are a schema enum), B7 (one row per
+variant), C3 (sessions in PostgreSQL), C7 (three separate state machines), D6 (`create_order` is not
+registered at all), E1 (eight tool calls per turn), E4 (`search_catalog` is the name), E5 (coarse
+stock to the buyer) and E6 (the trace is per turn and not persisted).
+
+The next thing owed is neither a decision nor a blocker: **M6**, the remaining nine commerce tables
+of ADR-006. Its prerequisites — M1's schema foundation — have been complete since the first
+milestone.

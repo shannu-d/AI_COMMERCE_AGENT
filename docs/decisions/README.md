@@ -17,11 +17,11 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [003](ADR-003-device-identifier-canonicalization.md) | Device Identifier Canonicalization | Accepted, **partly implemented (M1)** | M1 / M2 | B1, B3, B4, B5 |
 | [004](ADR-004-deterministic-recommendation-scoring.md) | Deterministic Recommendation Scoring | Accepted | M3 | A1, A2, A3, A4, A5, A6, A7, A8 |
 | [005](ADR-005-hard-constraints-vs-soft-preferences.md) | Hard Constraints versus Soft Preferences | Accepted | M3 | C5 (partial) |
-| [006](ADR-006-commerce-schema.md) | Commerce Schema (Phase 2) | Accepted | M6 | C1, C2, C3, C6, C7, E7 |
+| [006](ADR-006-commerce-schema.md) | Commerce Schema (Phase 2) | Accepted, **sessions implemented (M5)** | M5 / M6 | C1, C2, C3, C6, C7, E7 |
 | [007](ADR-007-approval-model.md) | The Approval Model | Accepted | M8 | D1, D5 |
 | [008](ADR-008-money-representation.md) | Money Representation | Accepted, **partly implemented (M1)** | M1 / M11 | C4 |
-| [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted | M5–M11 | B2, B7, D6, E1, E4, E5 |
-| [010](ADR-010-chat-api-contract.md) | The Chat API Contract | Accepted | M5 / M14 | E3, E6 |
+| [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted, **read tools implemented (M5)** | M5–M11 | B2, B7, D6, E1, E4, E5 |
+| [010](ADR-010-chat-api-contract.md) | The Chat API Contract | Accepted, **implemented (M5)** | M5 / M14 | E3, E6 |
 | [011](ADR-011-razorpay-order-creation-boundary.md) | The Razorpay Order Creation Boundary | Accepted | M9–M11 | D3, C6 |
 | [012](ADR-012-webhook-as-payment-truth.md) | The Verified Webhook is Payment Truth | Accepted | M12 | D7, D8 |
 | [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted | M10 / M12 | D4 |
@@ -40,7 +40,8 @@ milestone that will implement it, and lists the tests that milestone must produc
 Implemented so far: ADR-002 in full for the catalog, ADR-003's reference table, seed and
 resolution service, ADR-004 and ADR-005 in full (the ranking engine, M3), ADR-008's catalog half
 (`NUMERIC(12,2)`, string-encoded money in seed data, no floats), ADR-009's tool *schemas* and
-exclusions (M4; the handlers are M5), ADR-015 in full, and ADR-016 in full.
+exclusions (M4), ADR-009's read tools and validation pipeline plus ADR-010's chat contract and
+ADR-006's two session tables (M5), ADR-015 in full, and ADR-016 in full.
 
 ## Where these ADRs deliberately depart from prior proposals
 

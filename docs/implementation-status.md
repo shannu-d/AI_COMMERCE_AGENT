@@ -384,6 +384,74 @@ knowable offline; ADR-015 states this cost explicitly. Offline tests prove the a
 model output correctly. They cannot prove the model produces good output — which is exactly why no
 correctness property of this system depends on it doing so.
 
+### M5 — agent runtime (read-only)
+
+The layer where a model's request becomes a validated action. `app/agent/` is the only package that
+imports both `app.llm` and a service, and a standing guard now asserts that: the per-file rules say
+what may not import what, and `test_the_runtime_is_the_only_place_the_two_sides_meet` says where the
+exception lives, so a second door onto the boundary cannot appear unreviewed.
+
+**What landed.** `errors.py` (the F§25 vocabulary and the internal one, with the single mapping
+between them), `state.py` and `app/domain/conversation.py` (A§25's machine, finalized), `context.py`
+(`AgentContext` and A§50's `TurnMemory`), `registry.py`, five tool handlers under `tools/`,
+`executor.py` (the A§19 pipeline, written once), `runtime.py` (A§49's loop with A§51's six
+terminations), `app/services/session_service.py`, migration `0003`, and `POST /api/chat` with the
+ADR-010 request and response models.
+
+**The exit condition is a test, not a claim.** `tests/agent/test_exit_condition.py` runs *"Find me a
+case for iPhone 16 under ₹1500"* against a real PostgreSQL, the real seeded catalog, the real
+compatibility resolver and the real ranking engine, and asserts a grounded Top-3: every row has a
+SKU, a price at or under the ceiling, a purchasable stock status, a category, and a `reason` from
+the engine's own label set. Companion tests assert the iPhone 15 case never survives an iPhone 16
+requirement, that an unknown device asks the buyer while `pixel_9` — resolvable, with nothing
+compatible — is a legitimate no-match, and that a product the model invents in prose is absent from
+the structured half.
+
+**Three properties hold whatever the model does**, and each is asserted by scripting a model that
+misbehaves:
+
+1. *Recommendations come from the ranker.* The response is assembled from `TurnMemory`, which the
+   tools wrote from `RecommendationService`. A model told to recommend `NOVA-X9` produces a turn
+   whose `recommendations[]` does not contain it.
+2. *No tool call can move money.* Only LOW-tier read tools are registered; `create_order` is absent
+   from the registry, from `HANDLERS`, from `app/agent/tools/`, and is refused by `build_registry`
+   even when explicitly requested. A call to it reports **forbidden**, not unknown, so an injection
+   attempt is legible in a log rather than looking like a typo.
+3. *A failure is reported, never filled in.* A tool that raises `RuntimeError("relation ... does not
+   exist")` reaches the model as `INTERNAL_ERROR` and a sentence; the exception text is asserted
+   absent.
+
+**Sessions came forward from M6** (deviation A28). Open question C3 is closed by ADR-006 as
+PostgreSQL and the task breakdown gives AGENT-01 the job of closing it, which a dictionary cannot
+do. Migration `0003` adds `sessions` and `session_messages` only; the nine tables that hold money,
+carts, orders and approvals remain M6, and the guard that keeps them out was narrowed to those nine
+and paired with a positive assertion about the two that moved.
+
+**How M5 was verified.** A throwaway PostgreSQL 16.4 was provisioned as in §11 — `initdb` plus
+`pg_ctl` in user space, nothing written outside the session scratchpad — and the whole suite run
+against it. **Result: 920 tests pass, 0 fail, 0 skip.** 731 of them need no database. The documented
+runbook was then run end to end: `alembic downgrade base`, `alembic upgrade head` (through `0003`),
+`python -m app.seed.circuitcraft`, and the application booting through its lifespan with
+`GET /api/health` returning `200 {"status":"ok"}` against the live database.
+
+One category-slug error surfaced only under a live catalog and was fixed in the tests: the seed's
+slugs are `phone_case` and `charger`, not `phone-cases` and `chargers`. The tool was right to refuse
+the unknown category — that is `CATEGORY_NOT_FOUND` doing its job — and the assertion was wrong.
+
+One fixture defect surfaced the same way. Promoting the seeded-database fixtures to
+`tests/conftest.py` so the agent and service tests share one definition changed `seeded_engine`'s
+package scope into an effectively session-wide one, and
+`tests/db/test_catalog_integrity.py` deliberately downgrades to base at its own teardown. Every
+module running after it then queried a database with no tables. Fixed by scoping the fixture to the
+module, which re-ensures the schema; the reason is now in the fixture's docstring, because the
+scope is load-bearing and looks arbitrary otherwise.
+
+**What M5 does not prove.** `[ ] Runtime can call Claude Sonnet` (A§56, L§50) is **still not
+verified**, for the reason ADR-016 records: this machine has no Anthropic key. The runtime depends
+on the `LLMClient` protocol and is exercised end to end against a fake, so everything the
+application does with a model's output is covered; that a live Claude drives the loop is not. It
+stays open until a key is available and the check is run by hand.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
