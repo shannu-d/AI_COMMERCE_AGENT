@@ -268,8 +268,25 @@ def approve_cart(
                 None if request.expected_total is None else Decimal(request.expected_total)
             ),
         )
-    except (ApprovalError, InvalidOperation) as error:
+    except InvalidOperation as error:
+        # A malformed `expected_total`. Nothing was legitimately done, so the
+        # re-pricing above is discarded with it.
         db.rollback()
+        raise _handle_approval(error) from error
+    except ApprovalError as error:
+        # **Committed, not rolled back**, and this is the difference between a
+        # recovery flow and a dead end.
+        #
+        # The refresh above is legitimate work: the catalog really did move, the
+        # cart really is at a new version, and its old approvals really were
+        # superseded. Rolling that back would put the cart straight back to the
+        # stale state, so the buyer's next attempt would re-price, bump, fail and
+        # roll back again - forever. An integration test walking the price-drift
+        # recovery found exactly that.
+        #
+        # Committing means the 409 below reports a `current_version` the buyer
+        # can actually approve, which is what ADR-014's recovery requires.
+        db.commit()
         raise _handle_approval(error) from error
 
     SessionService(db).set_state(merchant_id, session_id, ConversationState.APPROVED)

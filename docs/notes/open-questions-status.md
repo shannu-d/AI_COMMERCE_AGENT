@@ -118,7 +118,7 @@ Docker.
 | F3 | Local dev orchestration | **CLOSED by implementation** — `docker-compose.yml`, plus the scratchpad fallback in U3 |
 | F4 | CI pipeline | **OPEN. Blocks nothing; slows everything.** No workflow exists. Lint, format, type-check and the full suite all run locally in one command each, so a workflow is mechanical whenever it is wanted. |
 | F5 | Deployment / hosting | **OPEN, out of scope.** Local only for the MVP. |
-| F6 | Frontend framework (React vs Next.js) | **OPEN. Blocks M14 only.** `deviations.md` F7 defers the frontend itself; the framework choice is still unmade. Decide before M14, not before. |
+| F6 | Frontend framework (React vs Next.js) | **OPEN, and now due.** M13 is complete and M15's backend scenarios pass, so M14 is the next milestone and this is the decision it waits on. L§44 names "React / Next.js" and picks neither; the choice shapes every file of the frontend. |
 | F7 | Streaming responses | **CLOSED** — ADR-010 (no streaming; F§28 discourages it) |
 | F8 | Non-functional targets | **OPEN, out of scope.** None set; agent turns will take seconds. |
 | F9 | Evaluation harness format | **OPEN. Blocks M15's SHOULD-WORK evaluation suite.** |
@@ -130,7 +130,7 @@ Docker.
 
 ## What is open, and what it blocks
 
-Seven items remain open. **None blocks M6.**
+Seven items remain open. **F6 now blocks M14, which is the next milestone.** The other six block nothing that has been reached.
 
 | Open item | Blocks | Needed by |
 | --- | --- | --- |

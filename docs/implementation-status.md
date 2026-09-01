@@ -834,6 +834,58 @@ extend; a deleted one is a rule somebody has to remember. It is joined by two ne
 what M13 must keep true: the audit writer imports no service that could change an outcome, and its
 repository offers no way to rewrite history.
 
+### M15 (backend half) - the named scenarios, and where the work stops
+
+`tests/integration/test_scenarios.py` runs the checks the task breakdown calls INT-05, INT-06 and
+INT-09, plus the flagship failure scenario A§28 names and the success path TEST-02 describes -
+through the HTTP API, against the real database, the real Policy Engine and the real order path.
+Only the model and the payment provider are faked, at the protocol seams ADR-015 and ADR-011 draw.
+
+**The flagship works and is asserted step by step.** A buyer approves a total, the catalog moves,
+and the order is refused with `PRICE_CHANGED`, the new total, no order row, no provider call, and a
+complete audit trail. A price *drop* is refused just as firmly. Recovery ends in a fresh approval
+and a fresh key rather than a patched old one.
+
+**Writing the recovery test found a real defect, and it was a serious one.** `POST /api/cart/approve`
+re-prices the cart before checking the submitted version, and on a stale version it rolled the whole
+transaction back - including the re-pricing. That made price-drift recovery a **dead end**: every
+attempt re-priced, bumped the version, failed the check and discarded the work, so the buyer could
+never reach a version they were able to approve. The unit tests all passed, because each asserted
+only that the refusal happened. The route now commits the re-pricing before returning the 409, so
+the `current_version` it reports is one the buyer can actually confirm.
+
+That is the milestone earning its keep: no single-component test could have found it, because
+nothing was individually wrong.
+
+**Prompt-injection containment is asserted as structure, not wording.** `create_order` is absent
+from the registry, from the handler table and from the tool schemas; `POST /api/orders` refuses a
+cart nobody approved; and `app/agent/` imports no HTTP client and no order service, so there is no
+path at all from model output to the money.
+
+**How it was verified.** **Result: 1258 tests pass, 0 fail, 0 skip**, 880 of them needing no
+database.
+
+#### Where the work stops, and why
+
+**M14 (frontend) is blocked on two things at once, and both are the kind this project treats as a
+stopping point rather than a judgement call.**
+
+1. **An unmade decision.** Open question F6 - React or Next.js - is recorded in
+   `open-questions-status.md` as *"OPEN. Blocks M14 only... Decide before M14, not before."* L§44
+   names "React / Next.js" and picks neither. The choice shapes every file of the frontend, and it
+   is the one decision this project has deliberately deferred to exactly this moment.
+2. **A credential nobody here has.** Three of F§33's sixteen definition-of-done items - *successful
+   Policy PASS reaches Razorpay*, *Razorpay Test Checkout opens*, *payment can be tested* - require
+   a live Razorpay test key. `RAZORPAY_KEY_SECRET` is still `REPLACE_ME`.
+
+M15's remaining checks (INT-01 through INT-04, INT-08, INT-10) each depend on a frontend task and
+wait on the same decision.
+
+**Three live verifications remain unperformed across the project**, all for want of a credential:
+L§50's `[ ] Claude Sonnet connected` (M4, ADR-016), M11's real test-mode Razorpay order, and the
+three F§33 items above. Every one is recorded rather than closed, and none is satisfied by a fixture
+that claims to be a recording.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
