@@ -49,6 +49,7 @@ from app.domain.commerce import CartStatus
 from app.domain.inventory import StockStatus
 from app.repositories.cart_repository import CartRepository
 from app.services.approval_service import ApprovalService
+from app.services.audit_service import AuditService
 from app.services.catalog_service import CatalogService
 from app.services.inventory_service import InventoryService
 
@@ -86,6 +87,7 @@ class CartService:
         self._catalog = CatalogService(session)
         self._inventory = InventoryService(session)
         self._approvals = ApprovalService(session)
+        self._audit = AuditService(session)
 
     # -- reads ---------------------------------------------------------------
 
@@ -108,6 +110,7 @@ class CartService:
         cart = self._carts.get_active_for_session(merchant_id, session_id)
         if cart is None:
             cart = self._carts.create(merchant_id, session_id, currency)
+            self._audit.cart_created(session_id, cart.id)
             logger.info("cart created", extra={"cart_id": str(cart.id)})
         return self._view(merchant_id, cart)
 
@@ -346,7 +349,11 @@ class CartService:
         self, merchant_id: uuid.UUID, session_id: uuid.UUID, currency: str
     ) -> Cart:
         cart = self._carts.get_active_for_session(merchant_id, session_id)
-        return cart if cart is not None else self._carts.create(merchant_id, session_id, currency)
+        if cart is not None:
+            return cart
+        cart = self._carts.create(merchant_id, session_id, currency)
+        self._audit.cart_created(session_id, cart.id)
+        return cart
 
     def _require_existing_cart(self, merchant_id: uuid.UUID, session_id: uuid.UUID) -> Cart:
         cart = self._carts.get_active_for_session(merchant_id, session_id)

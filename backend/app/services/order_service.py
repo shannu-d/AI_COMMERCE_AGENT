@@ -58,6 +58,7 @@ from app.payments.money import to_minor_units
 from app.policy import PolicyEngine
 from app.repositories.cart_repository import CartRepository
 from app.services.approval_service import ApprovalService
+from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,7 @@ class OrderService:
         self._session = session
         self._carts = CartRepository(session)
         self._approvals = ApprovalService(session, ttl_seconds=approval_ttl_seconds)
+        self._audit = AuditService(session)
         self._policy = PolicyEngine(
             spending_limit=spending_limit, spending_limit_currency=spending_limit_currency
         )
@@ -152,6 +154,7 @@ class OrderService:
         # 6. FAIL: no order, no provider call, and the key is spent.
         if not decision.passed:
             self._fail_key(key)
+            self._audit_refusal(cart, decision, context)
             logger.info(
                 "order refused by policy",
                 extra={
@@ -172,6 +175,16 @@ class OrderService:
 
         # 7. PASS: insert the order and its immutable lines.
         order = self._insert_order(merchant_id, session_id, cart, decision, key, lines)
+        self._audit.policy_pass(
+            cart.id, validated_total=decision.validated_total, currency=decision.currency
+        )
+        self._audit.order_created(
+            order.id,
+            session_id=session_id,
+            cart_id=cart.id,
+            total_amount=order.total_amount,
+            currency=order.currency,
+        )
         cart.status = CartStatus.ORDERED.value
         self._complete_key(key, order)
         self._session.flush()
@@ -215,6 +228,11 @@ class OrderService:
         provider_id = client.create_order(order)
         order.razorpay_order_id = provider_id
         order.status = OrderStatus.RAZORPAY_ORDER_CREATED.value
+        self._audit.razorpay_order_created(
+            order.id,
+            razorpay_order_id=provider_id,
+            amount_minor=order.total_amount_minor,
+        )
         self._session.flush()
         logger.info(
             "provider order attached",
@@ -226,6 +244,35 @@ class OrderService:
         return self._session.execute(
             select(Order).where(Order.id == order_id, Order.merchant_id == merchant_id)
         ).scalar_one_or_none()
+
+    def _audit_refusal(self, cart, decision, context) -> None:
+        """Record *why* a purchase was refused, not merely that it was.
+
+        A POLICY_FAIL alone says something was wrong. The two events beside it
+        say what: PRICE_CHANGED carries both totals, because "the price
+        changed" is not actionable without knowing from what to what, and
+        INVENTORY_FAILURE names the SKU. Between them a reconstruction can
+        explain the refusal to a buyer months later.
+        """
+        from app.domain.policy import ReasonCode
+
+        self._audit.policy_fail(
+            cart.id,
+            reason_codes=[code.value for code in decision.reason_codes],
+            validated_total=decision.validated_total,
+            currency=decision.currency,
+        )
+        if ReasonCode.PRICE_CHANGED in decision.reason_codes:
+            self._audit.price_changed(
+                cart.id,
+                previous_total=context.approved_total or decision.validated_total,
+                current_total=decision.validated_total,
+                currency=decision.currency,
+            )
+        if ReasonCode.OUT_OF_STOCK in decision.reason_codes:
+            for line in context.lines:
+                if line.available_quantity < line.quantity:
+                    self._audit.inventory_failure(cart.id, sku=line.sku, requested=line.quantity)
 
     # -- the idempotency key lifecycle (ADR-013) -----------------------------
 

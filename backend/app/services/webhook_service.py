@@ -45,6 +45,7 @@ from sqlalchemy.orm import Session as DbSession
 from app.db.models import Order, Payment, WebhookEvent
 from app.domain.commerce import OrderStatus, PaymentStatus, WebhookStatus
 from app.payments.money import from_minor_units
+from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,7 @@ class WebhookService:
 
     def __init__(self, session: DbSession) -> None:
         self._session = session
+        self._audit = AuditService(session)
 
     def process(
         self, raw_body: bytes, signature: str | None, secret: str, *, provider: str = "razorpay"
@@ -132,6 +134,7 @@ class WebhookService:
         if event is None:
             # The UNIQUE constraint caught a duplicate. Answered 200: it was
             # already handled, and Razorpay retrying is expected behaviour.
+            self._audit.webhook_duplicate_ignored(event_id=event_id)
             logger.info("duplicate webhook ignored", extra={"event_id": event_id})
             return WebhookOutcome(WebhookStatus.IGNORED, event_id, detail="duplicate")
 
@@ -142,6 +145,16 @@ class WebhookService:
             return WebhookOutcome(WebhookStatus.IGNORED, event_id, detail="unsubscribed")
 
         order = self._find_order(payload)
+        # Recorded *after* the lookup so the row can carry the order id, which
+        # is what makes a delivery part of that order's reconstruction rather
+        # than an orphan in the log. It is still written when the order is
+        # unknown - the arrival is a fact either way (P§27).
+        self._audit.payment_webhook_received(
+            event_id=event_id,
+            event_type=event_type,
+            order_id=None if order is None else order.id,
+        )
+
         if order is None:
             # P§27: an event may arrive before its order is committed, or belong
             # to another system sharing the account. Never dropped - the stored
@@ -151,6 +164,7 @@ class WebhookService:
 
         event.order_id = order.id
         self._apply(event_type, payload, order)
+        self._audit_outcome(event_type, payload, order)
         event.status = WebhookStatus.PROCESSED.value
         event.processed_at = datetime.now(UTC)
         self._session.flush()
@@ -160,6 +174,37 @@ class WebhookService:
             extra={"event_id": event_id, "event_type": event_type, "order_id": str(order.id)},
         )
         return WebhookOutcome(WebhookStatus.PROCESSED, event_id, order_id=order.id)
+
+    def _audit_outcome(self, event_type: str, payload: dict[str, Any], order: Order) -> None:
+        """Record what the provider said happened to the money.
+
+        Attributed to `RAZORPAY`, because the provider caused it - not a user
+        and not the agent. That distinction is the whole reason the actor column
+        exists: a reconstruction has to be able to say who did what.
+        """
+        entity = self._payment_entity(payload)
+        razorpay_payment_id = str(entity.get("id") or "")
+        if not razorpay_payment_id:
+            return
+
+        payment = self._session.execute(
+            select(Payment).where(Payment.razorpay_payment_id == razorpay_payment_id)
+        ).scalar_one_or_none()
+        payment_id = None if payment is None else payment.id
+
+        if event_type in ("payment.captured", "order.paid"):
+            self._audit.payment_confirmed(
+                order.id, payment_id=payment_id, razorpay_payment_id=razorpay_payment_id
+            )
+        elif event_type == "payment.failed":
+            self._audit.payment_failed(
+                order.id,
+                payment_id=payment_id,
+                razorpay_payment_id=razorpay_payment_id,
+                # Recorded here and never rendered to a buyer (F§25). The log
+                # is where an operator reads it.
+                reason=entity.get("error_description"),
+            )
 
     # -- recording -----------------------------------------------------------
 

@@ -90,6 +90,45 @@ def test_no_payment_or_model_library_reaches_the_read_services(
         assert root not in FORBIDDEN_LIBRARIES, f"{path.name} imports {module}"
 
 
+def test_the_audit_writer_can_change_no_outcome() -> None:
+    """The guard that replaces "no commerce service exists early".
+
+    Every milestone it protected has now landed, so "not yet" is no longer the
+    rule for anything. What replaces it is the one property M13 must keep: the
+    audit writer records what happened and can change none of it. A service that
+    could alter an order, a payment or an approval while recording it would be a
+    poor audit writer, and the check is that it imports none of them.
+    """
+    forbidden = (
+        "app.services.order_service",
+        "app.services.cart_service",
+        "app.services.approval_service",
+        "app.payments",
+        "app.policy",
+    )
+    for name in ("app/services/audit_service.py", "app/repositories/audit_repository.py"):
+        modules = imported_modules(BACKEND_DIR / name)
+        assert not any(module.startswith(forbidden) for module in modules), name
+
+
+def test_the_audit_repository_offers_no_way_to_rewrite_history() -> None:
+    """ADR-006: the table is append-only, and the repository is where that is
+    either true or merely intended.
+
+    In a deployed environment the application's role is granted INSERT and
+    SELECT on `audit_events` and nothing else. This is the same rule expressed
+    where a developer will actually meet it.
+    """
+    from app.repositories.audit_repository import AuditRepository
+
+    methods = {name for name in dir(AuditRepository) if not name.startswith("_")}
+
+    assert "append" in methods
+    assert not any(
+        word in name for name in methods for word in ("update", "delete", "remove", "purge")
+    )
+
+
 def test_no_commerce_service_has_been_created_early() -> None:
     """The money path must not be coded before its decisions exist.
 
@@ -104,21 +143,23 @@ def test_no_commerce_service_has_been_created_early() -> None:
     internal order before any provider is reached, and M11 the Razorpay client,
     which creates a provider order and still decides nothing about whether money
     moved. M12 adds the verified-webhook handler, which is the one thing that
-    does decide it. What remains is the audit writer: a durable record of what
-    happened, which by design can change no outcome at all.
+    does decide it, and M13 the audit writer, which by design can change no
+    outcome at all.
 
-    What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
-    same thing, and this is where "not yet" is checkable.
+    With M13 the list is empty, and the guard stays. D§39, A§58 and F§37 all say
+    the same thing - the money path must not be coded before its decisions exist
+    - and this is where a future milestone's "not yet" belongs. An empty guard
+    that still runs is a guard somebody can extend; a deleted one is a rule
+    somebody has to remember.
     """
     premature = [
         name
         for name in (
-            # The audit writer (M13). M12 added the verified-webhook handler,
-            # which is the one thing that decides money moved - so what remains
-            # is the durable record of everything that happened, and nothing
-            # that can change an outcome.
-            "app/services/audit_service.py",
-            "app/repositories/audit_repository.py",
+            # Nothing remains. Every module this guard has named across M6
+            # through M13 now exists, each behind the ADR it waited for. The
+            # list is deliberately kept rather than deleted: it is where a
+            # *future* milestone's "not yet" would go, and an empty guard that
+            # still runs is a guard somebody can extend.
         )
         if (BACKEND_DIR / name).exists()
     ]

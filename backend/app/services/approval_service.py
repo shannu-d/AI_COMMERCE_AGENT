@@ -47,6 +47,7 @@ from app.db.models import Approval, IdempotencyKey
 from app.domain.approval import ApprovalFailure, ApprovalView, items_fingerprint, lines_from
 from app.domain.cart import CartView
 from app.domain.commerce import ApprovalStatus, IdempotencyScope, IdempotencyStatus
+from app.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,7 @@ class ApprovalService:
     def __init__(self, session: DbSession, *, ttl_seconds: int = 900) -> None:
         self._session = session
         self._ttl = timedelta(seconds=ttl_seconds)
+        self._audit = AuditService(session)
 
     # -- the agent's half: asking ------------------------------------------
 
@@ -209,6 +211,14 @@ class ApprovalService:
         )
         self._session.flush()
 
+        self._audit.user_approved(
+            session_id,
+            cart.id,
+            approval_id=row.id,
+            cart_version=cart.version,
+            approved_total=cart.total,
+            currency=cart.currency,
+        )
         logger.info(
             "cart approved by user",
             extra={
@@ -246,6 +256,11 @@ class ApprovalService:
         ]
         for row in rows:
             row.status = ApprovalStatus.SUPERSEDED.value
+            # M13 closes the gap ADR-007 opened and M8 recorded: without this
+            # row, an approval that vanished between two reads is
+            # unexplainable - and the price-drift scenario is precisely a story
+            # about an approval vanishing.
+            self._audit.approval_superseded(cart_id, approval_id=row.id, reason=reason)
         if rows:
             self._session.flush()
             logger.info(
@@ -269,6 +284,7 @@ class ApprovalService:
         ]
         for row in rows:
             row.status = ApprovalStatus.EXPIRED.value
+            self._audit.approval_expired(cart_id, approval_id=row.id)
         if rows:
             self._session.flush()
         return len(rows)

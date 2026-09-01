@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.config import Settings, get_settings
 from app.db.session import get_db
+from app.services.audit_service import AuditService
 from app.services.webhook_service import WebhookService, WebhookSignatureError
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,11 @@ async def razorpay_webhook(
         # parsed and long before anything is written, so there is nothing of
         # this request's to undo - and a rollback here could only discard work
         # that belongs to whatever else shares the transaction.
+        # The rejection is recorded even though nothing else is: an audit that
+        # showed only successful deliveries would hide exactly the events
+        # somebody reads the log to find.
+        AuditService(db).webhook_signature_rejected()
+        db.commit()
         logger.warning("webhook signature rejected", extra={"reason": str(error)})
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"status": "rejected"}
