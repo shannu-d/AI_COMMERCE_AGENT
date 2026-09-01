@@ -24,7 +24,16 @@ from app.services import (
     RecommendationService,
 )
 
-DETERMINISTIC_PACKAGES = ("app/services", "app/repositories", "app/domain", "app/ranking")
+DETERMINISTIC_PACKAGES = (
+    "app/services",
+    "app/repositories",
+    "app/domain",
+    "app/ranking",
+    # M9. The Policy Engine decides whether money may move, so of every package
+    # on this list it is the one that must least be reachable from the
+    # probabilistic side.
+    "app/policy",
+)
 FORBIDDEN_IMPORT_ROOTS = ("app.llm", "app.agent")
 FORBIDDEN_LIBRARIES = ("anthropic", "razorpay", "openai")
 
@@ -89,9 +98,11 @@ def test_no_commerce_service_has_been_created_early() -> None:
     which was right while none of them had a table. M6 gave them tables and it
     narrowed to services. M7 writes carts - a cart moves no money and needs no
     approval - so it narrows again to what does: the Policy Engine, the Order
-    Service, the audit writer and the Razorpay-facing routes. M8 adds approvals -
-    which authorize but do not charge - and it narrows no further, because what
-    remains is exactly the money.
+    Service, the audit writer and the Razorpay-facing routes. M8 adds approvals,
+    which authorize but do not charge, and M9 the Policy Engine, which decides
+    but does not charge either. What remains is exactly the code that touches
+    money: the Order Service, the Razorpay client, the audit writer and their
+    routes.
 
     What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
     same thing, and this is where "not yet" is checkable.
@@ -99,10 +110,8 @@ def test_no_commerce_service_has_been_created_early() -> None:
     premature = [
         name
         for name in (
-            # The Policy Engine (M9) and the Razorpay client (M11). Neither has
-            # a line of code yet, and ADR-011 through ADR-014 are what they wait
-            # for rather than a schedule.
-            "app/policy",
+            # The Razorpay client (M11). ADR-011 through ADR-014 are what it
+            # waits for, rather than a schedule.
             "app/payments",
             "app/services/order_service.py",
             "app/services/audit_service.py",
