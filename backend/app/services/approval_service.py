@@ -43,14 +43,19 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DbSession
 
-from app.db.models import Approval
+from app.db.models import Approval, IdempotencyKey
 from app.domain.approval import ApprovalFailure, ApprovalView, items_fingerprint, lines_from
 from app.domain.cart import CartView
-from app.domain.commerce import ApprovalStatus
+from app.domain.commerce import ApprovalStatus, IdempotencyScope, IdempotencyStatus
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["ApprovalError", "ApprovalService"]
+__all__ = ["IDEMPOTENCY_TTL_SECONDS", "ApprovalError", "ApprovalService"]
+
+#: 24 hours (ADR-013, closing D4). Comfortably longer than the 15-minute
+#: approval TTL, so a key always outlives the approval it protects and a late
+#: duplicate submission finds a stored result rather than a clean slate.
+IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60
 
 
 class ApprovalError(Exception):
@@ -178,6 +183,32 @@ class ApprovalService:
         )
         self._session.add(row)
         self._session.flush()
+
+        # ADR-013: the backend mints the idempotency key here, in the same
+        # transaction, bound to this approval's exact state. Minted by the
+        # backend rather than chosen by the client because the key must be
+        # *derived from the state it protects* - a client-chosen one protects
+        # only against that client's own retries and could be reused across
+        # genuinely different carts.
+        #
+        # A cart mutation bumps the version and supersedes this approval, so the
+        # next approval mints a new key. That is P§16's "fresh idempotency key",
+        # obtained as a consequence of the approval rules rather than as a
+        # separate mechanism anyone has to remember.
+        self._session.add(
+            IdempotencyKey(
+                key=str(uuid.uuid4()),
+                scope=IdempotencyScope.ORDER_CREATION.value,
+                session_id=session_id,
+                cart_id=cart.id,
+                cart_version=cart.version,
+                approved_total=cart.total,
+                currency=cart.currency,
+                expires_at=now + timedelta(seconds=IDEMPOTENCY_TTL_SECONDS),
+            )
+        )
+        self._session.flush()
+
         logger.info(
             "cart approved by user",
             extra={
@@ -324,3 +355,25 @@ class ApprovalService:
     @staticmethod
     def _now() -> datetime:
         return datetime.now(UTC)
+
+    def idempotency_key_for(self, cart_id: uuid.UUID, cart_version: int) -> str | None:
+        """The key minted alongside the live approval for this cart version.
+
+        Returned to the client with the approval, and presented back on
+        `POST /api/orders`. `None` when no key was minted, which happens only
+        for an approval recorded before this milestone.
+        """
+        row = (
+            self._session.execute(
+                select(IdempotencyKey)
+                .where(
+                    IdempotencyKey.cart_id == cart_id,
+                    IdempotencyKey.cart_version == cart_version,
+                    IdempotencyKey.status == IdempotencyStatus.RESERVED.value,
+                )
+                .order_by(IdempotencyKey.created_at.desc())
+            )
+            .scalars()
+            .first()
+        )
+        return None if row is None else row.key

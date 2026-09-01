@@ -172,4 +172,9 @@ class ApprovalResponse(BaseModel):
     currency: str
     approved_at: str | None
     expires_at: str
+    #: Minted with this approval and bound to its exact state (ADR-013). The
+    #: client presents it on `POST /api/orders`; presenting it twice yields one
+    #: order and the same answer. `None` only for an approval recorded before
+    #: M10 existed.
+    idempotency_key: str | None = None
     cart: CartResponse

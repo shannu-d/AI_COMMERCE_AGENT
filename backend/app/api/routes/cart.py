@@ -283,5 +283,6 @@ def approve_cart(
         currency=approval.currency,
         approved_at=approval.approved_at.isoformat() if approval.approved_at else None,
         expires_at=approval.expires_at.isoformat(),
+        idempotency_key=approvals.idempotency_key_for(cart.id, approval.cart_version),
         cart=CartResponse.of(cart),
     )

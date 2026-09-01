@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import __version__
-from app.api.routes import cart, chat, health
+from app.api.routes import cart, chat, health, orders
 from app.config import get_settings
 from app.logging_config import configure_logging
 
@@ -66,10 +66,9 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(cart.router, prefix="/api")
+    app.include_router(orders.router, prefix="/api")
 
     # Routers added by later milestones, each behind its ADR:
-    #   approval M8   ADR-007
-    #   orders   M10  ADR-011
     #   webhooks M12  ADR-012
 
     return app
