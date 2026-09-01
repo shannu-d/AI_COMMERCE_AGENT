@@ -16,7 +16,8 @@ an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexe
 **Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
 engine), M4 (LLM layer), M5 (agent runtime, read-only), M6 (commerce schema), M7 (cart) and M8
 (approval), M9 (Policy Engine) M10 (orders and idempotency) and M11 (Razorpay orders,
-code complete; live verification blocked on credentials) are complete. M12–M15 are not started.**
+code complete; live verification blocked on credentials) and M12 (webhook) are complete.
+M13–M15 are not started.**
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
@@ -52,7 +53,7 @@ python -m ruff format .
 
 Tests needing PostgreSQL are marked `requires_db` and **skip with a visible reason** when
 `TEST_DATABASE_URL` is unreachable. A run showing skips is an incomplete run, not a pass. Full suite
-with a database: **1201 tests, all passing, none skipped**; 872 of those need no database.
+with a database: **1226 tests, all passing, none skipped**; 874 of those need no database.
 
 This machine has neither Docker nor an installed PostgreSQL. The documented way around that — used
 to verify M1, M3 and M5 through M10 — is a throwaway PostgreSQL 16.4 unpacked from the official Windows binary
@@ -156,7 +157,7 @@ engine is deterministic and the model never computes a score or writes a recomme
 
 `app/ranking/` is **pure**: no session, no query, no clock, no randomness, no model. Inputs and
 outputs are frozen domain values. Keep it that way — it is what makes ADR-004's exit test (the R§10
-worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 872 of the 1201
+worked example, `tests/ranking/test_ranker.py`) an ordinary unit test, and it is why 874 of the 1226
 tests need no database. `RecommendationService` is the only M3 code that opens a query.
 
 **The R§10 worked example is the exit condition and it is exact.** Under the `explainability_demo`

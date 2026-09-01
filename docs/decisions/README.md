@@ -23,7 +23,7 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted, **read tools (M5) and `propose_cart` (M7) implemented** | M5–M11 | B2, B7, D6, E1, E4, E5 |
 | [010](ADR-010-chat-api-contract.md) | The Chat API Contract | Accepted, **implemented (M5)** | M5 / M14 | E3, E6 |
 | [011](ADR-011-razorpay-order-creation-boundary.md) | The Razorpay Order Creation Boundary | Accepted, **implemented (M9-M11); live provider call unverified** | M9–M11 | D3, C6 |
-| [012](ADR-012-webhook-as-payment-truth.md) | The Verified Webhook is Payment Truth | Accepted | M12 | D7, D8 |
+| [012](ADR-012-webhook-as-payment-truth.md) | The Verified Webhook is Payment Truth | Accepted, **implemented (M12)** | M12 | D7, D8 |
 | [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted, **order half implemented (M10)** | M10 / M12 | D4 |
 | [014](ADR-014-price-drift-recovery.md) | Price Drift Recovery | Accepted | M9–M15 | D2, D9 |
 | [015](ADR-015-llm-test-seam.md) | The LLM Test Seam | Accepted, **implemented (M4)** | M4 / M5 | F1, E2 |

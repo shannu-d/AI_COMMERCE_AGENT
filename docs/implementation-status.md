@@ -747,6 +747,46 @@ This is the second unperformed live check in the project, alongside M4's Claude 
 (ADR-016). Both are recorded rather than closed, and both need a credential this machine does not
 have.
 
+### M12 - webhook
+
+Where payment truth enters. ADR-012 and P§22-P§28, and the milestone where the difference between
+M11 and M12 matters: M11's exit condition genuinely needs a Razorpay credential, and M12's does not.
+The signature is HMAC-SHA256 over the raw body with a secret the test controls, so the entire
+verification path is exercisable offline - and it is.
+
+**Verification runs against the raw bytes.** The route is `async`, takes `Request`, and reads
+`await request.body()` before anything parses it. `json.loads` followed by `json.dumps` does not
+reproduce the original bytes, so a signature checked against re-serialized JSON proves nothing
+(P§24). One test posts the same JSON document with one space added and asserts a 400 - the same
+document, different bytes, correctly rejected. Another asserts the route's signature binds no
+Pydantic model, because adding one looks like an improvement and would silently break the guarantee.
+
+**Deduplication is the UNIQUE(provider, event_id) constraint**, not a lookup: two simultaneous
+deliveries would both pass a "have I seen this?" query. The insert is wrapped in a SAVEPOINT so the
+violation does not poison the outer transaction, since a duplicate is a normal outcome rather than a
+failure.
+
+**Handlers assert a state rather than advance one** (P§27), so applying the same event twice or a
+late-arriving earlier event after a later one converges. A payment failure arriving after a capture
+is logged and ignored: money that arrived does not un-arrive because an earlier attempt's failure
+was delivered slowly.
+
+**Nothing is ever dropped.** An event for an unknown order is stored with a null `order_id` - it may
+have arrived before the order was committed, or belong to another system sharing the account, and
+the stored row is what a reconciliation reads. An unsubscribed event type is stored `IGNORED`,
+because silently discarding it would make a future subscription change invisible. Both answer 200,
+as does a duplicate, because Razorpay retries anything else and all three are correctly handled.
+
+**How M12 was verified.** **Result: 1226 tests pass, 0 fail, 0 skip**, 874 of them needing no
+database.
+
+One flaw in the route surfaced through a test and was fixed rather than worked around. The
+signature-rejection path called `db.rollback()`, which looked defensive and was wrong: verification
+runs before the body is parsed and long before anything is written, so there is nothing of that
+request's to undo, and the rollback could only discard work belonging to whatever else shared the
+transaction. It showed up as a test fixture vanishing mid-test, which is exactly the shape the
+production bug would have taken.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
