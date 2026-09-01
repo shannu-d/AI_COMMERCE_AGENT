@@ -703,6 +703,50 @@ that read as a bug in the code under test. The session fixture now uses
 `join_transaction_mode="create_savepoint"`, so a route's commit releases a savepoint and behaves
 exactly as it does in production while the outer transaction still rolls back.
 
+### M11 - Razorpay orders (code complete; live call unverified)
+
+ADR-011 step 9, the checkout handoff of P§21, and the one module in this application that talks to
+a payment provider.
+
+**The provider call happens after the commit, and that ordering is the guarantee.**
+`attach_provider_order` is a separate method rather than the tail of `create_order`, so a failure
+leaves the order in `ORDER_CREATED` with a null `razorpay_order_id` - visible, retryable, auditable
+- rather than rolling back a purchase the buyer authorized. The route logs the failure and returns
+the order; `POST /api/orders/{id}/checkout` retries it, reusing the same internal order and the same
+idempotency key, so a network failure cannot produce two provider orders.
+
+**The client takes an `Order`, not an amount.** Its signature is `(self, order)` and the figure sent
+is `orders.total_amount_minor` read from the row. That is ADR-011's "nothing from the client is
+authoritative" surviving the last step of the path. It also checks the amount that comes *back*: a
+provider returning a different figure would mean a payment page showing something nobody approved,
+and this is the last point at which that can still be compared against what was authorized.
+
+**The seam is a two-method protocol**, exactly as ADR-015 does for the model, and `sdk.py` is the
+only module that imports the Razorpay package - asserted by the same kind of AST walk that holds
+`client.py` as the sole importer of the Anthropic SDK. `create` and `fetch` are the complete list of
+things that can happen to a provider from here: no capture, no refund, and no way to ask whether a
+payment succeeded, because that question is answered by a verified webhook and nowhere else
+(ADR-012).
+
+**Secrets never leave.** `checkout_config` returns six keys, asserted as an exact set, because a
+field that ever echoed configuration wholesale would be caught by checking values rather than by
+trusting a docstring.
+
+**How M11 was verified, and what was not.** **Result: 1201 tests pass, 0 fail, 0 skip**, 872 of them
+needing no database. All twenty Razorpay tests run with no credentials and no network.
+
+**M11's stated exit condition - a policy PASS producing a real test-mode Razorpay order - has NOT
+been performed.** This repository has no Razorpay test key: `RAZORPAY_KEY_SECRET` in `.env` is still
+`REPLACE_ME`. Everything the application does with a provider response is covered; that a real
+test-mode order comes back is not, and cannot be without credentials. The doubles under
+`tests/fixtures/razorpay.py` are shaped from Razorpay's published order API and are explicitly *not*
+recorded from a live call - a hand-written fixture claiming to be a recording would be the fiction
+ADR-015 rejects for the model.
+
+This is the second unperformed live check in the project, alongside M4's Claude connection
+(ADR-016). Both are recorded rather than closed, and both need a credential this machine does not
+have.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
