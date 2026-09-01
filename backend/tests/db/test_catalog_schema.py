@@ -80,13 +80,14 @@ def test_no_commerce_service_or_policy_module_has_been_created_early() -> None:
     neither of which moves money; M9 adds the Policy Engine, which decides
     whether money may move without moving any, and M10 the Order Service, which
     creates the internal order before any provider is called, and M11 the
-    Razorpay client. The verified-webhook handler is M12, and the specification is emphatic (D§39, A§58, F§37)
+    Razorpay client, and M12 the verified-webhook handler. The audit writer is
+    M13, and the specification is emphatic (D§39, A§58, F§37)
     that the money path must not be coded before its decisions exist. Tables are
     inert; a service that writes to them is not.
     """
     packages = [
         name
-        for name in ("app/api/routes/webhooks.py", "app/services/audit_service.py")
+        for name in ("app/services/audit_service.py", "app/repositories/audit_repository.py")
         if (BACKEND_DIR / name).exists()
     ]
 

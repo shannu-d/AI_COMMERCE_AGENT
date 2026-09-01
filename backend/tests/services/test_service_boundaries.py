@@ -103,8 +103,9 @@ def test_no_commerce_service_has_been_created_early() -> None:
     but does not charge either. M10 adds the Order Service, which creates the
     internal order before any provider is reached, and M11 the Razorpay client,
     which creates a provider order and still decides nothing about whether money
-    moved. What remains is what does decide that: the verified-webhook handler,
-    and the audit writer that records it.
+    moved. M12 adds the verified-webhook handler, which is the one thing that
+    does decide it. What remains is the audit writer: a durable record of what
+    happened, which by design can change no outcome at all.
 
     What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
     same thing, and this is where "not yet" is checkable.
@@ -112,13 +113,12 @@ def test_no_commerce_service_has_been_created_early() -> None:
     premature = [
         name
         for name in (
-            # The webhook handler (M12) and the audit writer (M13). M11 added
-            # the Razorpay client, which *creates* a provider order and still
-            # decides nothing about whether money moved - only a verified
-            # webhook does that (ADR-012), and this is what is left.
+            # The audit writer (M13). M12 added the verified-webhook handler,
+            # which is the one thing that decides money moved - so what remains
+            # is the durable record of everything that happened, and nothing
+            # that can change an outcome.
             "app/services/audit_service.py",
-            "app/api/routes/webhooks.py",
-            "app/services/webhook_service.py",
+            "app/repositories/audit_repository.py",
         )
         if (BACKEND_DIR / name).exists()
     ]
