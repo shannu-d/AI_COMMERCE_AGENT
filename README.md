@@ -136,7 +136,7 @@ integrity, configuration rules, log redaction, the application boot with its hea
 ADR-004's exit test (the R§10 worked example) is an ordinary unit test — and **the whole LLM
 layer**, which is faked at the `LLMClient` protocol rather than at the network.
 
-**Current result: 1226 tests, all passing, none skipped** against PostgreSQL 16.4 — 874 of them
+**Current result: 1246 tests, all passing, none skipped** against PostgreSQL 16.4 — 880 of them
 without any database at all, and the 198 LLM tests without an API key or a network either.
 
 ### Lint and format

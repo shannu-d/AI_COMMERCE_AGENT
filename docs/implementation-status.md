@@ -787,6 +787,53 @@ request's to undo, and the rollback could only discard work belonging to whateve
 transaction. It showed up as a test fixture vanishing mid-test, which is exactly the shape the
 production bug would have taken.
 
+### M13 - audit and trace
+
+The durable record of how a transaction reached its outcome, and the milestone that closes the gap
+M8 recorded against ADR-007.
+
+**A§40's distinction is the shape of this milestone.** The agent trace is per turn, returned in the
+response and never persisted (ADR-010, closing E6) - it explains one conversation to a developer,
+and it has existed since M5. The audit log is durable and append-only, and explains a *transaction*
+to whoever asks afterwards. M13 adds the second.
+
+**M13's exit condition - a full transaction is reconstructable from the audit events - is one test
+that walks a whole purchase** (cart, approval, policy, order, provider order, verified webhook) and
+then reads the story back from `audit_events` alone, touching no other table. Writing it found a
+real gap: `PAYMENT_WEBHOOK_RECEIVED` was emitted before the order lookup and therefore carried no
+order id, so a delivery could not be tied to the order it was about. It is now emitted after the
+lookup and still written when the order is unknown, because the arrival is a fact either way (P§27).
+
+**One named method per event type**, sixteen of them, rather than a generic `record(type, ...)`.
+They look repetitive and that is the point: each names exactly what must be captured, so a call site
+cannot omit the reason codes from a `POLICY_FAIL` or both totals from a `PRICE_CHANGED`. A generic
+writer would put that responsibility on every caller and lose it at the first hurried one.
+
+**Attribution is checked, not assumed.** `USER_APPROVED` is written with actor `USER` and asserted
+to be - that row is the record that a human authorized a payment, and `AGENT` there would make the
+log disagree with the architecture it exists to evidence. Cart creation is `AGENT`, policy is
+`SYSTEM`, payments are `RAZORPAY`.
+
+**Append-only is enforced where a developer meets it.** `AuditRepository` exposes `append` and reads
+and has no update or delete; a test asserts that by walking its method names, and another asserts
+the table has no `updated_at`. In deployment the application's role is granted INSERT and SELECT on
+it and nothing else.
+
+**The four events beyond RZP-07's twelve earn their place** in the failure paths, and each is
+tested through the code that emits it rather than by calling the writer directly:
+`APPROVAL_SUPERSEDED` on a cart mutation, `PRICE_CHANGED` with both totals, `INVENTORY_FAILURE` with
+the SKU but *not* the stock level (ADR-009, closing E5), and `WEBHOOK_SIGNATURE_REJECTED` with no
+order id, because an unverified request names nothing this application is entitled to believe.
+
+**How M13 was verified.** **Result: 1246 tests pass, 0 fail, 0 skip**, 880 of them needing no
+database.
+
+The commerce-behaviour guard that has narrowed at every milestone since M6 now has an empty list,
+and is deliberately kept rather than deleted. An empty guard that still runs is a guard somebody can
+extend; a deleted one is a rule somebody has to remember. It is joined by two new ones asserting
+what M13 must keep true: the audit writer imports no service that could change an outcome, and its
+repository offers no way to rewrite history.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as
