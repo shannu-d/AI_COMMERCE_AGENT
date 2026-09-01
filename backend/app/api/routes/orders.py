@@ -33,6 +33,7 @@ from app.agent.errors import ApiErrorCode
 from app.api.schemas.order import CreateOrderRequest, OrderResponse
 from app.config import Settings, get_settings
 from app.db.session import get_db
+from app.payments import RazorpayClient, RazorpayError
 from app.services.order_service import OrderError, OrderService
 
 logger = logging.getLogger(__name__)
@@ -110,8 +111,63 @@ def create_order(
             },
         ) from None
 
+    # ADR-011 step 8: the internal order is committed here, *before* any
+    # provider is reached. Everything after this point can fail without losing
+    # the record of a purchase the buyer authorized.
     db.commit()
-    return OrderResponse.of(result, replayed=result.replayed)
+
+    if not result.replayed:
+        _attach_provider_order(db, settings, result.order_id)
+
+    # Re-read so the response carries whatever the provider step achieved,
+    # while `replayed` is carried forward from the service - re-reading a row
+    # cannot tell whether *this* call created it, and that is exactly the
+    # distinction a client retrying after a network timeout needs.
+    order = _build(db, settings).get(settings.default_merchant_id, result.order_id)
+    return OrderResponse.from_row(order, replayed=result.replayed)
+
+
+def _attach_provider_order(db: DbSession, settings: Settings, order_id: uuid.UUID) -> None:
+    """ADR-011 step 9. A failure here is recorded, not raised.
+
+    The order exists and is committed. If the provider cannot be reached, the
+    right outcome is an order in `ORDER_CREATED` with a null `razorpay_order_id`
+    - visible, retryable and auditable - not a 500 that suggests to the buyer
+    that nothing happened. `POST /api/orders/{id}/checkout` retries it.
+    """
+    try:
+        client = _razorpay(settings)
+    except RazorpayError as error:
+        logger.warning(
+            "no payment provider configured; order left awaiting one",
+            extra={"order_id": str(order_id), "reason": str(error)},
+        )
+        return
+
+    try:
+        _build(db, settings).attach_provider_order(settings.default_merchant_id, order_id, client)
+        db.commit()
+    except (RazorpayError, OrderError):
+        db.rollback()
+        logger.warning(
+            "provider order not created; the internal order stands",
+            extra={"order_id": str(order_id)},
+        )
+
+
+def _razorpay(settings: Settings) -> RazorpayClient:
+    from app.payments.sdk import build_api
+
+    return RazorpayClient(
+        build_api(
+            settings.razorpay_key_id,
+            None
+            if settings.razorpay_key_secret is None
+            else settings.razorpay_key_secret.get_secret_value(),
+        ),
+        key_id=settings.razorpay_key_id or "",
+        merchant_name=settings.default_merchant_name,
+    )
 
 
 @router.get(
@@ -140,3 +196,54 @@ def get_order(
             },
         )
     return OrderResponse.from_row(order)
+
+
+@router.post(
+    "/orders/{order_id}/checkout",
+    summary="Checkout configuration for an order, creating the provider order if needed",
+    responses={
+        404: {"description": "No such order."},
+        503: {"description": "The payment provider could not be reached."},
+    },
+)
+def checkout(
+    order_id: uuid.UUID,
+    db: DbSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """What the frontend needs to open Razorpay Checkout (P§21, RZP-03).
+
+    Also the retry for ADR-011 step 9: an order left in `ORDER_CREATED` because
+    the provider was unreachable gets its provider order here, using the same
+    internal order and the same idempotency key - so a network failure cannot
+    produce two provider orders.
+
+    The response carries the **public** key id, the amount in minor units, the
+    currency and the merchant name. `RAZORPAY_KEY_SECRET` and
+    `RAZORPAY_WEBHOOK_SECRET` never appear in it (L§45, RZP-01, RZP-03).
+
+    The frontend's success callback is **not** payment truth (P§28, ADR-012).
+    """
+    service = _build(db, settings)
+    order = service.get(settings.default_merchant_id, order_id)
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": ApiErrorCode.VALIDATION_ERROR.value, "message": "no such order"},
+        )
+
+    try:
+        client = _razorpay(settings)
+        if order.razorpay_order_id is None:
+            order = service.attach_provider_order(settings.default_merchant_id, order_id, client)
+            db.commit()
+        return dict(client.checkout_config(order))
+    except RazorpayError as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "code": ApiErrorCode.PAYMENT_PENDING.value,
+                "message": str(error),
+            },
+        ) from error

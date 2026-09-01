@@ -191,6 +191,37 @@ class OrderService:
 
     # -- reads ---------------------------------------------------------------
 
+    def attach_provider_order(
+        self, merchant_id: uuid.UUID, order_id: uuid.UUID, client: Any
+    ) -> Order:
+        """ADR-011 step 9, **after** the internal order is committed.
+
+        Deliberately a separate method rather than the tail of `create_order`,
+        because the ordering is the guarantee: the internal order exists and is
+        committed before a provider is reached. A failure here therefore leaves
+        the order in `ORDER_CREATED` with a null `razorpay_order_id` - a visible,
+        retryable, auditable state - rather than rolling back a purchase the
+        buyer authorized.
+
+        Retrying reuses this same internal order and the same idempotency key,
+        so a network failure cannot produce two provider orders (ADR-013).
+        """
+        order = self.get(merchant_id, order_id)
+        if order is None:
+            raise OrderError("VALIDATION_ERROR", "no such order")
+        if order.razorpay_order_id is not None:
+            return order  # already attached; retrying is a no-op, not an error
+
+        provider_id = client.create_order(order)
+        order.razorpay_order_id = provider_id
+        order.status = OrderStatus.RAZORPAY_ORDER_CREATED.value
+        self._session.flush()
+        logger.info(
+            "provider order attached",
+            extra={"order_id": str(order.id), "razorpay_order_id": provider_id},
+        )
+        return order
+
     def get(self, merchant_id: uuid.UUID, order_id: uuid.UUID) -> Order | None:
         return self._session.execute(
             select(Order).where(Order.id == order_id, Order.merchant_id == merchant_id)

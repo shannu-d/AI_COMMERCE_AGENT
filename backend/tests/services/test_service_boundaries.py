@@ -101,10 +101,10 @@ def test_no_commerce_service_has_been_created_early() -> None:
     Service, the audit writer and the Razorpay-facing routes. M8 adds approvals,
     which authorize but do not charge, and M9 the Policy Engine, which decides
     but does not charge either. M10 adds the Order Service, which creates the
-    internal order and still calls no provider - ADR-011 commits the order
-    *before* Razorpay is reached. What remains is exactly the code that talks to
-    a payment provider: the client itself, the webhook route, and the audit
-    writer that records what they did.
+    internal order before any provider is reached, and M11 the Razorpay client,
+    which creates a provider order and still decides nothing about whether money
+    moved. What remains is what does decide that: the verified-webhook handler,
+    and the audit writer that records it.
 
     What it must never narrow to is nothing. D§39, A§58 and F§37 all say the
     same thing, and this is where "not yet" is checkable.
@@ -112,15 +112,13 @@ def test_no_commerce_service_has_been_created_early() -> None:
     premature = [
         name
         for name in (
-            # The Razorpay client itself (M11) and the webhook route (M12).
-            # `app/payments/` now holds ADR-008's minor-unit conversion, which
-            # M10 needs to write `orders.total_amount_minor` and which contains
-            # no client, no credentials and no network call - so the guard names
-            # the client rather than the package.
-            "app/payments/razorpay_client.py",
-            "app/payments/client.py",
+            # The webhook handler (M12) and the audit writer (M13). M11 added
+            # the Razorpay client, which *creates* a provider order and still
+            # decides nothing about whether money moved - only a verified
+            # webhook does that (ADR-012), and this is what is left.
             "app/services/audit_service.py",
             "app/api/routes/webhooks.py",
+            "app/services/webhook_service.py",
         )
         if (BACKEND_DIR / name).exists()
     ]

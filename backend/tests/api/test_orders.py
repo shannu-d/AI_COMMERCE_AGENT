@@ -270,7 +270,17 @@ def test_the_error_body_never_leaks_an_exception(session, api, session_id, check
 # --------------------------------------------------------------------------
 
 
-def test_the_order_surface_is_exactly_f26s_two_names():
+def test_the_order_surface_is_f26s_two_names_plus_checkout():
+    """F§26's two, and the checkout handoff RZP-03 requires.
+
+    `/checkout` is not a duplicate API: it returns the *configuration* a frontend
+    needs to open Razorpay Checkout, and doubles as the retry for ADR-011 step 9
+    when the provider was unreachable at order creation.
+    """
     paths = {p for p in create_app().openapi()["paths"] if p.startswith("/api/orders")}
 
-    assert paths == {"/api/orders", "/api/orders/{order_id}"}
+    assert paths == {
+        "/api/orders",
+        "/api/orders/{order_id}",
+        "/api/orders/{order_id}/checkout",
+    }

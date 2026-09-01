@@ -79,14 +79,14 @@ def test_no_commerce_service_or_policy_module_has_been_created_early() -> None:
     M6 was schema and nothing else. M7 added the Cart Service and M8 approvals,
     neither of which moves money; M9 adds the Policy Engine, which decides
     whether money may move without moving any, and M10 the Order Service, which
-    creates the internal order before any provider is called. The Razorpay client
-    is M11, and the specification is emphatic (D§39, A§58, F§37)
+    creates the internal order before any provider is called, and M11 the
+    Razorpay client. The verified-webhook handler is M12, and the specification is emphatic (D§39, A§58, F§37)
     that the money path must not be coded before its decisions exist. Tables are
     inert; a service that writes to them is not.
     """
     packages = [
         name
-        for name in ("app/payments/razorpay_client.py", "app/services/audit_service.py")
+        for name in ("app/api/routes/webhooks.py", "app/services/audit_service.py")
         if (BACKEND_DIR / name).exists()
     ]
 

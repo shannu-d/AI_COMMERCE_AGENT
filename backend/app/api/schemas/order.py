@@ -77,8 +77,9 @@ class OrderResponse(BaseModel):
         )
 
     @classmethod
-    def from_row(cls, order) -> OrderResponse:
+    def from_row(cls, order, *, replayed: bool = False) -> OrderResponse:
         return cls(
+            replayed=replayed,
             order_id=order.id,
             status=order.status,
             total_amount=str(order.total_amount),
