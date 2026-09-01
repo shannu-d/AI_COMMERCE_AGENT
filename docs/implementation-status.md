@@ -650,6 +650,59 @@ resolved onto the context once before dispatch, which removes the unused paramet
 context self-describing - a decision is about a moment, and the moment is part of the input it was
 made from.
 
+### M10 — orders and idempotency
+
+The money path, up to the point where a provider would be called. `OrderService` implements ADR-011
+steps 1 through 8 in one method: load live, lock the inventory rows, evaluate policy, and either
+refuse with reason codes or insert the order and its immutable lines. Steps 9 and 10 - the Razorpay
+call and the audit write - are M11 and M13.
+
+**An order in `ORDER_CREATED` with a null `razorpay_order_id` is the designed state, not a broken
+one.** ADR-011 commits the internal order *before* the provider is called, because the reverse
+ordering would allow a provider order with no local record, which is unreconcilable. M10 therefore
+ends exactly where the ADR says the commit belongs.
+
+**M10's exit condition - a duplicate request produces exactly one logical order - is asserted three
+ways.** The service returns the stored answer with `replayed=True`; the database holds one row; and
+a raw insert reusing the same `idempotency_key_id` is refused by the `UNIQUE` constraint even with
+every application check bypassed. Application logic makes the common case pleasant; the constraint
+makes the rare case correct.
+
+**The backend mints the key, at approval time** (ADR-013). `POST /api/cart/approve` creates it in
+the same transaction as the approval and returns it; the client presents it on `POST /api/orders`. A
+cart mutation bumps the version and supersedes the approval, so the next approval mints a new key -
+P§16's "fresh idempotency key" obtained as a consequence of the approval rules rather than as a
+separate mechanism anyone has to remember.
+
+`FOR UPDATE NOWAIT` claims the key rather than a conditional status update (deviation A42): ADR-006
+fixes the status column at three values and a key minted at approval time is already `RESERVED`, so
+there is no fourth state to move through. The lock is the mutex ADR-013 asks for and is strictly
+stronger - it also serializes the read of `response_snapshot` a replay depends on. A second request
+that cannot take it gets `409 ORDER_IN_PROGRESS`: a race lost cleanly rather than resolved by
+whoever arrives second.
+
+**Nothing from the client is authoritative.** `CreateOrderRequest` carries a session, a cart, a
+claimed `cart_version` and the key. It has no amount, no price, no item list and no currency, so
+F§17's forged `amount = ₹1` is not defeated by validation - it has nowhere to be submitted, and
+`extra="forbid"` makes the attempt a 422 rather than a field quietly discarded.
+
+**ADR-008's minor-unit conversion arrives here** rather than in M11, because
+`orders.total_amount_minor` is written when the order is created. `app/payments/money.py` holds the
+two functions and nothing else - no client, no credentials, no network call - so the boundary guard
+narrows from "`app/payments` must not exist" to naming the Razorpay client itself. A new guard
+asserts no module outside that package multiplies or divides by 100.
+
+**How M10 was verified.** **Result: 1181 tests pass, 0 fail, 0 skip**, 852 of them needing no
+database.
+
+One real defect surfaced, and it was in the test scaffolding rather than the code. The API tests
+inject the test's own session, and a route that finishes its work calls `db.commit()` - correctly,
+it is the unit of work - which ended the test's transaction and made its setup permanent. One test
+setting a stock level to zero then broke a *different* test's fixture several tests later, in a way
+that read as a bug in the code under test. The session fixture now uses
+`join_transaction_mode="create_savepoint"`, so a route's commit releases a savepoint and behaves
+exactly as it does in production while the outer transaction still rolls back.
+
 ### The provider question, settled after M4 (ADR-016)
 
 A `GroqClient` and a key-prefix `build_client` were added to `app/llm/` after M4 and committed as

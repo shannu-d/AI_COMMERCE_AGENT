@@ -19,12 +19,12 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [005](ADR-005-hard-constraints-vs-soft-preferences.md) | Hard Constraints versus Soft Preferences | Accepted | M3 | C5 (partial) |
 | [006](ADR-006-commerce-schema.md) | Commerce Schema (Phase 2) | Accepted, **implemented (M5 sessions, M6 the rest)** | M5 / M6 | C1, C2, C3, C6, C7, E7 |
 | [007](ADR-007-approval-model.md) | The Approval Model | Accepted, **implemented (M8)** | M8 | D1, D5 |
-| [008](ADR-008-money-representation.md) | Money Representation | Accepted, **partly implemented (M1)** | M1 / M11 | C4 |
+| [008](ADR-008-money-representation.md) | Money Representation | Accepted, **implemented (M1 catalog, M10 minor units)** | M1 / M10 | C4 |
 | [009](ADR-009-agent-tool-boundaries.md) | Agent Tool Boundaries | Accepted, **read tools (M5) and `propose_cart` (M7) implemented** | M5–M11 | B2, B7, D6, E1, E4, E5 |
 | [010](ADR-010-chat-api-contract.md) | The Chat API Contract | Accepted, **implemented (M5)** | M5 / M14 | E3, E6 |
 | [011](ADR-011-razorpay-order-creation-boundary.md) | The Razorpay Order Creation Boundary | Accepted, **Policy Engine implemented (M9)** | M9–M11 | D3, C6 |
 | [012](ADR-012-webhook-as-payment-truth.md) | The Verified Webhook is Payment Truth | Accepted | M12 | D7, D8 |
-| [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted | M10 / M12 | D4 |
+| [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted, **order half implemented (M10)** | M10 / M12 | D4 |
 | [014](ADR-014-price-drift-recovery.md) | Price Drift Recovery | Accepted | M9–M15 | D2, D9 |
 | [015](ADR-015-llm-test-seam.md) | The LLM Test Seam | Accepted, **implemented (M4)** | M4 / M5 | F1, E2 |
 | [016](ADR-016-single-model-provider.md) | Claude Is the Only Model Provider | Accepted, **implemented (M4)** | M4 / M5+ | — |
@@ -42,8 +42,9 @@ resolution service, ADR-004 and ADR-005 in full (the ranking engine, M3), ADR-00
 (`NUMERIC(12,2)`, string-encoded money in seed data, no floats), ADR-009's tool *schemas* and
 exclusions (M4), ADR-009's read tools and validation pipeline plus ADR-010's chat contract and
 ADR-006's two session tables (M5), ADR-006's remaining nine tables (M6), ADR-009's `propose_cart`
-and the cart contract of F§12/F§13 (M7), ADR-007 in full (M8), ADR-011's ten policy rules (M9;
-the order path is M10), ADR-015 in full, and ADR-016 in full.
+and the cart contract of F§12/F§13 (M7), ADR-007 in full (M8), ADR-011's ten policy rules and its order
+path (M9, M10; the Razorpay call is M11), ADR-013's order half and ADR-008 in full (M10), ADR-015
+in full, and ADR-016 in full.
 
 ## Where these ADRs deliberately depart from prior proposals
 
