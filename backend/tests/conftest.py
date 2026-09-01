@@ -147,16 +147,38 @@ def seeded_engine(db_engine: Engine, database_url: str, catalog_seed: CatalogSee
 
 @pytest.fixture
 def session(seeded_engine: Engine) -> Iterator[Session]:
-    """A session whose writes are always rolled back.
+    """A session whose writes are always rolled back, **even when committed**.
 
-    Some tests insert a variant with no inventory row, or a second merchant's
-    product, to exercise behaviour the seed deliberately does not contain. None
-    of it may survive into the next test.
+    Some tests insert a variant with no inventory row, or drop a price, or set a
+    stock level to zero, to exercise behaviour the seed deliberately does not
+    contain. None of it may survive into the next test.
+
+    A plain `rollback()` at teardown is not enough once the API tests exist. A
+    route that finishes its work calls `db.commit()` - correctly, it is the unit
+    of work - and with the test's own session injected that commit ends the
+    test's transaction and makes its setup permanent. One test setting a stock
+    level to zero then broke the next test's fixture, several tests later, in a
+    way that read as a bug in the code under test.
+
+    The fix is `join_transaction_mode="create_savepoint"`: the session's
+    `commit()` releases a SAVEPOINT rather than committing, so the route behaves
+    exactly as it does in production while the outer transaction still rolls
+    back here.
     """
-    factory = sessionmaker(bind=seeded_engine, expire_on_commit=False, future=True)
-    with factory() as active:
+    connection = seeded_engine.connect()
+    outer = connection.begin()
+    active = Session(
+        bind=connection,
+        expire_on_commit=False,
+        future=True,
+        join_transaction_mode="create_savepoint",
+    )
+    try:
         yield active
-        active.rollback()
+    finally:
+        active.close()
+        outer.rollback()
+        connection.close()
 
 
 @pytest.fixture
