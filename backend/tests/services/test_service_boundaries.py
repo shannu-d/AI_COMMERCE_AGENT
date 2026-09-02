@@ -35,7 +35,7 @@ DETERMINISTIC_PACKAGES = (
     "app/policy",
 )
 FORBIDDEN_IMPORT_ROOTS = ("app.llm", "app.agent")
-FORBIDDEN_LIBRARIES = ("anthropic", "razorpay", "openai")
+FORBIDDEN_LIBRARIES = ("groq", "anthropic", "razorpay", "openai")
 
 
 def python_files(*relative: str) -> list[pathlib.Path]:

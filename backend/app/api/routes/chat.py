@@ -43,7 +43,7 @@ def get_llm_client() -> LLMClient:
     """The model client, as a dependency so a test can replace it.
 
     ADR-015: every consumer depends on the `LLMClient` protocol rather than on
-    `AnthropicClient`. Overriding this in a test is what makes the endpoint
+    `GroqClient`. Overriding this in a test is what makes the endpoint
     testable with no key and no network — the same seam the LLM layer uses, one
     level up.
     """

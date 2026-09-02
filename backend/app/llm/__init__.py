@@ -14,7 +14,7 @@ deterministic packages — `app.services`, `app.ranking`, `app.repositories`,
 `app.domain` — must never import this one, and a standing test enforces that.
 
 **None of it needs an API key to test.** Everything depends on the `LLMClient`
-protocol rather than the Anthropic SDK, which is imported by `client.py` alone.
+protocol rather than the Groq SDK, which is imported by `client.py` alone.
 That is what makes M4's exit condition — natural language to validated
 structured intent — an ordinary offline unit test.
 
@@ -24,7 +24,7 @@ service is the agent runtime's job from M5 onward, so what the model may ask for
 can be reviewed without reading what happens when it does.
 """
 
-from app.llm.client import DEFAULT_MAX_TOKENS, AnthropicClient, LLMClient, build_client
+from app.llm.client import DEFAULT_MAX_TOKENS, GroqClient, LLMClient, build_client
 from app.llm.errors import (
     LLMAuthenticationError,
     LLMError,
@@ -64,10 +64,10 @@ __all__ = [
     "PROMPT_VERSIONS",
     "READ_ONLY_TOOL_NAMES",
     "TOOL_SCHEMAS",
-    "AnthropicClient",
     "Budget",
     "BuyerIntent",
     "DeviceReference",
+    "GroqClient",
     "IntentExtraction",
     "IntentExtractor",
     "LLMAuthenticationError",

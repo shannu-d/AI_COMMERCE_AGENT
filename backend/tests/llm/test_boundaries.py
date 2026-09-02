@@ -125,16 +125,18 @@ def test_nothing_in_the_layer_writes_to_a_file_or_opens_a_socket() -> None:
 
 
 # --------------------------------------------------------------------------
-# ADR-016: Claude is the only model provider
+# ADR-018: Groq is the locked model provider
 # --------------------------------------------------------------------------
 
-#: Model SDKs that are not Claude. L§44 names Claude Sonnet and admits a
-#: "supported Claude API interface" — which widens the *interface* (Bedrock,
-#: Vertex) and not the *model*. A provider serving a different model family is
-#: a different AI layer, and L§50's `[ ] Claude Sonnet connected` cannot be
-#: satisfied by connecting one.
+#: Model SDKs that are not the configured provider. **Inverted, not deleted,**
+#: when ADR-018 replaced ADR-016: this guard is what caught the drift it was
+#: written for, and the lesson survives the reversal of the decision. Only the
+#: allowed name changed.
+#:
+#: `anthropic` is on this list now. The provider is Groq (ADR-018), and a second
+#: model SDK reappearing under any name is the failure being prevented.
 OTHER_MODEL_SDKS = (
-    "groq",
+    "anthropic",
     "openai",
     "cohere",
     "mistralai",
@@ -144,14 +146,19 @@ OTHER_MODEL_SDKS = (
 )
 
 
-def test_anthropic_is_the_only_model_sdk_in_the_repository() -> None:
-    """ADR-016. The companion to the single-importer guard in `test_client.py`.
+def test_groq_is_the_only_model_sdk_in_the_repository() -> None:
+    """ADR-018. The companion to the single-importer guard in `test_client.py`.
 
-    That one asserts `anthropic` is imported from exactly one file. This one
-    asserts nothing *else* is imported at all — the case it missed, and the case
-    that actually happened: a Groq client sat beside the Anthropic one for a
-    commit, and the single-importer guard stayed green throughout because Groq
-    is not the Anthropic SDK.
+    That one asserts `groq` is imported from exactly one file. This one asserts
+    nothing *else* is imported at all — the case it missed, and the case that
+    actually happened: a second client sat beside the first for a commit, and
+    the single-importer guard stayed green throughout, because "one importer of
+    *this* SDK" was never the same claim as "one model SDK".
+
+    Note `openai` is forbidden even though the configured model is named
+    `openai/gpt-oss-120b`. That is a model served **by Groq**, reached through
+    the Groq SDK; importing OpenAI's client would mean talking to a different
+    provider entirely.
     """
     offenders = []
     for path in sorted((BACKEND_DIR / "app").rglob("*.py")):
@@ -163,7 +170,7 @@ def test_anthropic_is_the_only_model_sdk_in_the_repository() -> None:
 
 
 def test_no_test_named_module_lives_outside_the_test_suite() -> None:
-    """ADR-016 obligation 3, and the reason it is worth asserting.
+    """ADR-016 obligation 3 (carried forward by ADR-018), and the reason it is worth asserting.
 
     `testpaths = ["tests"]` means a `test_`-named script at the backend root is
     never collected, so it is never reviewed as a test and never run as one —

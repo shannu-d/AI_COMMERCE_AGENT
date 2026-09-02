@@ -48,7 +48,7 @@ def test_the_retry_decision_is_a_property_of_the_type(
 
 
 def test_every_failure_at_this_boundary_is_one_kind_of_error() -> None:
-    """So a caller catches `LLMError` and never an `anthropic.APIError`."""
+    """So a caller catches `LLMError` and never a `groq.APIError`."""
     for error in (
         LLMTransportError,
         LLMTimeoutError,

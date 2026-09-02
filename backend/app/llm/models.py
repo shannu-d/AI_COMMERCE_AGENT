@@ -6,7 +6,7 @@ without an API key and without a network**. M4's exit condition is "natural
 language to validated structured intent, *offline-testable*", and that is only
 achievable if the extractor depends on types a test can construct.
 
-So `IntentExtractor` never sees an `anthropic.types.Message`. It sees a
+So `IntentExtractor` never sees a provider-native response object. It sees a
 `ModelResponse`, which a fake client can produce in three lines. `client.py` is
 the only module in the repository that imports the SDK, and one test asserts
 that.

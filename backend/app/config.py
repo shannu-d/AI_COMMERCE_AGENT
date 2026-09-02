@@ -17,10 +17,10 @@ import uuid
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.identifiers import DEFAULT_MERCHANT_ID
 from app.ranking.weights import DEFAULT_PROFILE_NAME, PROFILE_NAMES
@@ -47,6 +47,19 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["console", "json"] = "console"
+
+    # -- Browser access (M14) ------------------------------------------------
+    # The API is called from a separate origin in every realistic setup: the
+    # frontend dev server on :5173, this on :8000. Without this list no browser
+    # can reach the API at all. Origins are scoped deliberately rather than
+    # wildcarded - see the validator below and ADR-017.
+    # NoDecode is load-bearing: without it pydantic-settings runs json.loads on
+    # the raw environment value before any validator sees it, so a plain
+    # comma-separated list raises SettingsError at import time rather than
+    # reaching _split_origin_list below.
+    cors_allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default=["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
 
     # -- Database (M1) -------------------------------------------------------
     database_url: str = "postgresql+psycopg://ai_commerce:ai_commerce@localhost:5432/ai_commerce"
@@ -75,11 +88,15 @@ class Settings(BaseSettings):
     default_merchant_name: str = "CircuitCraft"
     default_merchant_id: uuid.UUID = DEFAULT_MERCHANT_ID
 
-    # -- Claude (M4) ---------------------------------------------------------
-    anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-sonnet-5"
-    anthropic_timeout_seconds: int = Field(default=60, ge=1, le=600)
-    anthropic_max_retries: int = Field(default=2, ge=0, le=5)
+    # -- Groq (M4, ADR-018) --------------------------------------------------
+    # Groq is the locked provider. The key is read only by app/llm/client.py,
+    # which refuses to send a prompt containing any configured secret (L§45).
+    # No test needs a key: the model is faked at the LLMClient protocol, never
+    # at the network (ADR-015).
+    groq_api_key: SecretStr | None = None
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_timeout_seconds: int = Field(default=60, ge=1, le=600)
+    groq_max_retries: int = Field(default=2, ge=0, le=5)
 
     # -- Agent runtime (M5) --------------------------------------------------
     max_tool_calls_per_turn: int = Field(default=8, ge=1, le=32)  # ADR-009
@@ -118,6 +135,55 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _split_origin_list(cls, value: object) -> object:
+        """Accept a comma-separated string as well as a real list.
+
+        pydantic-settings parses a complex type from the environment as JSON,
+        which would make CORS_ALLOWED_ORIGINS the one setting in `.env` that has
+        to be written as `["http://..."]`. Splitting on commas keeps the file
+        uniform with every other value in it.
+        """
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
+
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def _origins_are_explicit(cls, value: list[str]) -> list[str]:
+        """Reject a wildcard, and reject an origin a browser can never match.
+
+        The wildcard is refused because this API mints and trusts `session_id`
+        with no other authentication: a session identifier is the whole of the
+        claim "this cart is mine". Allowing every origin would not by itself
+        hand a cart over - the identifier is an unguessable UUID and is carried
+        in the body rather than a cookie, so nothing is attached ambiently - but
+        "no credentials are sent automatically" is a property of today's design,
+        not a promise, and `*` would silently outlive it.
+
+        A trailing slash or a path is rejected because the `Origin` header is
+        scheme, host and port and nothing else. `http://localhost:5173/` never
+        matches any request, and the symptom - every browser call failing, with
+        a correct-looking configuration - is expensive to diagnose.
+        """
+        for origin in value:
+            if origin == "*":
+                raise ValueError(
+                    "CORS_ALLOWED_ORIGINS must not be '*'. List the origins that "
+                    "may call this API; session_id is the only thing "
+                    "distinguishing one buyer's cart from another's. See ADR-017."
+                )
+            if not origin.startswith(("http://", "https://")):
+                raise ValueError(f"CORS origin {origin!r} must start with http:// or https://")
+            if origin.rstrip("/") != origin or origin.count("/") != 2:
+                raise ValueError(
+                    f"CORS origin {origin!r} must be scheme://host[:port] with no "
+                    "trailing slash and no path - a browser's Origin header never "
+                    "contains one, so this would match nothing."
+                )
+        return value
+
     @field_validator("ranking_profile")
     @classmethod
     def _profile_must_exist(cls, value: str) -> str:
@@ -130,6 +196,26 @@ class Settings(BaseSettings):
         if value not in PROFILE_NAMES:
             raise ValueError(
                 f"RANKING_PROFILE must be one of {', '.join(PROFILE_NAMES)}; got {value!r}"
+            )
+        return value
+
+    @field_validator("groq_model")
+    @classmethod
+    def _model_is_named(cls, value: str) -> str:
+        """Reject an empty or placeholder model name at startup.
+
+        The value shipped before ADR-018 was the literal string `Groq`, which is
+        not a model identifier and would have failed on the first buyer message
+        with a provider 404 rather than at configuration time. Same reasoning as
+        `RANKING_PROFILE`: a typo must fail loudly.
+        """
+        value = value.strip()
+        if not value:
+            raise ValueError("GROQ_MODEL must name a Groq model, e.g. openai/gpt-oss-120b")
+        if value.lower() in {"groq", "default", "model"}:
+            raise ValueError(
+                f"GROQ_MODEL={value!r} is a placeholder, not a model identifier. "
+                "Use a Groq model id such as openai/gpt-oss-120b. See ADR-018."
             )
         return value
 
@@ -162,7 +248,7 @@ class Settings(BaseSettings):
         (architecture.md A§45).
         """
         candidates = (
-            self.anthropic_api_key,
+            self.groq_api_key,
             self.razorpay_key_secret,
             self.razorpay_webhook_secret,
         )

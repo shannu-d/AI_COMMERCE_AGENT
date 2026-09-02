@@ -15,9 +15,10 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pydantic>=2.10",
     "pydantic-settings>=2.7",
-    # L§44: "Anthropic API / supported Claude API interface". Imported only by
-    # `app/llm/client.py`; a test asserts no deterministic package imports it.
-    "anthropic>=0.40",
+    # ADR-018: Groq is the locked LLM provider. Imported only by
+    # `app/llm/client.py`; a test asserts no deterministic package imports it,
+    # and another asserts no *other* model SDK is imported anywhere.
+    "groq>=1.7",
 ]
 
 [project.optional-dependencies]

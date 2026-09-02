@@ -266,7 +266,14 @@ class ToolDefinition:
             _inject_category_enum(schema, category_slugs)
         return schema
 
-    def to_anthropic(self, *, category_slugs: Sequence[str] | None = None) -> dict[str, Any]:
+    def to_tool_definition(self, *, category_slugs: Sequence[str] | None = None) -> dict[str, Any]:
+        """The provider-neutral tool definition.
+
+        Deliberately *not* the provider's wire shape. Translating to what Groq's
+        OpenAI-compatible API expects is `client.py`'s job (`_to_groq_tool`), so
+        the tool catalogue stays readable as a description of what the model may
+        ask for rather than as a payload (ADR-018).
+        """
         return {
             "name": self.name,
             "description": self.description,
@@ -419,7 +426,9 @@ def build_tool_definitions(
     unknown = [name for name in selected if name not in TOOL_SCHEMAS]
     if unknown:
         raise KeyError(f"unknown tool(s): {sorted(unknown)}")
-    return [TOOL_SCHEMAS[name].to_anthropic(category_slugs=category_slugs) for name in selected]
+    return [
+        TOOL_SCHEMAS[name].to_tool_definition(category_slugs=category_slugs) for name in selected
+    ]
 
 
 def validate_tool_arguments(name: str, arguments: dict[str, Any]) -> BaseModel:

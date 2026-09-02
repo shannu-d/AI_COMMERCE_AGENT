@@ -59,7 +59,7 @@ def test_secrets_do_not_appear_in_repr_or_str() -> None:
     """architecture.md L§45: secrets never leak through incidental output."""
     settings = Settings(  # type: ignore[call-arg]
         _env_file=None,
-        anthropic_api_key="sk-ant-super-secret-value",
+        groq_api_key="gsk-super-secret-value",
         razorpay_key_secret="rzp-secret-value",
         razorpay_webhook_secret="whsec-secret-value",
     )
@@ -71,7 +71,7 @@ def test_secrets_do_not_appear_in_repr_or_str() -> None:
 
     # ...but the values are retrievable deliberately, for the redaction filter.
     assert settings.secret_values() == [
-        "sk-ant-super-secret-value",
+        "gsk-super-secret-value",
         "rzp-secret-value",
         "whsec-secret-value",
     ]
