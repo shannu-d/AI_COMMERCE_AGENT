@@ -2,6 +2,78 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## 🔒 LOCKED: the LLM provider is Groq
+
+**GROQ IS THE REQUIRED AND LOCKED LLM PROVIDER.** This is permanent unless the project owner
+explicitly changes it. Never migrate, or recommend migrating, to Anthropic, Claude, OpenAI, Gemini
+or any other provider.
+
+The authority is **[ADR-018](docs/decisions/ADR-018-groq-as-the-locked-llm-provider.md)**, which
+supersedes ADR-016 in full. `architecture.md` names Claude Sonnet (L§44, L§48, L§50, A§56) and
+**must not be followed on this point** — that file is the specification and is never edited, so the
+deviation lives in the ADR instead. ADR-016 is retained only as history and its conclusion is void.
+
+`GROQ_API_KEY` is read by `app/llm/client.py` and nowhere else, and **must never reach frontend
+code** — not in a source file, not in a `VITE_`-prefixed variable, not in an API response. Never
+print, log, commit or document a key value.
+
+**Implemented and live-verified** (M4-R, 2026-09-02). The concrete client is `GroqClient`; the
+configured model is `openai/gpt-oss-120b` — an open-weights model **served by Groq**, not a call
+to OpenAI. Note the account's tier allows 8,000 tokens/minute, roughly one agent turn per minute.
+
+---
+
+## Session Continuity Protocol
+
+The repository is the source of truth, **not** a previous conversation. Every session starts here.
+
+**Before writing any code:**
+
+1. Read this file (`CLAUDE.md`) in full.
+2. Read **`docs/PROJECT_STATE.md`** — the canonical current state and next safe action.
+3. Read the relevant sections of `docs/implementation-status.md` for the milestone you are touching.
+4. Read the ADRs that govern it (`docs/decisions/README.md` indexes them).
+5. Run `git status`.
+6. Inspect recent history (`git log --oneline -20`).
+7. **Verify the current milestone against the actual source and tests** before coding. Do not accept
+   a document's claim that something is done.
+8. **Never assume previous conversation context is authoritative.** A summary, a recollection, or a
+   prior session's claim is a hypothesis to check against the repository.
+
+**After doing work:**
+
+9. Update `docs/PROJECT_STATE.md` after any meaningful implementation.
+10. Update `docs/implementation-status.md` when a milestone completes.
+11. Create or update an ADR whenever an architectural decision changes. Supersede the old one
+    explicitly; never leave two live decisions on the same question.
+12. **Run the tests before claiming anything is complete.**
+13. Record the test count and verification status in `docs/PROJECT_STATE.md`.
+14. **Never proceed to the next milestone without satisfying the current one's exit criteria.**
+    Code existing is not the same as a milestone being complete.
+
+## Documentation roles
+
+Each file has exactly one job. Keep them from drifting into each other.
+
+| File | Role |
+| --- | --- |
+| `CLAUDE.md` | Persistent instructions and engineering rules for Claude Code. |
+| `docs/PROJECT_STATE.md` | **Canonical current state and next action.** Wins over every other doc on questions of current state. |
+| `docs/implementation-status.md` | Detailed milestone-by-milestone implementation history. |
+| `docs/decisions/` | Architectural decisions and their rationale. |
+| `docs/notes/deviations.md` | Implementation deviations, ambiguities, and their resolutions. |
+| `docs/notes/open-questions-status.md` | Open questions and their current status. |
+| `PROGRESS.md` | High-level human-readable snapshot only. **Must not contradict `PROJECT_STATE.md`.** |
+| `architecture.md` | The specification. **Never edited.** |
+| `docs/frontend/` | Frontend analysis and specification material. **Not evidence that anything is built.** |
+
+The only project root is `L:\AI_COMMERCE`. `L:\RazorPay\backend` is an unrelated SQLite prototype —
+never inspect, import, copy or depend on it.
+
+---
+
 ## What this is
 
 A conversational commerce agent for a merchant catalog (CircuitCraft, 32 SKUs), built on one
@@ -11,17 +83,45 @@ invariant that every part of the specification restates:
 
 `architecture.md` (16,737 lines, six parts) is the specification. It is **never edited**. Where it
 leaves something open, states it two ways, or requires something it never defines, the resolution is
-an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all sixteen.
+an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all seventeen.
 
-**Current state: M0 (foundation), M1 (catalog database), M2 (catalog read services), M3 (ranking
-engine), M4 (LLM layer), M5 (agent runtime, read-only), M6 (commerce schema), M7 (cart) and M8
-(approval), M9 (Policy Engine) M10 (orders and idempotency) and M11 (Razorpay orders,
-code complete; live verification blocked on credentials) M12 (webhook), M13 (audit and trace) and M15's
-backend scenarios are complete. M14 (frontend) is blocked - see below - and M15's frontend-dependent
-checks wait on it.**
+**Current state lives in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md), not here.** That file
+carries the milestone table, test counts and next action, and is updated after every meaningful
+change. In summary: M0–M10, M12 and M13 are COMPLETE; M11 is code-complete but its live check is
+unperformed; M14 is IN_PROGRESS (only F1's backend half); M15's backend scenarios pass. **M4-R**
+(the locked Groq provider) is COMPLETE and live-verified, as is frontend phase F0.
+
 The milestone plan is `docs/analysis/02-dependency-map.md`. Build one milestone at a time; the
 specification is emphatic (D§39, A§58, F§37) that this must not be built in one pass, and the money
 path must not be coded before its decisions exist.
+
+## The frontend (M14, from F0)
+
+Lives in `frontend/`, on Vite + React 18 + TypeScript (ADR-017). `cd frontend && npm run dev`.
+
+**Money is a string and stays one.** `"999.00"`, never `999.00`. Nothing in the frontend sums,
+multiplies or rounds a money value — totals come from the backend or they do not exist (ADR-008,
+F§12). The `Money` Zod schema rejects a JSON number and an unscaled string, so a total can never
+render as `1299`.
+
+**Every response is parsed through a Zod schema** in `src/api/schemas.ts`. Contract drift becomes a
+loud `MALFORMED_RESPONSE` at the fetch boundary instead of an `undefined` deep in a component.
+
+**A business outcome is not a network error.** The backend answers HTTP 200 for any turn it
+completed, *including* a policy refusal or an out-of-stock finding (ADR-010). `request()` throws only
+for 4xx/5xx and transport failures, so recovery flows never land in a component's error branch.
+
+**The error vocabulary is mirrored by hand and guarded.** `API_ERROR_CODES` in `schemas.ts` copies
+F§25's eleven codes; `backend/tests/api/test_frontend_contract.py` fails if it ever diverges from
+`app/agent/errors.py`, and also fails if a secret-bearing name appears in frontend source.
+
+**No secret may ever reach frontend code**, including in a `VITE_`-prefixed variable — Vite inlines
+those into the published bundle. The only credential that reaches the browser is the *public*
+Razorpay key id, in a response body at checkout time.
+
+⚠️ **Port 8000 may be occupied by an unrelated application on this machine** — see
+`docs/PROJECT_STATE.md` §11. If the health panel reports a malformed response, check what is actually
+listening before debugging anything else.
 
 ## Commands
 
@@ -214,9 +314,17 @@ attribute always fails. Do not add a second implementation.
 what the model believes the buyer asked for, a `ToolCall` is something the model would like to
 happen, and neither carries a price, a SKU, a stock level or a compatibility fact.
 
-**`client.py` is the only module allowed to import the Anthropic SDK** (ADR-015). An AST-walking
-test asserts the importer list is exactly that one file. Everything else takes the one-method
-`LLMClient` protocol, which is what makes all 198 LLM tests run with no key and no network.
+**`client.py` is the only module allowed to import the model SDK** (ADR-015, ADR-018). An
+AST-walking test asserts the importer list is exactly that one file. Everything else takes the
+one-method `LLMClient` protocol, which is what makes all 201 LLM tests run with no key and no
+network. The transport types in `models.py` are provider-agnostic by design (deviation A22),
+so the concrete client class is the *only* provider-specific code in the application.
+
+> Groq's API is **OpenAI-compatible**: `finish_reason` (not `stop_reason`), tools shaped as
+> `{"type": "function", …}`, tool arguments as a JSON **string**, and usage under
+> `prompt_tokens`/`completion_tokens`. Each of those was a real defect once; each now has a
+> named regression test in `tests/llm/test_client.py`. The system prompt is the **first
+> message**, not a top-level field — sending `system=` is silently ignored.
 
 **No test may call a live model, ever.** Not marked, not skipped-when-absent. The model is faked at
 the protocol (`tests/llm/conftest.py::FakeClient`, which replays a script and records payloads); the

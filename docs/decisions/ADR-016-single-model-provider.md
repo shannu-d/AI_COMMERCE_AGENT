@@ -1,6 +1,13 @@
 # ADR-016: Claude Is the Only Model Provider
 
-**Status:** Accepted
+**Status:** ⛔ **SUPERSEDED by [ADR-018](ADR-018-groq-as-the-locked-llm-provider.md)** (2026-09-02)
+
+> **This decision is void.** The project owner has locked **Groq** as the LLM provider. The
+> reasoning below is retained for the historical record and for its defect analysis, which
+> ADR-018 carries forward as acceptance criteria. Do not act on this file's conclusion, and do
+> not treat its argument as a reason to migrate back to Claude.
+
+**Original status:** Accepted
 **Date:** 2026-09-01
 **Milestone:** M4 (corrects a provisional addition) / binding on M5 onward
 **Source references:** L§44 (implementation technology), L§48 DECISION 1 and DECISION 2 (LLM

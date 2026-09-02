@@ -27,7 +27,9 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [013](ADR-013-idempotency-strategy.md) | Idempotency Strategy | Accepted, **order half implemented (M10)** | M10 / M12 | D4 |
 | [014](ADR-014-price-drift-recovery.md) | Price Drift Recovery | Accepted | M9–M15 | D2, D9 |
 | [015](ADR-015-llm-test-seam.md) | The LLM Test Seam | Accepted, **implemented (M4)** | M4 / M5 | F1, E2 |
-| [016](ADR-016-single-model-provider.md) | Claude Is the Only Model Provider | Accepted, **implemented (M4)** | M4 / M5+ | — |
+| [016](ADR-016-single-model-provider.md) | ~~Claude Is the Only Model Provider~~ | ⛔ **Superseded by 018** | M4 / M5+ | — |
+| [017](ADR-017-frontend-framework-and-browser-access.md) | Vite, and How the Browser Is Let In | Accepted, **partially implemented (M14/F1)** | M14 | F6 |
+| [018](ADR-018-groq-as-the-locked-llm-provider.md) | **Groq Is the Locked LLM Provider** | Accepted, **implemented and live-verified (M4-R)** | M4 / M5+ | — |
 
 "Closes" refers to the question IDs in [`docs/analysis/03-open-questions.md`](../analysis/03-open-questions.md).
 

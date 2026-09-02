@@ -4,7 +4,7 @@ A conversational commerce agent for a merchant catalog, built on one invariant:
 
 > **LLM proposes → application validates → user authorizes → Razorpay executes → system audits.**
 
-Claude handles natural language and tool selection. PostgreSQL owns product truth. A deterministic
+The LLM (Groq — locked, ADR-018) handles natural language and tool selection. PostgreSQL owns product truth. A deterministic
 ranking engine owns relevance. A deterministic Policy Engine owns whether money may move. A verified
 Razorpay webhook owns whether it did.
 
@@ -24,13 +24,18 @@ fails, blocks the Razorpay order, and requires fresh approval with a fresh idemp
 | **M1 — catalog database** | **Done** — 7 catalog tables + compatibility targets, 2 migrations, 32-SKU seed, tests |
 | **M2 — catalog read services** | **Done** — repositories, `CatalogService`, `CompatibilityService`, `InventoryService`, canonical target resolution |
 | **M3 — ranking engine** | **Done** — hard-constraint filter, four scorers, weight profiles, Top-K, explanations, combinations, cross-sell, `RecommendationService`. The R§10 worked example reproduces exactly. |
-| **M4 — LLM layer** | **Done** — Claude client, structured buyer intent, intent extraction across turns, two version-controlled prompts, the eight tool schemas and their argument validation. Every test runs with no API key and no network. |
+| **M4 — LLM layer** | **Done** — model client, structured buyer intent, intent extraction across turns, two version-controlled prompts, the eight tool schemas and their argument validation. Every test runs with no API key and no network. |
 | M5 … M15 | Not started |
 
 Work stops after M4 by design. The money path is not written before its decisions exist, and M5 —
 the agent runtime — is the first milestone that binds a tool to a service. Everything up to here is
 verifiable offline: `app/ranking/` is pure, and `app/llm/` depends on a one-method client protocol
-rather than on the Anthropic SDK, so no test in this repository calls a live model (ADR-015).
+rather than on any model SDK, so no test in this repository calls a live model (ADR-015).
+
+> **LLM provider: Groq, locked (ADR-018).** `architecture.md` names Claude Sonnet; that is
+> superseded. The client is `GroqClient` in `app/llm/client.py`, calling `openai/gpt-oss-120b` —
+> an open-weights model **served by Groq**, not a call to OpenAI. Current state always lives in
+> `docs/PROJECT_STATE.md`.
 
 ---
 

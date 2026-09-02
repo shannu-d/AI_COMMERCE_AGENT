@@ -118,7 +118,7 @@ Docker.
 | F3 | Local dev orchestration | **CLOSED by implementation** — `docker-compose.yml`, plus the scratchpad fallback in U3 |
 | F4 | CI pipeline | **OPEN. Blocks nothing; slows everything.** No workflow exists. Lint, format, type-check and the full suite all run locally in one command each, so a workflow is mechanical whenever it is wanted. |
 | F5 | Deployment / hosting | **OPEN, out of scope.** Local only for the MVP. |
-| F6 | Frontend framework (React vs Next.js) | **OPEN, and now due.** M13 is complete and M15's backend scenarios pass, so M14 is the next milestone and this is the decision it waits on. L§44 names "React / Next.js" and picks neither; the choice shapes every file of the frontend. |
+| F6 | Frontend framework (React vs Next.js) | **CLOSED** — ADR-017. **Vite**, not Next.js. The deciding fact is that `RazorpayClient.checkout_config()` returns only the *public* key ID, amount, currency and provider order ID, so the frontend holds no secret and the server layer Next.js supplies would protect nothing; with no SEO or SSR requirement either, F§3's "keep the frontend small" settles it. Supersedes `PROGRESS.md`'s earlier Next.js recommendation, which was written before `checkout_config()` was read. |
 | F7 | Streaming responses | **CLOSED** — ADR-010 (no streaming; F§28 discourages it) |
 | F8 | Non-functional targets | **OPEN, out of scope.** None set; agent turns will take seconds. |
 | F9 | Evaluation harness format | **OPEN. Blocks M15's SHOULD-WORK evaluation suite.** |
@@ -130,12 +130,20 @@ Docker.
 
 ## What is open, and what it blocks
 
-Seven items remain open. **F6 now blocks M14, which is the next milestone.** The other six block nothing that has been reached.
+> **Provider question, settled by owner decision (2026-09-02).** The LLM provider is **Groq**,
+> locked, per [ADR-018](../decisions/ADR-018-groq-as-the-locked-llm-provider.md), which supersedes
+> ADR-016. Any statement elsewhere in this file or in `architecture.md` naming Anthropic or Claude
+> as the provider is superseded. **Implemented and live-verified** (M4-R): model
+> `openai/gpt-oss-120b`, an open-weights model served by Groq.
+
+
+Six items remain open, and **none of them blocks M14.** F6 is closed by ADR-017, which also
+added the CORS middleware that was blocking every frontend of every scope. F9 is the only open
+item that blocks anything reached.
 
 | Open item | Blocks | Needed by |
 | --- | --- | --- |
 | F9 evaluation harness format | the SHOULD-WORK evaluation suite | before M15 |
-| F6 frontend framework | the frontend | before M14 |
 | F4 CI pipeline | nothing | whenever wanted |
 | U2 / F11 external brief | nothing | external input; see the gap note |
 | F5, F8, F10 | nothing | out of MVP scope |

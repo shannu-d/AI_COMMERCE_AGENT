@@ -6,6 +6,20 @@ assessment was written, and no source document was modified to produce it.
 
 ---
 
+> ## ⚠️ Read before trusting any provider reference in this file
+>
+> **This is a historical record**, written milestone by milestone. Sections before §15 describe the
+> repository as it was at the time, and several of them name **Anthropic/Claude as the LLM
+> provider**. That is no longer the decision.
+>
+> **The LLM provider is Groq, locked** — see **[§15](#15-the-provider-decision-reversed-by-the-owner-adr-018)**
+> and [ADR-018](decisions/ADR-018-groq-as-the-locked-llm-provider.md), which supersedes ADR-016 in
+> full. Earlier provider statements here are preserved deliberately, as history, and must not be
+> acted on. For current state, read
+> **[`docs/PROJECT_STATE.md`](PROJECT_STATE.md)**.
+
+---
+
 ## 1. Existing repository structure
 
 `L:\AI_COMMERCE` before any implementation work:
@@ -927,3 +941,134 @@ claim as "one model SDK".
 The two live-network scratch scripts at the backend root, `test_groq_api.py` and
 `test_client_detection.py`, are removed with it. They were never collected (`testpaths = ["tests"]`)
 but were `test_`-named and made real API calls, which is the shape ADR-015 rules out.
+
+## 14. M14 (frontend), phase F1: letting the browser in
+
+The frontend was blocked on one decision (**F6**, React vs Next.js) and one missing capability that
+no amount of deciding would have fixed: **there was no CORS middleware anywhere in `backend/app/`.**
+A browser on any origin but the API's own — which is every realistic setup, since the frontend dev
+server and the API cannot share a port — was refused before a request was attempted. That blocked
+every frontend of every scope and every framework, so it was fixed first, before any frontend code
+existed to be blocked by it.
+
+Both are settled in **[ADR-017](decisions/ADR-017-frontend-framework-and-browser-access.md)**.
+
+**F6 closes as Vite, not Next.js**, which *reverses* the recommendation `PROGRESS.md` had been
+carrying. The earlier note reasoned that an SSR framework gives `RAZORPAY_KEY_SECRET` a natural
+server-side home; reading `RazorpayClient.checkout_config()` shows the frontend never receives that
+secret, or any other. It gets the public key ID, an amount, a currency and a provider order ID. With
+no secret to protect, no SEO requirement and no server-rendering need, the server layer Next.js
+supplies would have been paid for and unused — against F§3's explicit "keep the frontend small".
+
+**What was built:** `cors_allowed_origins` in `Settings`, validated at startup in the same style as
+`RANKING_PROFILE`, and `CORSMiddleware` in `create_app()`. Three choices in it are deliberate and
+each has a test:
+
+- **`"*"` is rejected outright.** `session_id` is the entire claim "this cart is mine" — ADR-006
+  deliberately has no users table. A wildcard would not hand over a cart today, because the
+  identifier is an unguessable UUID carried in the body rather than a cookie, but that is a property
+  of the current design and not a promise; `*` would outlive it silently.
+- **An origin with a trailing slash or a path is rejected.** A browser's `Origin` header is scheme,
+  host and port, so `http://localhost:5173/` matches nothing. The symptom is every cross-origin call
+  failing against a configuration that reads correctly.
+- **`allow_credentials=False`, `allow_headers=["Content-Type"]`.** Nothing in `app/api/` reads a
+  cookie or an `Authorization` header; every identifier the API trusts travels in the body. There is
+  no `Idempotency-Key` header to permit — ADR-013's key is a field on `CreateOrderRequest`, and
+  allowlisting a header nothing sends would advertise a transport that does not exist.
+
+**A defect found in the writing of it, worth recording because the tests initially missed it.**
+`cors_allowed_origins` is a `list[str]`, and pydantic-settings runs `json.loads` over a complex
+type **in its environment source, before any field validator runs**. So the comma-separated
+`CORS_ALLOWED_ORIGINS` in `.env` raised `SettingsError` at import time — while every test still
+passed, because they constructed `Settings(cors_allowed_origins="a,b")` directly and never crossed
+the environment boundary that broke. The field is now annotated `Annotated[list[str], NoDecode]`,
+and two tests exercise the real `monkeypatch.setenv` path. Removing the annotation now fails the
+suite at collection, which was confirmed by removing it.
+
+**Suite at the end of this phase: 1273 tests pass, 0 failures, 0 skips** (the previous 1258 plus
+15 for CORS); 893 need no database. M4-R later took this to 1287.
+
+**An environment note that cost time.** The throwaway PostgreSQL described in §11 binds
+**IPv4 only**. On this machine `localhost` resolves to `::1` first, so a `TEST_DATABASE_URL`
+pointed at `localhost` fails its reachability check and the whole `requires_db` suite skips with the
+"No reachable PostgreSQL" message — while `psql -h 127.0.0.1` connects with the same credentials.
+Use `127.0.0.1` explicitly in `TEST_DATABASE_URL`. A skipping run is not a passing run, and this is
+a way to get one that looks like an absent database rather than a resolvable address.
+
+**Still open after this phase:** F0 (scaffold the Vite app) has not been done, and F2–F9 follow it.
+The scope question — Phase 1 (F0–F9, the conversational MVP `architecture.md` §3 specifies) versus
+the larger storefront in `docs/frontend/00-architecture-and-ux-specification.md` — remains the
+user's, and nothing built here forecloses either.
+
+## 15. The provider decision, reversed by the owner (ADR-018)
+
+§13's account of the Groq removal is **superseded**. The project owner has locked **Groq** as the
+LLM provider, permanently unless they explicitly change it, and has directed that the project must
+not be migrated to — or recommended for migration to — Anthropic, Claude, OpenAI, Gemini or any
+other provider. `docs/decisions/ADR-018-groq-as-the-locked-llm-provider.md` records the decision and
+supersedes ADR-016 in full; ADR-016 is retained as history with its conclusion marked void.
+
+**This is the largest single deviation from `architecture.md` in the project**, and it is the only
+one not derived from reading the specification. L§44 and L§48 name Claude Sonnet, and L§50 and A§56
+make `[ ] Claude Sonnet connected` / `[ ] Runtime can call Claude Sonnet` completion criteria. Those
+four items are now permanently unsatisfiable as literally written; they are re-read
+provider-neutrally as "the configured provider is connected". Recorded as **D7** in
+`docs/notes/deviations.md`. `architecture.md` is not edited.
+
+Nothing the specification protects is weakened by the change. The invariant is provider-independent:
+the model is untrusted input on any provider (ADR-001, ADR-009), `create_order` is still not a
+registered tool, the Policy Engine still decides whether money may move, and a verified webhook is
+still the only payment truth.
+
+### What the audit found
+
+The reconciliation is **documentation-only so far**. No application behaviour was changed. The audit
+established, from source rather than from documents:
+
+- `groq` is **not** a declared dependency in `pyproject.toml` and is **not installed**; `anthropic`
+  is both.
+- `app/llm/client.py` still defines `AnthropicClient` and imports the `anthropic` SDK.
+- `.env` is broken two ways: a Groq-shaped key sits under `ANTHROPIC_API_KEY`, and
+  `ANTHROPIC_MODEL=Groq` is not a valid Groq model identifier. A live chat request would fail.
+- **Two standing tests actively forbid the locked provider** and currently pass:
+  `tests/llm/test_boundaries.py::test_anthropic_is_the_only_model_sdk_in_the_repository` and
+  `tests/llm/test_client.py::test_build_client_does_not_choose_a_provider_from_the_shape_of_the_key`.
+  Both must be **inverted, not deleted** — they are the guards that caught this class of drift
+  originally.
+
+### Update: the code WAS reconciled, same day (M4-R)
+
+The section below described the state at audit time. **M4-R shipped immediately afterwards,**
+with the owner's approval, and is recorded in full in ADR-018's "What was implemented"
+section. Headlines: `GroqClient` replaces `AnthropicClient`; the dependency, settings and env
+variables are renamed; all five defects have named regression tests; both guards were inverted
+rather than deleted; and the provider was **verified live for the first time in the project's
+history** — a full chat turn returning three grounded recommendations at real catalog prices,
+which is M5's exit condition. Suite: **1287 passing, 0 skipped**.
+
+One operational limit surfaced: the account's Groq tier allows **8,000 tokens per minute**, and
+one agent turn costs roughly 5,000, so sustained use throttles at about one turn per minute.
+The bounded-retry path handles it exactly as designed and no provider text reaches the buyer.
+
+### Why the code was not changed in the same pass (as written at audit time)
+
+Reimplementing the client is a real implementation task, not a rename, and the owner scoped this
+work as an audit. It is tracked as milestone **M4-R** in `docs/PROJECT_STATE.md` and awaits
+approval.
+
+It also has non-obvious acceptance criteria. The `groq_client.py` deleted in `78f6f4d` had five
+concrete defects, and ADR-018 carries all five forward as requirements rather than as objections.
+The first is the one that matters most: `_STOP_REASONS` was the Anthropic table with a key renamed,
+so Groq's OpenAI-compatible `length` finish reason mapped to `UNKNOWN`, leaving
+`ModelResponse.is_truncated` permanently `False` and letting **a truncated intent pass as a complete
+one** — the fabrication L§30 and A§41 forbid. A reimplementation that does not fix all five
+reintroduces known bugs.
+
+**The one piece of good news the audit surfaced:** the boundary is already provider-agnostic by
+construction. `app/llm/models.py`'s transport types (deviation A22) and the one-method `LLMClient`
+protocol were designed so that nothing outside `client.py` sees a provider-native type. So the
+concrete client class is the *only* provider-specific code in the application — the change is
+confined, and every one of the 1273 tests then passing, all of which fake the model at the
+protocol, was unaffected by it.
+
+**Suite at the time of this audit: 1273 passed, 0 failed, 0 skipped.**
