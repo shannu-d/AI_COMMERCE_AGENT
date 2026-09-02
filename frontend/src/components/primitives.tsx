@@ -1,9 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-/** Utility for conditional class names, so components stay readable. */
-export function cx(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
-}
+import { cx } from "./cx";
 
 export function Button({
   variant = "primary",

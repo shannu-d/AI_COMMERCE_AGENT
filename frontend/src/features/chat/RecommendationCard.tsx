@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addCartItem } from "../../api/endpoints";
 import type { Recommendation } from "../../api/schemas";
 import { Money } from "../../components/Money";
-import { Button, Card, StockBadge, cx } from "../../components/primitives";
+import { Button, Card, StockBadge } from "../../components/primitives";
+import { cx } from "../../components/cx";
 
 /**
  * One product, rendered from structured data.

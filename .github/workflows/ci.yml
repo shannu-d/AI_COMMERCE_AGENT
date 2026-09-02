@@ -129,9 +129,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # No lint step: package.json declares `lint: eslint .`, but eslint is
-      # neither a declared dependency nor configured (no eslint.config.*), so
-      # the script fails on a clean checkout. Wiring up eslint is its own task.
+      # --max-warnings 0: eslint exits 0 on warnings by default, so without
+      # this a warning could accumulate indefinitely without ever failing a
+      # build. The local `npm run lint` stays lenient for iteration.
+      - name: Lint
+        run: npm run lint -- --max-warnings 0
 
       # `npm run test` only. Never test:live - that one needs a running backend
       # and real Razorpay credentials, and is opt-in by design.

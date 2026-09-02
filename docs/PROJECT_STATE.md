@@ -158,9 +158,8 @@ payments 20 · integration 12.
 ## 12. Known technical debt
 
 - `anthropic` is uninstalled and undeclared; a standing test asserts it stays that way.
-- The frontend's `lint` script is dead: `package.json` declares `eslint .`, but eslint is neither a
-  declared dependency nor configured (no `eslint.config.*`), so `npm run lint` fails on a clean
-  checkout. CI therefore has no frontend lint step.
+- ~~The frontend's `lint` script is dead~~ — **resolved 2026-09-03.** eslint 9 with a flat config
+  (`frontend/eslint.config.js`), and CI runs it with `--max-warnings 0`.
 - No catalog-browsing HTTP routes. The services exist and are tested; nothing routes to them. This
   is **new scope**, not unfinished M2 work.
 - `AuditService.reconstruct_order` / `.reconstruct_session` are complete and fully tested but have
@@ -246,6 +245,5 @@ All Razorpay values are **test-mode** keys — free, no real money.
 2. **A higher Groq tier**, if the chat-driven demo needs to run more than about one turn per two
    minutes. Nothing is broken at the current tier; it simply throttles.
 
-**Code work that needs neither:** F6/F9's remaining polish, wiring up eslint (the `lint` script is
-declared but the tool is neither installed nor configured), and — if the storefront scope is ever
+**Code work that needs neither:** F6/F9's remaining polish, and — if the storefront scope is ever
 chosen — the three catalog-browsing routes in §20.C of the frontend spec. The scope decision (Phase 1 versus the storefront) is still open and still yours.
