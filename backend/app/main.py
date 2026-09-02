@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.routes import cart, chat, health, orders, webhooks
@@ -61,6 +62,22 @@ def create_app() -> FastAPI:
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
         openapi_url=None if settings.is_production else "/openapi.json",
+    )
+
+    # A browser on the frontend's origin cannot call this API at all without
+    # this. Credentials are off deliberately: nothing here reads a cookie or an
+    # Authorization header - `session_id` travels in the request body - so there
+    # is no ambient authority for a cross-origin page to borrow, and turning
+    # credentials on would grant one for no gain (ADR-017).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        # Only Content-Type: every identifier this API trusts - session_id,
+        # cart_version, idempotency_key - travels in the request body, so
+        # there is no custom request header to permit.
+        allow_headers=["Content-Type"],
     )
 
     app.include_router(health.router, prefix="/api")

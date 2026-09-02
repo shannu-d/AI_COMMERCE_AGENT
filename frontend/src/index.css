@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (F§12: modern commerce, not a generic chatbot).
+   Defined as CSS variables so a theme change is one file, and so the palette is
+   inspectable rather than scattered through utility strings. */
+:root {
+  color-scheme: light;
+  --ink: 24 24 27;
+  --ink-muted: 113 113 122;
+  --surface: 255 255 255;
+  --surface-sunken: 250 250 249;
+  --line: 228 228 231;
+  --brand: 29 78 216;
+  --brand-ink: 255 255 255;
+  --positive: 21 128 61;
+  --warning: 180 83 9;
+  --danger: 185 28 28;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: rgb(var(--surface-sunken));
+  color: rgb(var(--ink));
+  -webkit-font-smoothing: antialiased;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* F§13/§10: honour a reduced-motion preference everywhere, once, rather than
+   per-component. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A visible focus ring on keyboard navigation only. Removing focus styling
+   outright is the single most common way a UI becomes unusable by keyboard. */
+:focus-visible {
+  outline: 2px solid rgb(var(--brand));
+  outline-offset: 2px;
+}
