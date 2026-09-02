@@ -120,6 +120,7 @@ payments 20 · integration 12.
 | `ruff check .` | ✅ All checks passed |
 | `ruff format --check .` | ✅ Clean (168 files) |
 | `npm run test` / `typecheck` / `build` (frontend) | ✅ 11 passed, tsc exit 0, build 240 kB |
+| CI workflow | 🟡 **Added 2026-09-03, never executed on a runner** — no git remote exists. Validated locally: YAML parses, `ruff check`/`format --check` clean, and the skip-guard was verified in both directions (23 skipped → build fails; 0 skipped → passes) |
 | CORS from a browser origin | ✅ **Verified live**: preflight 200 with `allow-origin`; foreign origin gets no header |
 | Money path, end to end | ✅ **Verified live**: cart Rs.598.00 -> stale version 409 -> wrong total 409 -> approval -> order -> idempotent replay returns the SAME order; 598.00 == 59800 minor |
 | Chat-driven flagship, end to end | 🟡 **Partially.** A single turn returns grounded recommendations, but a full tool-loop turn exceeds the 8k TPM tier (§11.3) |
@@ -157,7 +158,9 @@ payments 20 · integration 12.
 ## 12. Known technical debt
 
 - `anthropic` is uninstalled and undeclared; a standing test asserts it stays that way.
-- No CI workflow exists (open question F4). Lint, format and tests each run in one local command.
+- The frontend's `lint` script is dead: `package.json` declares `eslint .`, but eslint is neither a
+  declared dependency nor configured (no `eslint.config.*`), so `npm run lint` fails on a clean
+  checkout. CI therefore has no frontend lint step.
 - No catalog-browsing HTTP routes. The services exist and are tested; nothing routes to them. This
   is **new scope**, not unfinished M2 work.
 - `AuditService.reconstruct_order` / `.reconstruct_session` are complete and fully tested but have
@@ -169,7 +172,7 @@ payments 20 · integration 12.
 | --- | --- | --- |
 | ~~Groq model~~ | — | **CLOSED**: `openai/gpt-oss-120b`, confirmed by the owner and live-verified |
 | **FE scope** | Phase 1 (F0–F9) only, or the full storefront (F10+)? | **Needs owner decision.** Proceeding on Phase 1 |
-| F4 | CI pipeline | OPEN — blocks nothing |
+| F4 | CI pipeline | **CLOSED** 2026-09-03 — `.github/workflows/ci.yml`. Never yet run on a runner (no remote configured), see §10 |
 | F5, F8, F10 | Deployment, perf targets, i18n | OPEN — out of MVP scope |
 | F9 | Evaluation harness format | OPEN — blocks M15's eval suite |
 | F11 / U2 | The external brief | OPEN — needs external input |
@@ -243,6 +246,6 @@ All Razorpay values are **test-mode** keys — free, no real money.
 2. **A higher Groq tier**, if the chat-driven demo needs to run more than about one turn per two
    minutes. Nothing is broken at the current tier; it simply throttles.
 
-**Code work that needs neither:** F6/F9's remaining polish, a CI workflow (open question F4), and —
-if the storefront scope is ever chosen — the three catalog-browsing routes in §20.C of the frontend
-spec. The scope decision (Phase 1 versus the storefront) is still open and still yours.
+**Code work that needs neither:** F6/F9's remaining polish, wiring up eslint (the `lint` script is
+declared but the tool is neither installed nor configured), and — if the storefront scope is ever
+chosen — the three catalog-browsing routes in §20.C of the frontend spec. The scope decision (Phase 1 versus the storefront) is still open and still yours.

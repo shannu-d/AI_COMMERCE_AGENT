@@ -1,0 +1,142 @@
+# Continuous integration (closes open question F4).
+#
+# Two properties this file exists to enforce, both of which are easy to lose:
+#
+#   1. The tests run against PostgreSQL, never SQLite (ADR-002). The schema
+#      depends on UUID, JSONB and TEXT[], so a green run on another engine
+#      proves nothing.
+#   2. A run showing skips is an incomplete run, not a pass. `requires_db`
+#      tests skip with a visible reason when TEST_DATABASE_URL is unreachable,
+#      which would otherwise look like success. The backend job fails if a
+#      single test is skipped.
+#
+# CI needs no credentials at all, and a step asserts that: no test calls a live
+# model on any provider (ADR-015), and none calls Razorpay.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (lint + tests on PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ai_commerce
+          POSTGRES_PASSWORD: ai_commerce
+          POSTGRES_DB: ai_commerce
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ai_commerce"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # 127.0.0.1, never localhost: where localhost resolves to ::1 first and
+      # the server is IPv4-only, every requires_db test silently skips.
+      DATABASE_URL: postgresql+psycopg://ai_commerce:ai_commerce@127.0.0.1:5432/ai_commerce
+      TEST_DATABASE_URL: postgresql+psycopg://ai_commerce:ai_commerce@127.0.0.1:5432/ai_commerce_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The declared floor in pyproject (requires-python >=3.12), so CI proves
+      # the floor is real rather than only testing whatever a developer has.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Create the test database
+        run: |
+          PGPASSWORD=ai_commerce createdb -h 127.0.0.1 -U ai_commerce ai_commerce_test
+        # docker-compose creates this locally; the service container does not.
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: No provider credentials are present (ADR-015)
+        run: |
+          for name in GROQ_API_KEY RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET; do
+            if [ -n "$(printenv "$name" || true)" ]; then
+              echo "::error::$name is set in CI. No test may call a live provider."
+              exit 1
+            fi
+          done
+          echo "no provider credentials in the environment - as required"
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Format
+        run: python -m ruff format --check .
+
+      - name: Tests
+        run: python -m pytest -q --junitxml=junit.xml
+
+      - name: A skipped test is a failed run
+        if: always()
+        run: |
+          python - <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          root = ET.parse("junit.xml").getroot()
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+          total, skipped = int(suite.get("tests", 0)), int(suite.get("skipped", 0))
+          print(f"{total} tests, {skipped} skipped")
+          if skipped:
+              sys.exit(
+                  f"::error::{skipped} test(s) skipped. A run showing skips is an incomplete "
+                  "run, not a pass - TEST_DATABASE_URL was most likely unreachable."
+              )
+          PY
+
+  frontend:
+    name: frontend (typecheck + tests + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # No lint step: package.json declares `lint: eslint .`, but eslint is
+      # neither a declared dependency nor configured (no eslint.config.*), so
+      # the script fails on a clean checkout. Wiring up eslint is its own task.
+
+      # `npm run test` only. Never test:live - that one needs a running backend
+      # and real Razorpay credentials, and is opt-in by design.
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
