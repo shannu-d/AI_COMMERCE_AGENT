@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import type { Cart } from "../api/schemas";
 import { CartPanel } from "../features/cart/CartPanel";
 import { ChatWindow } from "../features/chat/ChatWindow";
-import { useChat } from "../features/chat/useChat";
+import { AgentRuntimeProvider } from "../features/agent/AgentRuntimeProvider";
+import { useAgentChat } from "../features/agent/useAgentChat";
 import { ApprovalDialog } from "../features/checkout/ApprovalDialog";
 
 /**
@@ -13,10 +14,22 @@ import { ApprovalDialog } from "../features/checkout/ApprovalDialog";
  * Do NOT build a large e-commerce UI. The important demonstration is:
  * conversational commerce → recommendations → cart → policy validation →
  * payment → auditability."* This is that, and nothing more.
+ *
+ * `AgentRuntimeProvider` wraps the screen because Assistant UI's runtime owns
+ * the conversation's state, and both the transcript and the cart need the
+ * `session_id` the first turn mints.
  */
 export function ShopPage() {
+  return (
+    <AgentRuntimeProvider>
+      <ShopScreen />
+    </AgentRuntimeProvider>
+  );
+}
+
+function ShopScreen() {
   const navigate = useNavigate();
-  const { turns, pending, sessionId, send } = useChat();
+  const { turns, pending, sessionId, send } = useAgentChat();
   const [approving, setApproving] = useState<Cart | null>(null);
 
   return (

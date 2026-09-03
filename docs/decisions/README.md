@@ -30,6 +30,7 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [016](ADR-016-single-model-provider.md) | ~~Claude Is the Only Model Provider~~ | ⛔ **Superseded by 018** | M4 / M5+ | — |
 | [017](ADR-017-frontend-framework-and-browser-access.md) | Vite, and How the Browser Is Let In | Accepted, **partially implemented (M14/F1)** | M14 | F6 |
 | [018](ADR-018-groq-as-the-locked-llm-provider.md) | **Groq Is the Locked LLM Provider** | Accepted, **implemented and live-verified (M4-R)** | M4 / M5+ | — |
+| [019](ADR-019-assistant-ui-for-the-agent-chat-runtime.md) | **Assistant UI Owns the Agent Chat Runtime, and Nothing Else** | Accepted, implemented and live-verified | M14 | — |
 
 "Closes" refers to the question IDs in [`docs/analysis/03-open-questions.md`](../analysis/03-open-questions.md).
 

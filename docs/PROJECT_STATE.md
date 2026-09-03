@@ -96,7 +96,8 @@ replace or reorder M0–M15.
 ## 9. Test status
 
 **Backend: 1292 passed · 0 failed · 0 skipped** (909 need no database).
-**Frontend: 35 passed** (`cd frontend && npm run test`), typecheck clean, production build 287 kB.
+**Frontend: 42 passed** (`cd frontend && npm run test`), typecheck clean, eslint clean, production build 518 kB (gzip 153 kB).
+The 7 added tests cover the Assistant UI runtime (ADR-019); the bundle grew from 287 kB to 518 kB when Assistant UI was adopted.
 **Live money path: verified** (`npm run test:live`, opt-in, needs a running backend).
 
 ```bash
@@ -124,6 +125,7 @@ payments 20 · integration 12.
 | CORS from a browser origin | ✅ **Verified live**: preflight 200 with `allow-origin`; foreign origin gets no header |
 | Money path, end to end | ✅ **Verified live**: cart Rs.598.00 -> stale version 409 -> wrong total 409 -> approval -> order -> idempotent replay returns the SAME order; 598.00 == 59800 minor |
 | Chat-driven flagship, end to end | 🟡 **Partially.** A single turn returns grounded recommendations, but a full tool-loop turn exceeds the 8k TPM tier (§11.3) |
+| Assistant UI agent chat | ✅ **Verified live in a browser 2026-09-03.** Real Groq turn → 3 grounded cards at the backend's prices (₹999.00 ×2, ₹1,299.00 `Low stock`) → add-to-cart → cart v2 total ₹999.00 → approval dialog. A mid-test Groq `429` rendered as the designed calm recovery, not a crash |
 | Live Groq call | ✅ **Performed 2026-09-02.** `models.list()`, a direct tool-calling completion, and a full `POST /api/chat` turn returning 3 grounded recommendations |
 | Live Razorpay test order | ❌ **Never performed** — placeholder credentials |
 | Live webhook signature | 🟡 **Application path verified live 2026-09-03**, over a public ngrok tunnel to a locally-running backend: bad signature → `400 {"status":"rejected"}`; a correctly signed event for an unknown order → `200 {"status":"received"}`; the same event replayed → `200 {"status":"ignored"}`, leaving **one** `webhook_events` row and three audit rows (`WEBHOOK_SIGNATURE_REJECTED`, `PAYMENT_WEBHOOK_RECEIVED`, `WEBHOOK_DUPLICATE_IGNORED`). Signed with the `REPLACE_ME` placeholder, **not** a Razorpay-issued secret, and **not** a delivery Razorpay actually sent — both of those remain unverified |

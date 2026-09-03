@@ -83,7 +83,7 @@ invariant that every part of the specification restates:
 
 `architecture.md` (16,737 lines, six parts) is the specification. It is **never edited**. Where it
 leaves something open, states it two ways, or requires something it never defines, the resolution is
-an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all seventeen.
+an ADR in `docs/decisions/` — read `docs/decisions/README.md` first, it indexes all nineteen.
 
 **Current state lives in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md), not here.** That file
 carries the milestone table, test counts and next action, and is updated after every meaningful
@@ -98,6 +98,14 @@ path must not be coded before its decisions exist.
 ## The frontend (M14, from F0)
 
 Lives in `frontend/`, on Vite + React 18 + TypeScript (ADR-017). `cd frontend && npm run dev`.
+
+**The agent chat runs on Assistant UI, and only its runtime** (ADR-019). `useLocalRuntime` with a
+custom `ChatModelAdapter` whose `run()` is a plain `async` function returning one result — the
+documented non-streaming pattern, because `POST /api/chat` answers once per turn and streaming is a
+closed decision (ADR-010). **Do not run `npx assistant-ui@latest init`**: it targets Next.js and
+installs via `shadcn`, neither of which this project uses. `recommendations[]`, the cart, the
+approval dialog and the order page are ordinary components and stay that way; product cards are not
+tool UI, because tools execute server-side.
 
 **Money is a string and stays one.** `"999.00"`, never `999.00`. Nothing in the frontend sums,
 multiplies or rounds a money value — totals come from the backend or they do not exist (ADR-008,
