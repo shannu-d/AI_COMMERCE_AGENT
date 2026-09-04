@@ -44,7 +44,7 @@ os.environ["ENVIRONMENT"] = "test"
 # the same rule ADR-015 sets for the model — so an order stays `ORDER_CREATED`
 # with a null `razorpay_order_id`, exactly what the M10/M11 tests assert. Tests
 # that need a secret pass their own (see tests/api/test_webhooks).
-from app.config import Settings  # noqa: E402
+from app.config import Settings
 
 Settings.model_config["env_file"] = None
 
