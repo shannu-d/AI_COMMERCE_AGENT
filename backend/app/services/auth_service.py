@@ -238,6 +238,31 @@ class AuthService:
             row.revoked_at = _now()
             self._session.flush()
 
+    def set_password(self, user_id: uuid.UUID, password: str) -> None:
+        """Replace a user's password.
+
+        Not reachable from any route — there is no "change password" endpoint in
+        this milestone, and an operator command (`app.admin.provision_merchant`)
+        is the only caller. It exists here rather than in that command because
+        this module is the only one allowed to turn a password into a digest;
+        a second hashing site would be a second set of parameters nobody
+        compared with the first.
+
+        The caller is expected to revoke live tokens afterwards. A password
+        change that left old sessions signed in would not be a password change.
+        """
+        if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
+            raise AuthError(
+                "VALIDATION_ERROR",
+                f"password must be at least {MIN_PASSWORD_LENGTH} characters",
+            )
+        user = self._session.get(User, user_id)
+        if user is None:
+            raise AuthError("VALIDATION_ERROR", "no such user")
+        user.password_hash = _hasher.hash(password)
+        self._session.flush()
+        logger.info("password reset", extra={"role": user.role})
+
     def revoke_all(self, user_id: uuid.UUID) -> int:
         """Revoke every live token for a user. Returns how many were live."""
         rows = list(

@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { readToken } from "../auth/token";
 import { API_BASE_URL } from "./config";
 import { ApiError, type ApiErrorCode } from "./schemas";
 
@@ -18,6 +19,11 @@ import { ApiError, type ApiErrorCode } from "./schemas";
  * **Nothing is trusted on the way in.** Every response is parsed through its Zod
  * schema, so a renamed field fails here with a legible message instead of
  * becoming `undefined` three components deep.
+ *
+ * **The bearer token is attached here and nowhere else** (ADR-023). It is sent
+ * explicitly rather than by the browser, which is exactly why this API has no
+ * CSRF surface, and putting it in one place means no call site can forget it or
+ * send somebody else's.
  */
 
 export class ApiRequestError extends Error {
@@ -30,6 +36,14 @@ export class ApiRequestError extends Error {
     super(message);
     this.name = "ApiRequestError";
   }
+}
+
+function authHeaders(hasBody: boolean): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (hasBody) headers["Content-Type"] = "application/json";
+  const token = readToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
 }
 
 type RequestOptions = {
@@ -47,9 +61,11 @@ export async function request<T>(
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      // Only Content-Type: every identifier this API trusts travels in the body,
-      // so there is no custom header, and the backend allowlists none (ADR-017).
-      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      // Content-Type when there is a body, plus the bearer token when the
+      // visitor is signed in. Every *other* identifier this API trusts —
+      // session_id, cart_version, idempotency_key — still travels in the body,
+      // and the backend allowlists only these two headers (ADR-017, ADR-023).
+      headers: authHeaders(body !== undefined),
       body: body === undefined ? null : JSON.stringify(body),
       ...(signal ? { signal } : {}),
     });

@@ -10,10 +10,10 @@ import { Money, StockStatus } from "../../api/schemas";
  * schema at the fetch boundary, and money is a **string** and stays one
  * (ADR-008). Nothing here sums, multiplies or rounds a price.
  *
- * There is no `merchant_id` anywhere in this file, in a request or a response —
- * the backend resolves the merchant server-side and a client cannot name one
- * (ADR-022). This module could not target another merchant's catalogue if it
- * tried.
+ * There is no `merchant_id` in any **request** in this file — the backend
+ * resolves the merchant from the bearer token's user row, so this module could
+ * not target another merchant's catalogue if it tried (ADR-022, strengthened by
+ * ADR-023). The bearer token itself is attached once, in `api/client.ts`.
  */
 
 // -- response schemas ---------------------------------------------------------
@@ -257,3 +257,42 @@ export const listMerchantOrders = (
 
 export const getMerchantOrder = (orderId: string, signal?: AbortSignal) =>
   request(`/api/merchant/orders/${orderId}`, MerchantOrder, signal ? { signal } : {});
+
+// -- activity log (ADR-023 §7) ------------------------------------------------
+
+export const MerchantActivityItem = z.object({
+  id: z.string().uuid(),
+  seq: z.number().int(),
+  action: z.string(),
+  entity_type: z.string(),
+  entity_id: z.string().uuid().nullable().optional(),
+  subject: z.string().nullable().optional(),
+  actor_email: z.string(),
+  payload: z.record(z.unknown()),
+  created_at: z.string(),
+});
+export type MerchantActivityItem = z.infer<typeof MerchantActivityItem>;
+
+export const MerchantActivityPage = z.object({
+  items: z.array(MerchantActivityItem),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+});
+export type MerchantActivityPage = z.infer<typeof MerchantActivityPage>;
+
+export const listMerchantActivity = (
+  params: { action?: string | undefined; limit?: number; offset?: number },
+  signal?: AbortSignal,
+) => {
+  const search = new URLSearchParams();
+  if (params.action) search.set("action", params.action);
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.offset) search.set("offset", String(params.offset));
+  const query = search.toString();
+  return request(
+    `/api/merchant/activity${query ? `?${query}` : ""}`,
+    MerchantActivityPage,
+    signal ? { signal } : {},
+  );
+};

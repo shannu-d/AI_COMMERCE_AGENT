@@ -4,6 +4,7 @@ import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import { getCart } from "../api/endpoints";
+import { useAuth } from "../auth/context";
 import { cx } from "../components/cx";
 import { useToast } from "../components/toastContext";
 import { ConciergeLauncher, ConciergePanel } from "../features/concierge/Concierge";
@@ -148,6 +149,39 @@ function Header() {
   const { open, isOpen } = useConcierge();
   const { pathname } = useLocation();
   const notify = useToast();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  // The account menu is the one part of the header that changes with who is
+  // looking. It shows what the API will actually honour: an anonymous visitor
+  // gets sign-in and sign-up, a shopper gets their account and orders, and an
+  // administrator gets the dashboard — because `/api/account/orders` answers
+  // 403 for a merchant token and the dashboard 403s for a shopper's.
+  const accountMenu = !user
+    ? [
+        { label: "Sign in", to: "/login" },
+        { label: "Create an account", to: "/register" },
+      ]
+    : user.role === "MERCHANT"
+      ? [
+          { label: "Merchant dashboard", to: "/merchant" },
+          {
+            label: "Sign out",
+            onSelect: () => {
+              void signOut().then(() => navigate("/"));
+            },
+          },
+        ]
+      : [
+          { label: "My profile", to: "/account" },
+          { label: "Orders", to: "/account" },
+          {
+            label: "Sign out",
+            onSelect: () => {
+              void signOut().then(() => navigate("/"));
+            },
+          },
+        ];
 
   // The seed has ten categories including structural parents; the bar shows the
   // ones a shopper actually browses rather than every row in the table. The API
@@ -278,31 +312,19 @@ function Header() {
             align="end"
             trigger={
               <span className="flex items-center gap-1">
-                <span className="grid h-7 w-7 place-items-center rounded-full border border-rule text-ink-soft">
+                <span
+                  className={cx(
+                    "grid h-7 w-7 place-items-center rounded-full border text-ink-soft",
+                    user ? "border-ink text-ink" : "border-rule",
+                  )}
+                >
                   <UserGlyph className="h-4 w-4" />
                 </span>
                 <Chevron className="h-1 w-2 text-ink-faint" />
               </span>
             }
-            triggerLabel="Account"
-            items={[
-              {
-                label: "My profile",
-                onSelect: () =>
-                  notify({
-                    title: "My profile",
-                    detail: "Accounts are not part of this demo yet.",
-                  }),
-              },
-              {
-                label: "Orders",
-                onSelect: () =>
-                  notify({
-                    title: "Orders",
-                    detail: "An order opens at its own link once it is placed.",
-                  }),
-              },
-            ]}
+            triggerLabel={user ? `Account: ${user.display_name || user.email}` : "Account"}
+            items={accountMenu}
           />
 
           {/* Mobile: the primary nav folds into one menu rather than a second

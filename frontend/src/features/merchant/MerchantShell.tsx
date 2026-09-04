@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { NavLink, Link, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { useAuth } from "../../auth/context";
 import { cx } from "../../components/cx";
 
 /**
@@ -14,9 +15,12 @@ import { cx } from "../../components/cx";
  * as the same product seen from behind the counter, not a bolted-on admin
  * template.
  *
- * There is **no authentication** (ADR-022): the dashboard operates on the one
- * configured merchant, resolved server-side. Anyone who reaches `/merchant` sees
- * it. That is a documented limitation of the MVP, not an oversight.
+ * **Authenticated and merchant-scoped** (ADR-023, superseding ADR-022's
+ * single-tenant stance). Reaching this shell requires a MERCHANT token, and the
+ * merchant every route below operates on is read from `users.merchant_id` — so
+ * an administrator sees their own catalogue and cannot name another's. The
+ * `RequireMerchant` guard in `App.tsx` only decides what to *draw*; the API
+ * refuses an unauthenticated or wrong-role caller regardless.
  */
 
 const NAV: Array<{ to: string; label: string; end?: boolean | undefined }> = [
@@ -25,6 +29,7 @@ const NAV: Array<{ to: string; label: string; end?: boolean | undefined }> = [
   { to: "/merchant/inventory", label: "Inventory" },
   { to: "/merchant/orders", label: "Orders" },
   { to: "/merchant/categories", label: "Categories" },
+  { to: "/merchant/activity", label: "Activity" },
   { to: "/merchant/settings", label: "Settings" },
 ];
 
@@ -86,6 +91,8 @@ export function MerchantShell() {
 }
 
 function Sidebar({ className }: { className?: string }) {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   return (
     <aside className={cx("flex-col border-r border-rule bg-paper-raised", className)}>
       <Link
@@ -121,10 +128,26 @@ function Sidebar({ className }: { className?: string }) {
         ))}
       </nav>
 
-      <p className="border-t border-rule px-5 py-3 text-2xs leading-relaxed text-ink-faint">
-        Single-tenant, no sign-in. Every figure here is read from the live
-        catalogue and order tables.
-      </p>
+      <div className="border-t border-rule px-5 py-3">
+        {user && (
+          <p className="truncate text-2xs text-ink-soft" title={user.email}>
+            {user.display_name || user.email}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            void signOut().then(() => navigate("/merchant/login"));
+          }}
+          className="mt-1 text-2xs text-ink-faint underline transition-colors duration-fast hover:text-volt-ink"
+        >
+          Sign out
+        </button>
+        <p className="mt-2 text-2xs leading-relaxed text-ink-faint">
+          Every figure here is read from the live catalogue and order tables, for
+          this merchant only.
+        </p>
+      </div>
     </aside>
   );
 }

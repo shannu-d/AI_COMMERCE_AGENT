@@ -22,6 +22,7 @@ const KEYS = {
   inventory: (params: Record<string, unknown>) => ["merchant", "inventory", params] as const,
   orders: (params: Record<string, unknown>) => ["merchant", "orders", params] as const,
   order: (id: string) => ["merchant", "order", id] as const,
+  activity: (params: Record<string, unknown>) => ["merchant", "activity", params] as const,
 };
 
 export function useMerchantOverview() {
@@ -75,6 +76,15 @@ export function useMerchantOrders(params: Parameters<typeof api.listMerchantOrde
   });
 }
 
+export function useMerchantActivity(params: Parameters<typeof api.listMerchantActivity>[0]) {
+  return useQuery({
+    queryKey: KEYS.activity(params),
+    queryFn: ({ signal }) => api.listMerchantActivity(params, signal),
+    staleTime: 5_000,
+    placeholderData: (previous) => previous,
+  });
+}
+
 export function useMerchantOrder(orderId: string | undefined) {
   return useQuery({
     queryKey: KEYS.order(orderId ?? ""),
@@ -91,6 +101,8 @@ function useInvalidateCatalog() {
     void qc.invalidateQueries({ queryKey: ["merchant", "inventory"] });
     void qc.invalidateQueries({ queryKey: ["merchant", "overview"] });
     void qc.invalidateQueries({ queryKey: ["merchant", "categories"] });
+    // Every catalogue write records an activity entry, so the log is stale too.
+    void qc.invalidateQueries({ queryKey: ["merchant", "activity"] });
     // The storefront reads the same rows — keep its caches honest too.
     void qc.invalidateQueries({ queryKey: ["products"] });
     void qc.invalidateQueries({ queryKey: ["categories"] });

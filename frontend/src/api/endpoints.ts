@@ -1,11 +1,16 @@
 import { request } from "./client";
 import {
+  AccountOrderPage,
   ApprovalResponse,
+  AuthSession,
+  AuthToken,
   Cart,
   CategoryList,
   ChatResponse,
   CheckoutConfig,
   HealthResponse,
+  MerchantMe,
+  NoContent,
   OrderResponse,
   ProductDetailResponse,
   ProductListResponse,
@@ -142,3 +147,47 @@ export const getProduct = (slug: string, signal?: AbortSignal) =>
  * server-minted, anonymous identifier by a different door.
  */
 export const createSession = () => request("/api/sessions", SessionResponse, { method: "POST" });
+
+// -- identity (ADR-023) -----------------------------------------------------
+
+/**
+ * Sign-in, sign-up and "who am I".
+ *
+ * `session_id` is sent with register and login so the anonymous cart the
+ * visitor was already building **gains an owner** rather than being copied
+ * anywhere. That is the whole of ADR-023's claiming step; there is no merge.
+ *
+ * There is deliberately no `role` field on registration. Self-service sign-up
+ * makes customers, and a merchant administrator is provisioned by an operator —
+ * the backend has no route that could do otherwise, and neither does this file.
+ */
+
+export const register = (body: {
+  email: string;
+  password: string;
+  display_name?: string | undefined;
+  session_id?: string | undefined;
+}) => request("/api/auth/register", AuthToken, { method: "POST", body: compact(body) });
+
+export const login = (body: { email: string; password: string; session_id?: string | undefined }) =>
+  request("/api/auth/login", AuthToken, { method: "POST", body: compact(body) });
+
+export const logout = () => request("/api/auth/logout", NoContent, { method: "POST" });
+
+/** `null` for an anonymous visitor — the logged-out case is not an error. */
+export const getAuthSession = (signal?: AbortSignal) =>
+  request("/api/auth/session", AuthSession, signal ? { signal } : {});
+
+export const getMerchantMe = (signal?: AbortSignal) =>
+  request("/api/merchant/me", MerchantMe, signal ? { signal } : {});
+
+export const getMyOrders = (signal?: AbortSignal) =>
+  request("/api/account/orders", AccountOrderPage, signal ? { signal } : {});
+
+/** Drop undefined keys: the request models are `extra="forbid"`, and an
+ * explicit `undefined` would serialise to a key the server rejects. */
+function compact<T extends Record<string, unknown>>(body: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(body).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}

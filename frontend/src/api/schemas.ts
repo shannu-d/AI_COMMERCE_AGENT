@@ -350,3 +350,65 @@ export const CategoryList = z.array(CategoryItem);
 /** A server-minted anonymous session id. Authorizes nothing on its own. */
 export const SessionResponse = z.object({ session_id: z.string().uuid() });
 export type SessionResponse = z.infer<typeof SessionResponse>;
+
+// -- identity (ADR-023) ------------------------------------------------------
+
+/**
+ * A 204. `request()` reads the body as JSON and falls back to `null` when there
+ * is none, so this is what an endpoint that answers nothing parses against —
+ * rather than lying about a shape the server never sent.
+ */
+export const NoContent = z.null();
+
+/**
+ * The signed-in principal, as the server describes them.
+ *
+ * `role` is the **server's** answer, never a client decision: it arrives in a
+ * response body and is used only to choose what to render. Every actual
+ * authorization decision is made again, server-side, on the next request — so a
+ * tampered value in the browser changes what a page looks like and nothing else.
+ */
+export const AuthUser = z.object({
+  id: z.string().uuid(),
+  email: z.string(),
+  role: z.enum(["CUSTOMER", "MERCHANT"]),
+  display_name: z.string().nullable().optional(),
+  merchant_id: z.string().uuid().nullable().optional(),
+});
+export type AuthUser = z.infer<typeof AuthUser>;
+
+/**
+ * A successful sign-in. `session_claimed` false means the anonymous cart the
+ * client was holding already belonged to somebody else, so the client should
+ * start a fresh session rather than keep pointing at one it cannot read.
+ */
+export const AuthToken = z.object({
+  access_token: z.string(),
+  token_type: z.string(),
+  expires_at: z.string(),
+  user: AuthUser,
+  session_claimed: z.boolean(),
+});
+export type AuthToken = z.infer<typeof AuthToken>;
+
+/** `/api/auth/session` answers `null` for an anonymous caller, never a 401. */
+export const AuthSession = AuthUser.nullable();
+
+export const MerchantMe = z.object({
+  id: z.string().uuid(),
+  email: z.string(),
+  role: z.string(),
+  display_name: z.string().nullable().optional(),
+  merchant_id: z.string().uuid(),
+  merchant_name: z.string(),
+});
+export type MerchantMe = z.infer<typeof MerchantMe>;
+
+/** A page of the signed-in customer's own orders. */
+export const AccountOrderPage = z.object({
+  items: z.array(OrderResponse),
+  total: z.number().int(),
+  limit: z.number().int(),
+  offset: z.number().int(),
+});
+export type AccountOrderPage = z.infer<typeof AccountOrderPage>;
