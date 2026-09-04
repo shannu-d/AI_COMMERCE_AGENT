@@ -73,6 +73,7 @@ Status vocabulary is exactly: `NOT_STARTED` · `IN_PROGRESS` · `COMPLETE` · `B
 | **M13** | Audit + trace | `COMPLETE` | M12 | Audit service, 12 named events, agent trace | ✅ | ✅ Transaction fully reconstructable | `app/services/audit_service.py` | ADR-010 | No HTTP read route (by design) |
 | **M14** | Frontend | `IN_PROGRESS` | M5, M7, M8, M11 | **F0–F5, F7, F8 COMPLETE**; F6 and F9 need Razorpay keys | ✅ 15 CORS + 5 contract + 35 frontend | 🟡 F§33 met except the 3 Razorpay items | `frontend/` | **ADR-017** | Port 8000 conflict (§11.4) |
 | **M15** | Integration & evaluation | `IN_PROGRESS` | M14 | ✅ Backend scenarios (12 tests) | ✅ 12 | ❌ Frontend half blocked on M14 | `tests/integration/` | ADR-014 | — |
+| **M16** | Catalogue expansion + Merchant Dashboard | `COMPLETE` | M2, M10, M14 | **Catalogue → 51 products / 216 SKUs / 24 categories** across electronics + clothing + furniture, **no migration** (ADR-021). **Merchant Dashboard**: `merchant_service.py` (write + analytics), `OrderService.list_for_merchant`, `/api/merchant/*` (12 endpoints), `frontend/src/pages/merchant/` (7 pages) + `MerchantShell` (ADR-022) | ✅ +33 backend, +7 frontend | ✅ Cross-category agent, merchant create/restock/reprice round-trips, isolation rejected — all browser-verified | `app/services/merchant_service.py`, `app/api/routes/merchant.py`, `frontend/src/features/merchant/`, `app/seed/data/catalog.json` | **ADR-021**, **ADR-022** | No merchant auth (single-tenant); no merchant activity log; Razorpay still unconfigured so revenue reads ₹0 |
 
 ### Frontend F-phase status
 
@@ -81,7 +82,7 @@ Status vocabulary is exactly: `NOT_STARTED` · `IN_PROGRESS` · `COMPLETE` · `B
 | **F0** scaffold | `COMPLETE` | Vite 6 + React 18 + TS 5.9, TanStack Query, Zod, Tailwind, Vitest. 11 tests, typecheck clean, production build succeeds. **Acceptance verified live**: browser-origin preflight + `GET /api/health` parsed by the real Zod schema |
 | **F1** CORS + design system | `COMPLETE` | CORS live-verified (allowed origin echoed, foreign origin refused). Design tokens in `index.css`, primitives in `components/primitives.tsx` |
 | **F2** chat core | `COMPLETE` | `ChatWindow`, `useChat`, session in `sessionStorage`. Turns serialised; business outcomes on HTTP 200 render as recovery flows |
-| **F3** recommendations | `COMPLETE` | `RecommendationCard`/`Grid`. Rendered from `recommendations[]` only — a test asserts prose-only products yield no card |
+| **F3** recommendations | `COMPLETE` | Rendered from `recommendations[]` only — a test asserts prose-only products yield no card. **Since ADR-020 (§8b)** the cards render on the `/agent` surface (`SmartAgentRecommendations`), not in the transcript; the chat shows a pointer to them |
 | **F4** cart | `COMPLETE` | `CartPanel`. A test proves the total is the backend's even when it contradicts the line items |
 | **F5** approval + policy failures | `COMPLETE` | `ApprovalDialog`. Submits displayed `cart_version` + `expected_total`; per-code recovery copy; 409 explained as a stale view |
 | **F6** Razorpay checkout | `IN_PROGRESS` | `razorpay.ts` + `OrderPage` built; the success callback only triggers a re-read, never marks paid. **Live check still blocked on real Razorpay keys** |
@@ -93,11 +94,101 @@ Status vocabulary is exactly: `NOT_STARTED` · `IN_PROGRESS` · `COMPLETE` · `B
 **F0–F9 are the decomposition *inside* M14** (`04-task-breakdown.md` FE-00..FE-07). They do not
 replace or reorder M0–M15.
 
+### 8a. Homepage visual pass (2026-09-03)
+
+The homepage and shared header were brought in line with an owner-supplied reference screenshot
+(`reference/1.png`). Frontend only — no backend, API, schema, Groq, Razorpay or policy change.
+
+- **Storefront brand is now "EASY BUY"** (owner decision, 2026-09-03). The wordmark, `<title>`,
+  meta description, footer and hero eyebrow use it; `CircuitCraft` stays as the merchant/catalogue
+  name in product data (`brand` field) and in `architecture.md`, which is unchanged.
+- **The accent token `--volt` changed from `#CCFF00` to `#94DD26`** (`src/index.css`), the
+  reference's interaction colour. It still appears only on interaction and emphasis — the active
+  nav item, hover states (nav, categories, quick prompts, "see everything", the hero CTA), the
+  wordmark, the concierge marker and Send button, the headline underline. The surface stays paper /
+  ink / grey. No new gradients, shadows, glassmorphism or rounded cards.
+- **Header (`src/layout/Shell.tsx`)** rebuilt to the reference composition: EASY BUY wordmark +
+  cart glyph (left), centred primary nav **Home / Shopping / Smart Agent / Services** (Smart Agent
+  links to `/agent` — see §8b; Services scrolls to the footer), and **Concierge / Cart / More /
+  Account** controls (right). "More" and the account control are `HeaderMenu` disclosures; their
+  items are honest placeholders that raise a toast ("not part of this demo yet"). A thin **category
+  bar** now sits under the header on every breakpoint (it was desktop-nav on large screens, a
+  separate rail only on mobile before).
+- **Motion**: unchanged primitives. Entrances still use the CSS `rise`/`fade` keyframes
+  (`transform`/`opacity` only); new hovers are `transition-colors` at `--dur-fast`. The global
+  `prefers-reduced-motion` block still neutralises all of it. No JS animation loops added.
+- **Responsive**: verified on desktop (~1536 px) in-browser; the automation environment could not
+  resize below that, so 390/768/1024 px were validated by DOM/breakpoint inspection, not visually.
+  The header uses `grid-cols-[1fr_auto_1fr]`; below `lg` the primary nav folds into one menu and
+  the category bar scrolls horizontally.
+- Frontend suite **42 passed** at the time of this pass, typecheck + eslint clean, production build
+  succeeds.
+
+### 8b. Smart Agent recommendations surface (2026-09-04)
+
+The agent's product cards moved out of the chat transcript into a dedicated surface (**ADR-020**,
+deviation D8). Frontend + one backend prompt change; no chat/cart/order contract change.
+
+- **`recommendations[]` is already the structured contract** (`ChatResponse`, mirrored in
+  `api/schemas.ts`). Nothing about it changed. The change is where those objects render.
+- **New `/agent` route → `AgentPage`** renders `SmartAgentRecommendations` (the grid) beside the
+  concierge rail. `useAgentRecommendations` derives `{ recommendations, status, retry }` from the
+  app-wide `AgentTurnsContext` — no new store. Statuses: `idle` (discovery) / `loading` (skeleton,
+  or previous cards dimmed) / `ready` / `empty` (no-match) / `error` (retry). Cards are the
+  existing `ProductCard`/`ProductGrid` via `fromRecommendation`; `useAddToCart` untouched.
+- **`ChatWindow` no longer renders the grid** — it shows prose plus a one-line
+  *"N products in your recommendations →"* pointer to `/agent`. F§9 preserved: no card, and no
+  pointer, is fabricated from prose. `features/chat/RecommendationCard.tsx` deleted (redundant).
+- **Stale-request guard**: each run stamps a monotonic `seq` at start; the selector picks
+  `max(seq)`, not last-appended (`pickLatestTurn`, pure, tested). Runs are serialised today; this
+  makes the guarantee explicit.
+- **`Concierge.ask()` navigates to `/agent`** so a homepage hero / quick-prompt ask lands where the
+  cards are. Bare `open()` (header, mobile launcher) stays put.
+- **Backend**: `system_prompt.md` gained a "Writing your reply" section (be brief, no tables, name
+  products with prices) — version `1.0.0` → `1.1.0`. Prompt-content asserted in `test_prompts.py`.
+  Not a control (L§29 / ADR-009). A running backend must be restarted to load it.
+- **Tests**: frontend **50 passed** (+8: transcript-pointer-not-cards, panel renders per
+  recommendation, empty state, error/retry, set replacement, `pickLatestTurn` ordering); backend
+  no-db **917 passed**, chat/llm/agent **407 passed** (8 pre-existing PostgreSQL skips). typecheck,
+  eslint, build green. Bundle 564 kB (no new dependency).
+- **Browser-verified** on port 8004: five grounded cards in the panel at backend prices/labels,
+  transcript = prose + pointer, add-to-cart → `POST /api/cart/items` 200 (cart total ₹3,697.00),
+  quick-prompt → `/agent`, rate-limit/malformed-response → retry state not a crash.
+
+### 8c. Catalogue expansion + Merchant Dashboard (M16, 2026-09-04)
+
+Two owner-requested additions; see **ADR-021** and **ADR-022**, and `deviations.md` D9/D10.
+
+- **Catalogue** grew to **51 products · 216 SKUs · 24 categories** — electronics (the original
+  prototype, unchanged and now pinned by `test_the_original_electronics_prototype_is_preserved`),
+  **clothing** (`t_shirt`/`shirt`/`jeans`/`hoodie`/`jacket`/`dress`, colour × size variants) and
+  **furniture** (`chair`/`table`/`desk`/`sofa`/`bed`/`shelving`). **No migration** — the model is
+  JSONB-attribute and the ranking/filter/tool/service layers are category-agnostic by design.
+  Merchant display name → `EASY BUY` (`DEFAULT_MERCHANT_ID` unchanged).
+- **Backend**: `app/services/merchant_service.py` — `MerchantCatalogService` (create/update/archive
+  product & variant, `set_stock`, `create_category`, paginated list) + `MerchantAnalyticsService`
+  (real aggregates; revenue = `PAYMENT_CONFIRMED` only). `OrderService.list_for_merchant` (read).
+  `app/api/routes/merchant.py` — 12 endpoints under `/api/merchant`, merchant resolved
+  server-side, `extra="forbid"` (no `merchant_id` field anywhere) = the isolation guarantee. The
+  pure read services stay read-only.
+- **Frontend**: `frontend/src/features/merchant/` (api + Zod schemas, hooks, `MerchantShell`,
+  `DashTable`, attribute templates) and `frontend/src/pages/merchant/` — Overview, Products,
+  Product editor, Inventory, Orders (+ detail), Categories, Settings. `/merchant/*` is its own
+  layout route; reuses the design system; one inline-SVG bar, no chart library.
+- **Groq**: unchanged. Verified live — the agent answers clothing and furniture queries through the
+  same `search_catalog` tool and ranking engine, with the concise ADR-020 reply.
+- **Known limitations**: no merchant authentication (single-tenant, documented on the Settings
+  page); no merchant activity log; Razorpay unconfigured so `paid_orders`/`revenue` read zero.
+
 ## 9. Test status
 
-**Backend: 1292 passed · 0 failed · 0 skipped** (909 need no database).
-**Frontend: 42 passed** (`cd frontend && npm run test`), typecheck clean, eslint clean, production build 518 kB (gzip 153 kB).
-The 7 added tests cover the Assistant UI runtime (ADR-019); the bundle grew from 287 kB to 518 kB when Assistant UI was adopted.
+**Backend: 1344 passed · 0 failed · 0 skipped** with a database (was 1311 before M4-R/ADR-020/M16
+work landed on this branch; 917 need no database). Run with
+`TEST_DATABASE_URL=postgresql+psycopg://ai_commerce:ai_commerce@127.0.0.1:5432/ai_commerce_test`.
+**Frontend: 57 passed** (`cd frontend && npm run test`), typecheck clean, eslint clean, production
+build ~566 kB (gzip ~164 kB, no new dependency).
+The Assistant UI runtime (ADR-019) added 7 tests and grew the bundle from 287 kB to 518 kB; ADR-020
+added 8 tests and ~2 kB.
 **Live money path: verified** (`npm run test:live`, opt-in, needs a running backend).
 
 ```bash

@@ -31,6 +31,9 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [017](ADR-017-frontend-framework-and-browser-access.md) | Vite, and How the Browser Is Let In | Accepted, **partially implemented (M14/F1)** | M14 | F6 |
 | [018](ADR-018-groq-as-the-locked-llm-provider.md) | **Groq Is the Locked LLM Provider** | Accepted, **implemented and live-verified (M4-R)** | M4 / M5+ | — |
 | [019](ADR-019-assistant-ui-for-the-agent-chat-runtime.md) | **Assistant UI Owns the Agent Chat Runtime, and Nothing Else** | Accepted, implemented and live-verified | M14 | — |
+| [020](ADR-020-recommendations-surface-separate-from-transcript.md) | **The Recommendation Cards Are a Surface of Their Own, Not Part of the Transcript** | Accepted, implemented and browser-verified | M14 | — |
+| [021](ADR-021-category-agnostic-catalog-expansion.md) | **The Catalogue Is Category-Agnostic; Clothing and Furniture Need No Schema Change** | Accepted, implemented and verified | M16 | — |
+| [022](ADR-022-merchant-dashboard.md) | **The Merchant Dashboard: Single-Tenant, No Authentication, a Separate Write Side** | Accepted, implemented and browser-verified | M16 | — |
 
 "Closes" refers to the question IDs in [`docs/analysis/03-open-questions.md`](../analysis/03-open-questions.md).
 

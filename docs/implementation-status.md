@@ -1072,3 +1072,66 @@ confined, and every one of the 1273 tests then passing, all of which fake the mo
 protocol, was unaffected by it.
 
 **Suite at the time of this audit: 1273 passed, 0 failed, 0 skipped.**
+
+---
+
+## M16 — Catalogue expansion + Merchant Dashboard (2026-09-04)
+
+Two owner-requested additions to an already-audited system. Full rationale in **ADR-021** (catalogue)
+and **ADR-022** (dashboard); deviations in `docs/notes/deviations.md` D9/D10.
+
+### Catalogue expansion — data only, no migration
+
+The Phase-A audit answered the question that mattered: **is the product model electronics-specific?**
+It is not. `products.attributes` / `product_variants.attributes` are JSONB (D§7, D§26 chose this
+deliberately); `app/ranking/scorers.py` and `filters.py` score and eliminate on generic
+`attribute_match` / `text_match` / `tag_match` / `category_match` / budget / inventory with no
+hard-coded key; `SearchCatalogArgs.attributes` is `dict[str, str|int|bool]` (its docstring example
+is `"material": "leather"`); compatibility is optional and skipped entirely for a product with no
+rules. So clothing and furniture are **rows, not tables**.
+
+`catalog.json` grew from ~460 to ~2200 lines: two new top-level trees (`clothing` → six
+subcategories, `furniture` → six), 30 new own-brand products, ~180 new SKUs with colour/size or
+finish/size variant axes and a spread of stock states. **The electronics prototype is byte-for-byte
+unchanged** and every architecture.md worked-example row is now pinned by
+`test_the_original_electronics_prototype_is_preserved`. `test_sku_count_is_within_the_range_the_
+specification_describes` (which asserted R§18's 30–36) was replaced by
+`test_the_catalog_is_the_expanded_multi_category_storefront`. Two `tests/api/test_catalog.py` tests
+that assumed the whole catalogue fit in one 60-row page were rewritten to assert page size and
+per-page monotonicity.
+
+Shipped: **51 products · 216 SKUs · 24 categories**. The merchant display name is now `EASY BUY`
+(`merchants.name`, `settings.default_merchant_name`); `DEFAULT_MERCHANT_ID` is unchanged.
+
+### Merchant Dashboard
+
+**No authentication exists** (ADR-006 has no `users` table), so the dashboard is single-tenant: every
+`/api/merchant/*` handler resolves the merchant from `settings.default_merchant_id` server-side, and
+the request schemas are `extra="forbid"` so there is no `merchant_id` field to supply. That is the
+isolation guarantee — a client cannot name a merchant, so it cannot name another one; a real id for a
+second merchant's row returns *not found* (four isolation tests).
+
+The catalogue read services stay read-only. The write side is `app/services/merchant_service.py`:
+`MerchantCatalogService` (product/variant/category create-update-archive, `set_stock`, paginated
+list) and `MerchantAnalyticsService` (aggregates over the source tables; revenue counts only
+`PAYMENT_CONFIRMED`). `OrderService` gained `list_for_merchant` (read). `merchant_service.py` does
+not import `app.llm` — a boundary test enforces it — so the new-variant currency is read from the
+`merchants` row. `app/api/routes/merchant.py` is 12 endpoints in the existing route style.
+
+Frontend: `frontend/src/features/merchant/` (api + Zod, hooks, `MerchantShell`, `DashTable`,
+attribute templates) and `frontend/src/pages/merchant/` (Overview, Products, Product editor,
+Inventory, Orders + detail, Categories, Settings). `/merchant/*` is a sibling layout route to the
+storefront — no concierge, no cart — reusing the whole design system, one inline-SVG bar, no chart
+library.
+
+### Verification
+
+Backend **1344 passed** with a database (new: `test_merchant_service.py` 15, `test_merchant.py` 14,
+plus catalogue-expansion test edits). Frontend **57 passed** (+7), typecheck / eslint / build clean.
+Live: cross-category Groq turns (clothing, furniture) return grounded, correctly-ranked
+recommendations with the concise ADR-020 reply; end-to-end Scenarios 4–7 (merchant creates a product
+→ it appears in the storefront and the agent finds it; stock → 0 removes it from what the agent can
+recommend; a price change propagates; cross-merchant access is rejected) all pass.
+
+**Groq is unchanged** — same client, same `openai/gpt-oss-120b` model, same prompts, same tool
+schemas.
