@@ -9,6 +9,14 @@ import type { ApiError, ChatResponse, Recommendation } from "../../api/schemas";
 
 /** What one completed turn produced, beyond its prose. */
 export type AgentTurnData = {
+  /**
+   * A monotonic id stamped when the run *starts*, so "the current
+   * recommendations" is `max(seq)` rather than "last appended". Runs are already
+   * serialised by the runtime, so completion order equals send order today; this
+   * makes the guarantee explicit, and keeps a slow request from overwriting a
+   * newer one's results if that ever stops holding.
+   */
+  seq: number;
   state: ChatResponse["state"];
   recommendations: Recommendation[];
   error: ApiError | null;

@@ -75,3 +75,8 @@ tmp/
 # Claude Code — per-developer local settings are not shared
 # ---------------------------------------------------------------------------
 .claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Design reference material supplied for a task — working input, not source.
+# ---------------------------------------------------------------------------
+reference/

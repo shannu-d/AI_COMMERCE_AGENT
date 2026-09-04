@@ -99,6 +99,9 @@ def test_the_editorial_comment_is_not_sent_to_the_model(name: str) -> None:
         ("policy boundary", "that is the system working"),
         ("honest failure", "Say so honestly"),
         ("injection", "content"),
+        ("brief prose", "Be brief"),
+        ("no tables in prose", "Never put a table, a SKU list, or a dump of product attributes"),
+        ("products render as cards", "own card"),
     ],
 )
 def test_the_system_prompt_states_each_behavioural_rule(subject: str, phrase: str) -> None:

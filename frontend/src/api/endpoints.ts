@@ -2,10 +2,14 @@ import { request } from "./client";
 import {
   ApprovalResponse,
   Cart,
+  CategoryList,
   ChatResponse,
   CheckoutConfig,
   HealthResponse,
   OrderResponse,
+  ProductDetailResponse,
+  ProductListResponse,
+  SessionResponse,
 } from "./schemas";
 
 /**
@@ -83,3 +87,58 @@ export const getOrder = (orderId: string, signal?: AbortSignal) =>
 
 export const startCheckout = (orderId: string) =>
   request(`/api/orders/${orderId}/checkout`, CheckoutConfig, { method: "POST" });
+
+// -- catalog ----------------------------------------------------------------
+
+/**
+ * Browsing. Read-only, anonymous, and deliberately session-free — nothing here
+ * is scoped to a buyer and nothing here can move money.
+ *
+ * These reach the same deterministic `CatalogService` the agent's tools use, so
+ * a browsed price and a recommended price are the same row of the same table.
+ */
+
+export const getCategories = (signal?: AbortSignal) =>
+  request("/api/categories", CategoryList, signal ? { signal } : {});
+
+export const getProducts = (
+  params: {
+    category?: string | undefined;
+    q?: string | undefined;
+    maxPrice?: string | undefined;
+    sort?: string | undefined;
+    limit?: number | undefined;
+  },
+  signal?: AbortSignal,
+) => {
+  const search = new URLSearchParams();
+  if (params.category) search.set("category", params.category);
+  if (params.q) search.set("q", params.q);
+  if (params.maxPrice) search.set("max_price", params.maxPrice);
+  if (params.sort) search.set("sort", params.sort);
+  if (params.limit) search.set("limit", String(params.limit));
+  const query = search.toString();
+  return request(
+    `/api/products${query ? `?${query}` : ""}`,
+    ProductListResponse,
+    signal ? { signal } : {},
+  );
+};
+
+export const getProduct = (slug: string, signal?: AbortSignal) =>
+  request(
+    `/api/products/${encodeURIComponent(slug)}`,
+    ProductDetailResponse,
+    signal ? { signal } : {},
+  );
+
+// -- sessions ---------------------------------------------------------------
+
+/**
+ * Start a session without talking to the agent.
+ *
+ * The chat route mints one on its first turn, which is fine for a conversation
+ * but leaves a browsing buyer unable to hold a cart. This is the same
+ * server-minted, anonymous identifier by a different door.
+ */
+export const createSession = () => request("/api/sessions", SessionResponse, { method: "POST" });

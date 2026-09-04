@@ -5,6 +5,7 @@ import { renderWithProviders } from "./render";
 import { aeroCase } from "./fixtures";
 import { AgentRuntimeProvider } from "../features/agent/AgentRuntimeProvider";
 import { useAgentChat } from "../features/agent/useAgentChat";
+import { SmartAgentRecommendations } from "../features/agent/SmartAgentRecommendations";
 import { ChatWindow } from "../features/chat/ChatWindow";
 import type { ChatResponse } from "../api/schemas";
 import { clearSessionId } from "../session";
@@ -48,9 +49,19 @@ const turn = (over: Partial<ChatResponse> = {}): ChatResponse => ({
   ...over,
 });
 
+/**
+ * The two panes as the app wires them: the recommendation surface and the
+ * transcript, both under one runtime. Products land in the first; prose in the
+ * second (ADR-020).
+ */
 function Harness() {
-  const { turns, pending, sessionId, send } = useAgentChat();
-  return <ChatWindow turns={turns} pending={pending} sessionId={sessionId} onSend={send} />;
+  const { turns, pending, send } = useAgentChat();
+  return (
+    <>
+      <SmartAgentRecommendations />
+      <ChatWindow turns={turns} pending={pending} onSend={send} />
+    </>
+  );
 }
 
 const renderAgent = () =>
@@ -108,7 +119,7 @@ describe("the agent runtime talks to our backend", () => {
     });
   });
 
-  it("renders products from recommendations[], at the backend's price", async () => {
+  it("loads products into the recommendations panel, at the backend's price", async () => {
     stubFetch(() => ({ status: 200, body: turn() }));
     renderAgent();
     await ask();
@@ -117,9 +128,21 @@ describe("the agent runtime talks to our backend", () => {
     expect(screen.getByText(/999\.00/)).toBeInTheDocument();
   });
 
+  it("keeps the cards out of the transcript, pointing at the panel instead (ADR-020)", async () => {
+    stubFetch(() => ({ status: 200, body: turn({ message: "One case fits." }) }));
+    renderAgent();
+    await ask();
+
+    await waitFor(() => expect(screen.getByText("One case fits.")).toBeInTheDocument());
+    const log = screen.getByRole("log", { name: "Conversation" });
+    // The transcript has the prose and the pointer, not the card.
+    expect(log).toHaveTextContent(/1 product in your recommendations/i);
+    expect(log).not.toHaveTextContent("AeroCase Pro");
+  });
+
   it("shows no product when the prose names one but recommendations[] is empty", async () => {
     // F§9. A model describing a product it was never shown must not put a card
-    // on screen; the structured half of the turn is the only source.
+    // on screen anywhere; the structured half of the turn is the only source.
     stubFetch(() => ({
       status: 200,
       body: turn({ message: "The AeroCase Pro would suit you.", recommendations: [] }),
@@ -131,6 +154,45 @@ describe("the agent runtime talks to our backend", () => {
       expect(screen.getByText("The AeroCase Pro would suit you.")).toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: /add to cart/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no matches/i)).toBeInTheDocument();
+  });
+
+  it("replaces the recommendation set when the conversation moves on", async () => {
+    const first = turn({ message: "A case.", recommendations: [aeroCase] });
+    const second = turn({
+      message: "A charger instead.",
+      recommendations: [
+        {
+          ...aeroCase,
+          variant_id: "aaaaaaaa-aaaa-5aaa-8aaa-aaaaaaaaaaaa",
+          name: "VoltEdge 20W",
+        },
+      ],
+    });
+    let call = 0;
+    stubFetch(() => ({ status: 200, body: call++ === 0 ? first : second }));
+    renderAgent();
+
+    const user = await ask("a case");
+    await waitFor(() => expect(screen.getByText("AeroCase Pro")).toBeInTheDocument());
+
+    await user.type(screen.getByRole("textbox"), "a charger instead");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(screen.getByText("VoltEdge 20W")).toBeInTheDocument());
+    // The previous set is gone, not appended.
+    expect(screen.queryByText("AeroCase Pro")).not.toBeInTheDocument();
+  });
+
+  it("shows a retry affordance when the turn could not load recommendations", async () => {
+    stubFetch(() => ({ status: 500, body: { detail: "boom" } }));
+    renderAgent();
+    await ask();
+
+    await waitFor(() =>
+      expect(screen.getByText(/couldn.t load product recommendations/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("treats a business outcome on HTTP 200 as a turn, not a transport failure", async () => {

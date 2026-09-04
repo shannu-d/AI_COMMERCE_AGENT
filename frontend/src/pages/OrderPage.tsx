@@ -56,21 +56,21 @@ export function OrderPage() {
     <Shell>
       <Card className="space-y-5 p-6">
         <header className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Order</p>
-          <h1 className="font-mono text-sm text-zinc-900">{order.order_id}</h1>
+          <p className="text-xs uppercase tracking-wide text-ink-faint">Order</p>
+          <h1 className="font-mono text-sm text-ink">{order.order_id}</h1>
         </header>
 
         <StatusBanner status={order.status} />
 
         <dl className="space-y-1 text-sm">
-          <div className="flex justify-between text-base font-semibold">
+          <div className="flex justify-between text-base font-medium">
             <dt>Total</dt>
             <dd>
               <Money amount={order.total_amount} currency={order.currency} />
             </dd>
           </div>
           {order.razorpay_order_id && (
-            <div className="flex justify-between text-xs text-zinc-500">
+            <div className="flex justify-between text-xs text-ink-faint">
               <dt>Provider reference</dt>
               <dd className="font-mono">{order.razorpay_order_id}</dd>
             </div>
@@ -78,7 +78,7 @@ export function OrderPage() {
         </dl>
 
         {checkoutError && (
-          <Alert tone="danger" title="Could not start payment">
+          <Alert tone="critical" title="Could not start payment">
             <p>{checkoutError} Nothing has been charged.</p>
           </Alert>
         )}
@@ -114,7 +114,7 @@ function isSettled(status: OrderStatus): boolean {
  * read that as normal, not as something broken (F§15).
  */
 function StatusBanner({ status }: { status: OrderStatus }) {
-  const map: Record<OrderStatus, { tone: "info" | "warning" | "danger"; title: string; body: string }> = {
+  const map: Record<OrderStatus, { tone: "info" | "caution" | "critical"; title: string; body: string }> = {
     ORDER_CREATED: {
       tone: "info",
       title: "Ready for payment",
@@ -126,7 +126,7 @@ function StatusBanner({ status }: { status: OrderStatus }) {
       body: "Your order is reserved. Nothing has been charged yet.",
     },
     PAYMENT_PENDING: {
-      tone: "warning",
+      tone: "caution",
       title: "Verifying your payment",
       body: "This usually takes a few seconds. This page updates itself — you can leave it open.",
     },
@@ -136,17 +136,17 @@ function StatusBanner({ status }: { status: OrderStatus }) {
       body: "Confirmed by the payment provider. Your order is complete.",
     },
     PAYMENT_FAILED: {
-      tone: "danger",
+      tone: "critical",
       title: "Payment failed",
       body: "You have not been charged. You can start a new order from the assistant.",
     },
     ORDER_FAILED: {
-      tone: "danger",
+      tone: "critical",
       title: "Order failed",
       body: "You have not been charged.",
     },
     CANCELLED: {
-      tone: "warning",
+      tone: "caution",
       title: "Order cancelled",
       body: "You have not been charged.",
     },

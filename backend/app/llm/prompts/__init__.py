@@ -39,7 +39,10 @@ PROMPT_DIR = Path(__file__).resolve().parent
 #: cannot arrive unversioned.
 PROMPT_VERSIONS: Mapping[str, str] = MappingProxyType(
     {
-        "system_prompt": "1.0.0",
+        # 1.1.0 — added the "Writing your reply" section (brief prose, no tables
+        # or attribute dumps; recommended products render as cards in a separate
+        # panel). See ADR-020.
+        "system_prompt": "1.1.0",
         "intent_extraction": "1.0.0",
     }
 )

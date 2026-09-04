@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
+import { ToastProvider } from "./components/Toast";
 import "./index.css";
 
 // No global commerce store, deliberately (F§5, F§29). Every piece of commerce
@@ -23,7 +24,9 @@ if (!root) throw new Error("#root is missing from index.html");
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

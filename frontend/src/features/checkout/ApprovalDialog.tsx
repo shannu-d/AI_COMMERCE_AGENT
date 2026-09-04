@@ -82,41 +82,41 @@ export function ApprovalDialog({
   const failure = approve.error ?? place.error;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+    <div className="animate-fade fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-0 sm:items-center sm:p-4">
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="approval-title"
         tabIndex={-1}
-        className="w-full max-w-md space-y-4 rounded-lg bg-white p-5 shadow-xl focus:outline-none"
+        className="animate-sheet w-full max-w-md space-y-4 border border-ink bg-paper-raised p-5 focus:outline-none"
       >
         <div>
-          <h2 id="approval-title" className="text-base font-semibold text-zinc-900">
+          <h2 id="approval-title" className="text-heading font-medium text-ink">
             Confirm your order
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1.5 text-sm text-ink-soft">
             You are authorizing this exact total. Nothing is charged until you complete payment.
           </p>
         </div>
 
-        <ul className="max-h-52 space-y-2 overflow-y-auto text-sm">
+        <ul className="scroll-quiet max-h-52 divide-y divide-rule/60 overflow-y-auto border-y border-rule text-sm">
           {cart.items.map((item) => (
-            <li key={item.item_id} className="flex justify-between gap-3">
-              <span className="min-w-0 truncate text-zinc-700">
-                {item.name} <span className="text-zinc-400">× {item.quantity}</span>
+            <li key={item.item_id} className="flex justify-between gap-3 py-2">
+              <span className="min-w-0 truncate text-ink-soft">
+                {item.name} <span className="tabular text-ink-faint">× {item.quantity}</span>
               </span>
-              <Money amount={item.line_total} currency={item.currency} className="shrink-0" />
+              <Money amount={item.line_total} currency={item.currency} className="tabular shrink-0" />
             </li>
           ))}
         </ul>
 
-        <div className="flex items-baseline justify-between border-t border-zinc-200 pt-3">
-          <span className="text-sm font-medium text-zinc-900">Total</span>
+        <div className="flex items-baseline justify-between pt-1">
+          <span className="text-sm font-medium text-ink">Total</span>
           <Money
             amount={cart.total}
             currency={cart.currency}
-            className="text-lg font-semibold text-zinc-900"
+            className="tabular text-xl font-medium text-ink"
           />
         </div>
 
@@ -162,7 +162,7 @@ export function ApprovalDialog({
 function ApprovalFailure({ error }: { error: unknown }) {
   if (!(error instanceof ApiRequestError)) {
     return (
-      <Alert tone="danger" title="Something went wrong">
+      <Alert tone="critical" title="Something went wrong">
         <p>Nothing has been charged.</p>
       </Alert>
     );
@@ -171,7 +171,7 @@ function ApprovalFailure({ error }: { error: unknown }) {
   // 409 from `/cart/approve` means the cart moved under the buyer.
   if (error.status === 409) {
     return (
-      <Alert tone="warning" title="The cart changed while you were reviewing it">
+      <Alert tone="caution" title="The cart changed while you were reviewing it">
         <p>Close this and review the updated total — the earlier one is no longer valid.</p>
       </Alert>
     );
@@ -206,7 +206,7 @@ function ApprovalFailure({ error }: { error: unknown }) {
   };
 
   return (
-    <Alert tone="danger" title={entry.title}>
+    <Alert tone="critical" title={entry.title}>
       <p>{entry.body}</p>
     </Alert>
   );

@@ -27,7 +27,7 @@ function stubFetch(body: unknown, status = 200) {
 describe("the conversation is operable and announced", () => {
   it("labels the message input", () => {
     renderWithProviders(
-      <ChatWindow turns={[]} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <ChatWindow turns={[]} pending={false} onSend={() => {}} />,
     );
 
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
@@ -35,7 +35,7 @@ describe("the conversation is operable and announced", () => {
 
   it("marks the transcript as a live region, so new turns are announced", () => {
     renderWithProviders(
-      <ChatWindow turns={[]} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <ChatWindow turns={[]} pending={false} onSend={() => {}} />,
     );
 
     const log = screen.getByRole("log", { name: "Conversation" });
@@ -44,7 +44,7 @@ describe("the conversation is operable and announced", () => {
 
   it("exposes the thinking state as a status, not only as animation", () => {
     renderWithProviders(
-      <ChatWindow turns={[]} pending={true} sessionId="s-1" onSend={() => {}} />,
+      <ChatWindow turns={[]} pending={true} onSend={() => {}} />,
     );
 
     expect(screen.getByRole("status")).toHaveTextContent(/thinking/i);
@@ -54,7 +54,7 @@ describe("the conversation is operable and announced", () => {
     const user = userEvent.setup();
     const sent: string[] = [];
     renderWithProviders(
-      <ChatWindow turns={[]} pending={false} sessionId="s-1" onSend={(t) => sent.push(t)} />,
+      <ChatWindow turns={[]} pending={false} onSend={(t) => sent.push(t)} />,
     );
 
     await user.tab();
@@ -67,7 +67,7 @@ describe("the conversation is operable and announced", () => {
     const user = userEvent.setup();
     const sent: string[] = [];
     renderWithProviders(
-      <ChatWindow turns={[]} pending={false} sessionId="s-1" onSend={(t) => sent.push(t)} />,
+      <ChatWindow turns={[]} pending={false} onSend={(t) => sent.push(t)} />,
     );
 
     await user.click(screen.getByLabelText("Message"));
@@ -80,7 +80,7 @@ describe("the conversation is operable and announced", () => {
     const user = userEvent.setup();
     const sent: string[] = [];
     renderWithProviders(
-      <ChatWindow turns={[]} pending={true} sessionId="s-1" onSend={(t) => sent.push(t)} />,
+      <ChatWindow turns={[]} pending={true} onSend={(t) => sent.push(t)} />,
     );
 
     await user.click(screen.getByLabelText("Message"));

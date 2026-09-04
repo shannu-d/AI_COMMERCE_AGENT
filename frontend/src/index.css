@@ -2,21 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens (F§12: modern commerce, not a generic chatbot).
-   Defined as CSS variables so a theme change is one file, and so the palette is
-   inspectable rather than scattered through utility strings. */
+/* ---------------------------------------------------------------------------
+   CircuitCraft — "Technical Editorial"
+
+   The aesthetic thesis: this is a catalogue of precision components, so it
+   should read like an instrument datasheet that a magazine art-directed. Warm
+   paper, warm near-black ink, one electric accent used sparingly, and monospace
+   for every value a buyer might need to read exactly — SKU, price, quantity,
+   specification.
+
+   This direction is not decoration; it is forced by a real constraint. The
+   backend's product contract carries no image field (F§9 forbids inventing
+   one), so a photo-led storefront is impossible without fabricating data.
+   Rather than fill the space with grey placeholder rectangles, the design makes
+   the product's *real attributes* the visual content.
+
+   Every value here is a CSS variable so the palette is inspectable in one place
+   rather than scattered through utility strings.
+--------------------------------------------------------------------------- */
+
 :root {
   color-scheme: light;
-  --ink: 24 24 27;
-  --ink-muted: 113 113 122;
-  --surface: 255 255 255;
-  --surface-sunken: 250 250 249;
-  --line: 228 228 231;
-  --brand: 29 78 216;
-  --brand-ink: 255 255 255;
-  --positive: 21 128 61;
-  --warning: 180 83 9;
-  --danger: 185 28 28;
+
+  /* Surfaces — warm, never pure white; pure white reads clinical and cheap. */
+  --paper: 250 249 245;
+  --paper-raised: 255 254 251;
+  --paper-sunken: 243 241 235;
+
+  /* Ink — warm near-black, never #000. */
+  --ink: 17 17 16;
+  --ink-soft: 82 80 74;
+  --ink-faint: 138 135 126;
+
+  /* Structure */
+  --rule: 219 216 206;
+  --rule-strong: 17 17 16;
+
+  /* The accent — "volt". A restrained lime (#94DD26), used for interaction and
+     emphasis: the wordmark, the active nav item, hover states, small marks and
+     the concierge's controls. It is deliberately never a large light-background
+     fill of body copy — at that size it is both unreadable and garish. Restraint
+     is what keeps it feeling expensive; the interface stays predominantly paper,
+     ink and grey, and the accent appears where something is interactive. */
+  --volt: 148 221 38;
+  --volt-ink: 17 17 16;
+
+  /* Semantics, kept editorial rather than "bootstrap traffic light". */
+  --positive: 22 101 52;
+  --positive-bg: 236 245 238;
+  --caution: 146 64 14;
+  --caution-bg: 250 243 232;
+  --critical: 155 28 28;
+  --critical-bg: 251 238 238;
+
+  /* Motion. One curve for entrances, one for reactions. Naming them stops
+     twelve different easings appearing across twelve components. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
 }
 
 html,
@@ -26,14 +71,135 @@ body,
 }
 
 body {
-  background: rgb(var(--surface-sunken));
+  background: rgb(var(--paper));
   color: rgb(var(--ink));
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-rendering: optimizeLegibility;
+  /* Reserve the scrollbar so opening a dialog does not shift the whole page —
+     a layout shift that is easy to ship and very obvious once seen. */
+  scrollbar-gutter: stable;
 }
 
-/* F§13/§10: honour a reduced-motion preference everywhere, once, rather than
-   per-component. */
+/* Anything a buyer reads as a *value* is monospace and tabular: prices line up
+   in a column, quantities do not jitter as they change, SKUs look like codes. */
+.tabular {
+  font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* The editorial eyebrow: small, tracked-out, uppercase. Used for section labels
+   and technical annotations. */
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--ink-faint));
+}
+
+/* ---------------------------------------------------------------------------
+   Motion primitives
+
+   Two rules govern everything here:
+   1. Only `transform` and `opacity` are animated. Both are composited, so they
+      never trigger layout or paint and can hold frame budget on a mid-range
+      phone.
+   2. Entrances are staggered with a CSS variable rather than JavaScript, so a
+      list of twenty cards costs zero timers.
+--------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes rail-in {
+  from {
+    transform: translate3d(24px, 0, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/* A single sweep across a skeleton. `transform` only — a moving
+   `background-position` would repaint the element on every frame. */
+@keyframes sweep {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-rise {
+  animation: rise var(--dur-slow) var(--ease-out) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.animate-fade {
+  animation: fade var(--dur-base) var(--ease-out) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+.animate-sheet {
+  animation: sheet-in var(--dur-base) var(--ease-out) both;
+}
+
+.animate-rail {
+  animation: rail-in var(--dur-base) var(--ease-out) both;
+}
+
+/* ---------------------------------------------------------------------------
+   Accessibility
+--------------------------------------------------------------------------- */
+
+/* One reduced-motion rule for the whole application rather than a check inside
+   every component. Note it neutralises animation but never hides content — an
+   element whose entrance animation is suppressed must still be visible. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -45,9 +211,41 @@ body {
   }
 }
 
-/* A visible focus ring on keyboard navigation only. Removing focus styling
-   outright is the single most common way a UI becomes unusable by keyboard. */
+/* Keyboard-only focus. Removing focus styling outright is the single most
+   common way a UI becomes unusable without a mouse. */
 :focus-visible {
-  outline: 2px solid rgb(var(--brand));
+  outline: 2px solid rgb(var(--ink));
   outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* On the dark concierge surface the ink ring is invisible, so the accent takes
+   over — the one place volt earns its keep on a large dark field. */
+.on-dark :focus-visible {
+  outline-color: rgb(var(--volt));
+}
+
+::selection {
+  background: rgb(var(--volt));
+  color: rgb(var(--volt-ink));
+}
+
+/* A thin, quiet scrollbar inside panels. The storefront has two independently
+   scrolling columns on desktop and the default chrome is loud between them. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--rule)) transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: rgb(var(--rule));
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+.scroll-quiet::-webkit-scrollbar-track {
+  background: transparent;
 }

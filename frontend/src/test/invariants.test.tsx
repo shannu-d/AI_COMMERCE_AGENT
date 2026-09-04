@@ -6,6 +6,7 @@ import { Money } from "../components/Money";
 import { CartPanel } from "../features/cart/CartPanel";
 import { ApprovalDialog } from "../features/checkout/ApprovalDialog";
 import { ChatWindow } from "../features/chat/ChatWindow";
+import { RecommendationsView } from "../features/agent/SmartAgentRecommendations";
 import type { Turn } from "../features/chat/useChat";
 import { approval, cart, chatTurn, order, aeroCase } from "./fixtures";
 
@@ -87,7 +88,7 @@ describe("the cart never computes a total (F§12, F§29)", () => {
 });
 
 describe("products come from recommendations[], never from prose (F§9)", () => {
-  it("renders nothing when the model describes a product it was not shown", () => {
+  it("the transcript fabricates no card when the model describes a product it was not shown", () => {
     const turns: Turn[] = [
       {
         kind: "agent",
@@ -100,16 +101,16 @@ describe("products come from recommendations[], never from prose (F§9)", () => 
       },
     ];
 
-    renderWithProviders(
-      <ChatWindow turns={turns} pending={false} sessionId="s-1" onSend={() => {}} />,
-    );
+    renderWithProviders(<ChatWindow turns={turns} pending={false} onSend={() => {}} />);
 
-    // The prose is shown as prose; no product card is fabricated from it.
+    // The prose is shown as prose; no product card and no "in your recommendations"
+    // pointer is fabricated from it.
     expect(screen.getByText(/TitanCase Ultra/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add to cart/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/in your recommendations/i)).not.toBeInTheDocument();
   });
 
-  it("renders a card per structured recommendation", () => {
+  it("the transcript carries prose and a pointer, not the cards themselves (ADR-020)", () => {
     const turns: Turn[] = [
       {
         kind: "agent",
@@ -121,14 +122,37 @@ describe("products come from recommendations[], never from prose (F§9)", () => 
       },
     ];
 
+    renderWithProviders(<ChatWindow turns={turns} pending={false} onSend={() => {}} />);
+
+    expect(screen.getByText(chatTurn().message)).toBeInTheDocument();
+    expect(screen.getByText(/2 products in your recommendations/i)).toBeInTheDocument();
+    // The cards live in the recommendations panel, not the chat bubble.
+    expect(screen.queryByText("AeroCase Pro")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add to cart/i })).not.toBeInTheDocument();
+  });
+
+  it("the recommendations panel renders a card per structured recommendation", () => {
     renderWithProviders(
-      <ChatWindow turns={turns} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <RecommendationsView
+        recommendations={chatTurn().recommendations}
+        status="ready"
+        sessionId="s-1"
+      />,
     );
 
     expect(screen.getByText("AeroCase Pro")).toBeInTheDocument();
     expect(screen.getByText("ShieldCase Premium")).toBeInTheDocument();
     // The engine's own deterministic label, not model prose.
     expect(screen.getByText("Best overall")).toBeInTheDocument();
+  });
+
+  it("the recommendations panel shows nothing for an empty structured result", () => {
+    renderWithProviders(
+      <RecommendationsView recommendations={[]} status="empty" sessionId="s-1" />,
+    );
+
+    expect(screen.queryByRole("button", { name: /add to cart/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no matches/i)).toBeInTheDocument();
   });
 });
 
@@ -146,7 +170,7 @@ describe("a business outcome on HTTP 200 is a recovery flow, not a crash (ADR-01
     ];
 
     renderWithProviders(
-      <ChatWindow turns={turns} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <ChatWindow turns={turns} pending={false} onSend={() => {}} />,
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(/refused/i);
@@ -165,7 +189,7 @@ describe("a business outcome on HTTP 200 is a recovery flow, not a crash (ADR-01
     ];
 
     renderWithProviders(
-      <ChatWindow turns={turns} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <ChatWindow turns={turns} pending={false} onSend={() => {}} />,
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent(/out of stock/i);
@@ -242,11 +266,8 @@ describe("approval binds to what the buyer saw (ADR-007, A§26/A§27)", () => {
     const user = userEvent.setup();
     stubFetch(() => ({ status: 200, body: cart }));
 
-    const turns: Turn[] = [
-      { kind: "agent", id: "a1", text: "", state: "RECOMMENDING", recommendations: [aeroCase], error: null },
-    ];
     renderWithProviders(
-      <ChatWindow turns={turns} pending={false} sessionId="s-1" onSend={() => {}} />,
+      <RecommendationsView recommendations={[aeroCase]} status="ready" sessionId="s-1" />,
     );
 
     await user.click(screen.getByRole("button", { name: /add to cart/i }));

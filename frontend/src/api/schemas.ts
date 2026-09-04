@@ -281,3 +281,72 @@ export const CheckoutConfig = z.object({
   receipt: z.string(),
 });
 export type CheckoutConfig = z.infer<typeof CheckoutConfig>;
+
+/* ---------------------------------------------------------------------------
+   Catalog browsing (added with the storefront)
+
+   `CatalogItem` mirrors `Recommendation` field for field, minus the four
+   members only a ranking can produce (`rank`, `reason`, `reason_code`,
+   `score`). That is deliberate: one shape means a browsed product and an
+   agent-recommended product render through the same component, which is what
+   lets the concierge feel like part of the storefront rather than a panel
+   bolted beside it.
+
+   `ProductCard` below is the union both paths are narrowed to.
+--------------------------------------------------------------------------- */
+
+export const CategoryItem = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  parent_slug: z.string().nullable(),
+});
+export type CategoryItem = z.infer<typeof CategoryItem>;
+
+export const CatalogItem = z.object({
+  product_id: z.string().uuid(),
+  variant_id: z.string().uuid(),
+  product_slug: z.string(),
+  sku: z.string(),
+  name: z.string(),
+  variant_name: z.string(),
+  category: z.string(),
+  price: Money,
+  currency: z.string(),
+  stock_status: StockStatus,
+  attributes: z.record(z.unknown()),
+  tags: z.array(z.string()),
+  brand: z.string().nullable(),
+  description: z.string().nullable(),
+});
+export type CatalogItem = z.infer<typeof CatalogItem>;
+
+export const ProductListResponse = z.object({
+  items: z.array(CatalogItem),
+  total: z.number().int(),
+  categories: z.array(CategoryItem),
+});
+export type ProductListResponse = z.infer<typeof ProductListResponse>;
+
+export const ProductSummaryItem = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  category: z.string(),
+  brand: z.string().nullable(),
+  description: z.string().nullable(),
+});
+export type ProductSummaryItem = z.infer<typeof ProductSummaryItem>;
+
+export const ProductDetailResponse = z.object({
+  product: ProductSummaryItem,
+  variants: z.array(CatalogItem),
+  related: z.array(ProductSummaryItem),
+});
+export type ProductDetailResponse = z.infer<typeof ProductDetailResponse>;
+
+export const CategoryList = z.array(CategoryItem);
+
+/** A server-minted anonymous session id. Authorizes nothing on its own. */
+export const SessionResponse = z.object({ session_id: z.string().uuid() });
+export type SessionResponse = z.infer<typeof SessionResponse>;

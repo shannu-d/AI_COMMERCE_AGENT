@@ -31,9 +31,10 @@ import { AgentTurnsContext, SessionIdContext, type AgentTurnData } from "./agent
  * the browser talks to our API, which talks to Groq.
  *
  * **Structured data does not travel inside the message text.** `recommendations[]`
- * and the cart are captured per run and rendered by the existing
- * `RecommendationGrid`; the assistant's prose is the only thing that becomes
- * message content. Nothing is ever parsed back out of that prose (F§9).
+ * and the cart are captured per run (keyed by a start-of-run `seq`) and rendered
+ * by the Smart Agent recommendations panel, separate from the transcript
+ * (ADR-020); the assistant's prose is the only thing that becomes message
+ * content. Nothing is ever parsed back out of that prose (F§9).
  */
 
 export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
@@ -50,6 +51,9 @@ export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const inFlight = useRef(false);
+  // Stamped when a run starts, read back when it finishes, so the recommendation
+  // selector can pick the newest *request* rather than the newest *response*.
+  const seq = useRef(0);
 
   const adapter = useMemo<ChatModelAdapter>(
     () => ({
@@ -69,6 +73,7 @@ export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
         if (!text) return { content: [] };
 
         inFlight.current = true;
+        const runSeq = (seq.current += 1);
         try {
           const response = await sendChat({ session_id: readSessionId(), message: text });
 
@@ -79,6 +84,7 @@ export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
           }
 
           append({
+            seq: runSeq,
             state: response.state,
             recommendations: response.recommendations,
             error: response.error,
@@ -97,6 +103,7 @@ export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
           const isApi = error instanceof ApiRequestError;
           const message = isApi ? error.message : "Something went wrong.";
           append({
+            seq: runSeq,
             state: "TOOL_ERROR",
             recommendations: [],
             error: null,

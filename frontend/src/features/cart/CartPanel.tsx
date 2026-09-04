@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCart, removeCartItem, updateCartItem } from "../../api/endpoints";
+
 import { ApiRequestError } from "../../api/client";
+import { getCart, removeCartItem, updateCartItem } from "../../api/endpoints";
 import type { Cart, PriceChange } from "../../api/schemas";
 import { Money } from "../../components/Money";
-import { Alert, Button, StockBadge } from "../../components/primitives";
+import { cx } from "../../components/cx";
+import { Alert, Button, Eyebrow, Skeleton, StockBadge } from "../../components/primitives";
+import { SpecMark } from "../../design/SpecMark";
 
 /**
  * The cart.
@@ -22,7 +25,11 @@ export function CartPanel({
 }) {
   const queryClient = useQueryClient();
 
-  const { data: cart, isPending, error } = useQuery({
+  const {
+    data: cart,
+    isPending,
+    error,
+  } = useQuery({
     queryKey: ["cart", sessionId],
     queryFn: ({ signal }) => getCart(sessionId!, signal),
     enabled: Boolean(sessionId),
@@ -43,8 +50,9 @@ export function CartPanel({
   });
 
   if (!sessionId) return <Aside>Start a conversation to build a cart.</Aside>;
-  if (isPending) return <Aside>Loading…</Aside>;
-  if (error instanceof ApiRequestError && error.status === 404) return <Aside>Your cart is empty.</Aside>;
+  if (isPending) return <CartSkeleton />;
+  if (error instanceof ApiRequestError && error.status === 404)
+    return <Aside>Your cart is empty.</Aside>;
   if (error) return <Aside>Could not load the cart.</Aside>;
   if (!cart || cart.items.length === 0) return <Aside>Your cart is empty.</Aside>;
 
@@ -53,87 +61,102 @@ export function CartPanel({
 
   return (
     <div className="flex min-h-0 flex-col">
-      <header className="flex items-baseline justify-between border-b border-zinc-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-900">Cart</h2>
+      <header className="flex items-baseline justify-between border-b border-rule px-4 py-3">
+        <h2 className="text-sm font-medium text-ink">Cart</h2>
         {/* Shown because an approval binds to it, and a stale version is the
             thing the buyer will be told about if it moves under them. */}
-        <span className="text-xs text-zinc-400">v{cart.cart_version}</span>
+        <span className="eyebrow tabular">v{cart.cart_version}</span>
       </header>
 
       {cart.price_changes.length > 0 && <PriceChangeNotice changes={cart.price_changes} />}
 
-      <ul className="flex-1 divide-y divide-zinc-100 overflow-y-auto">
+      <ul className={cx("scroll-quiet flex-1 overflow-y-auto", busy && "opacity-60")}>
         {cart.items.map((item) => (
-          <li key={item.item_id} className="space-y-2 p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-zinc-900">{item.name}</p>
-                <p className="truncate text-xs text-zinc-500">{item.variant_name}</p>
-              </div>
-              <Money
-                amount={item.line_total}
-                currency={item.currency}
-                className="shrink-0 text-sm font-semibold"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="sr-only" htmlFor={`qty-${item.item_id}`}>
-                Quantity for {item.name}
-              </label>
-              <select
-                id={`qty-${item.item_id}`}
-                value={item.quantity}
-                disabled={busy}
-                onChange={(event) =>
-                  setQuantity.mutate({
-                    itemId: item.item_id,
-                    quantity: Number(event.target.value),
-                  })
-                }
-                className="rounded border border-zinc-300 px-2 py-1 text-xs"
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-zinc-400">
-                <Money amount={item.unit_price} currency={item.currency} /> each
+          <li key={item.item_id} className="border-b border-rule/60 p-4 last:border-0">
+            <div className="flex gap-3">
+              <span className="h-12 w-12 shrink-0 border border-rule bg-paper-sunken">
+                <SpecMark sku={item.sku} category="default" />
               </span>
-              {!item.available && <StockBadge status="OUT_OF_STOCK" />}
-              <Button
-                variant="ghost"
-                className="ml-auto px-2 py-1 text-xs"
-                disabled={busy}
-                onClick={() => remove.mutate(item.item_id)}
-              >
-                Remove
-              </Button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink">{item.name}</p>
+                    <p className="tabular truncate text-2xs text-ink-faint">
+                      {item.variant_name} · {item.sku}
+                    </p>
+                  </div>
+                  <Money
+                    amount={item.line_total}
+                    currency={item.currency}
+                    className="tabular shrink-0 text-sm font-medium"
+                  />
+                </div>
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <label className="sr-only" htmlFor={`qty-${item.item_id}`}>
+                    Quantity for {item.name}
+                  </label>
+                  <select
+                    id={`qty-${item.item_id}`}
+                    value={item.quantity}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setQuantity.mutate({
+                        itemId: item.item_id,
+                        quantity: Number(event.target.value),
+                      })
+                    }
+                    className="tabular h-8 border border-rule bg-paper-raised px-2 text-2xs text-ink transition-colors duration-fast hover:border-ink focus:border-ink focus:outline-none"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="tabular text-2xs text-ink-faint">
+                    <Money amount={item.unit_price} currency={item.currency} /> each
+                  </span>
+                  {!item.available && <StockBadge status="OUT_OF_STOCK" />}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto"
+                    disabled={busy}
+                    onClick={() => remove.mutate(item.item_id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
             </div>
           </li>
         ))}
       </ul>
 
-      <footer className="space-y-3 border-t border-zinc-200 p-4">
-        <dl className="space-y-1 text-sm">
-          <div className="flex justify-between text-zinc-500">
+      <footer className="space-y-3 border-t border-rule p-4">
+        <dl className="space-y-1.5">
+          <div className="flex justify-between text-sm text-ink-soft">
             <dt>Subtotal</dt>
-            <dd>
+            <dd className="tabular">
               <Money amount={cart.subtotal} currency={cart.currency} />
             </dd>
           </div>
-          <div className="flex justify-between text-base font-semibold text-zinc-900">
-            <dt>Total</dt>
-            <dd>
+          <div className="flex items-baseline justify-between border-t border-rule pt-2">
+            <dt className="text-sm font-medium text-ink">Total</dt>
+            <dd className="tabular text-lg font-medium text-ink">
               <Money amount={cart.total} currency={cart.currency} />
             </dd>
           </div>
         </dl>
 
+        <p className="text-2xs leading-relaxed text-ink-faint">
+          Computed by the server from the live catalogue. Re-checked before any payment is taken.
+        </p>
+
         {unavailable && (
-          <Alert tone="warning" title="An item is unavailable">
+          <Alert tone="caution" title="An item is unavailable">
             <p>Remove it before continuing.</p>
           </Alert>
         )}
@@ -155,26 +178,47 @@ export function CartPanel({
  */
 function PriceChangeNotice({ changes }: { changes: PriceChange[] }) {
   return (
-    <div className="border-b border-amber-200 bg-amber-50 p-4">
-      <p className="text-sm font-medium text-amber-900">
+    <div className="border-b border-caution/25 bg-caution-bg p-4">
+      <p className="text-sm font-medium text-caution">
         {changes.length === 1 ? "A price changed" : `${changes.length} prices changed`}
       </p>
-      <ul className="mt-1 space-y-0.5 text-xs text-amber-800">
+      <ul className="mt-1.5 space-y-1 text-2xs text-caution">
         {changes.map((change) => (
-          <li key={change.sku}>
+          <li key={change.sku} className="tabular">
             {change.name}: <Money amount={change.previous_unit_price} /> →{" "}
             <Money amount={change.current_unit_price} />{" "}
             {change.increased ? "(increased)" : "(decreased)"}
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-amber-800">
+      <p className="mt-2 text-2xs text-caution">
         Any earlier approval no longer applies. Confirm the new total to continue.
       </p>
     </div>
   );
 }
 
+function CartSkeleton() {
+  return (
+    <div className="space-y-3 p-4" aria-hidden="true">
+      {[0, 1].map((i) => (
+        <div key={i} className="flex gap-3">
+          <Skeleton className="h-12 w-12 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Aside({ children }: { children: React.ReactNode }) {
-  return <p className="p-4 text-sm text-zinc-500">{children}</p>;
+  return (
+    <div className="p-6">
+      <Eyebrow>Cart</Eyebrow>
+      <p className="mt-2 text-sm text-ink-soft">{children}</p>
+    </div>
+  );
 }
