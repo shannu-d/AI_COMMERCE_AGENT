@@ -1,10 +1,14 @@
 # Progress Report
 
-**As of:** 2026-09-02 · **Last commit:** `38232ea` (plus uncommitted M14/F1 work)
+**As of:** 2026-09-04 · **Last commit:** `a9c7506` (+ doc commits)
 **This file is a high-level human-readable snapshot only.** The canonical current state is
 **[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md)** — if this file ever disagrees with it, that
-file wins. For detail see `docs/implementation-status.md`, `docs/decisions/README.md` and
-`docs/notes/open-questions-status.md`.
+file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.md`](docs/SUBMISSION.md)**.
+
+> **2026-09-04:** The money path is **live** — a real Razorpay test-mode payment completed end to
+> end (order → Checkout → signed webhook → `PAYMENT_CONFIRMED` → audit), and `payment.failed` was
+> handled gracefully too. Authentication (ADR-023) is in. An **MCP server** (ADR-024,
+> `python -m app.mcp`) makes the merchant sellable to an external AI buyer. Suite: 1422 passed.
 
 > 🔒 **LLM provider: Groq, locked (ADR-018).** Model `openai/gpt-oss-120b` — open weights,
 > **served by Groq**, no request reaches OpenAI. Never propose migrating to Anthropic, Claude,
@@ -25,13 +29,15 @@ file wins. For detail see `docs/implementation-status.md`, `docs/decisions/READM
 | M8 | Approval model (`POST /api/cart/approve`) | ✅ Complete |
 | M9 | Policy Engine (10 rules, pure, no DB) | ✅ Complete |
 | M10 | Order creation + idempotency | ✅ Complete |
-| M11 | Razorpay order client | 🟡 Code complete; live check unperformed |
+| M11 | Razorpay order client | ✅ **Complete — live-verified** (real test-mode order + payment) |
 | **M4-R** | **Groq provider reconciliation (ADR-018)** | ✅ **Complete and live-verified** |
-| M12 | Webhook handler (payment truth) | ✅ Complete |
+| M12 | Webhook handler (payment truth) | ✅ Complete — real Razorpay-signed webhooks verified (`payment.captured`, `payment.failed`, `order.paid`) |
 | M13 | Audit log (durable transaction history) | ✅ Complete |
-| M15 | Integration scenarios — **backend half only** | ✅ Complete (INT-05, INT-06, INT-09, price-drift flagship, success path, duplicate submission, injection containment) |
-| M14 | Frontend | 🟡 **F0-F5, F7, F8 done. F6/F9 blocked on Razorpay keys** |
-| M15 | Integration scenarios — **frontend half** | ⛔ Waiting on M14 |
+| M14 | Frontend | ✅ **F0-F8 done; F6 live-verified** (real Checkout). F9 polish partial |
+| M15 | Integration scenarios | ✅ Backend scenarios; the money path verified live end to end |
+| M16 | Catalogue expansion (216 SKUs) + Merchant Dashboard | ✅ Complete (ADR-021, ADR-022) |
+| ADR-023 | Authentication & authorization (customers + merchants) | ✅ Implemented |
+| ADR-024 | MCP surface — merchant sellable to an external AI buyer | ✅ Implemented and verified |
 
 **Test suite:** backend 1292 pass against a real PostgreSQL, 0 failures, 0 skips (909 need no
 database); frontend 35 pass, typecheck clean, production build OK. The Groq provider, CORS, and

@@ -4,8 +4,28 @@
 If any other document disagrees with this file about *current state*, this file wins — except for
 `architecture.md`, which is the specification and is never edited.
 
-**Last verified:** 2026-09-02 · **Against commit:** `38232ea` (+ uncommitted work, see §16)
-**Verified by:** full test suite, lint, and direct source inspection — not by reading prior docs.
+**Last verified:** 2026-09-04 · **Against commit:** `a9c7506` (+ later doc commits)
+**Verified by:** full test suite (1422 passed, 0 skipped), lint, live money path, and a real
+Razorpay test-mode payment end to end — not by reading prior docs.
+
+> ### 2026-09-04 — the money path is live, and there is an MCP surface
+>
+> - **M11 is COMPLETE and live-verified.** `razorpay` is now a declared dependency; a real
+>   Razorpay **test-mode payment** completed end to end — order → Checkout → **signed webhook** →
+>   `PAYMENT_CONFIRMED` → audit. The `payment.failed` path was also verified live (an
+>   international-card decline arrived as a real webhook and was handled gracefully).
+> - **M14/F6 is COMPLETE** — real Razorpay Checkout opens and pays.
+> - **ADR-023 authentication is implemented** (customers + merchants, argon2id, opaque bearer
+>   tokens, `merchant_activity`). Frontend integration committed.
+> - **ADR-024 — an MCP server** (`python -m app.mcp`) makes EASY BUY sellable to an external AI
+>   buyer: agent-readable catalogue + `create_quote` → `authorize_and_pay` (an amount-carrying
+>   mandate) → `get_order_status`. Verified end to end against real Razorpay test mode.
+> - Infra on this machine: backend `:8004`, frontend `:5173` (with `frontend/.env`), MCP `:8005`,
+>   `ngrok http 8004` on a reserved domain for webhooks. Port 8000 is an unrelated app.
+> - Submission material: `docs/SUBMISSION.md`, `docs/RUNBOOK.md`, `docs/DEMO-SCRIPT.md`,
+>   `docs/notes/bugs-found-during-development.md`.
+>
+> The rest of this file below predates 2026-09-04 in places; the block above wins on current state.
 
 ---
 
@@ -275,9 +295,9 @@ payments 20 · integration 12.
 | --- | --- | --- | --- |
 | ~~Groq API key~~ | `GROQ_API_KEY` | ✅ **Set and verified working** | — |
 | ~~Groq model~~ | `GROQ_MODEL` | ✅ `openai/gpt-oss-120b`, verified | — |
-| Razorpay key id | `RAZORPAY_KEY_ID` | `rzp_REPLACE...` | M11 exit; F6 live check |
-| Razorpay secret | `RAZORPAY_KEY_SECRET` | `REPLACE_ME` | M11 exit; F6 live check |
-| Razorpay webhook secret | `RAZORPAY_WEBHOOK_SECRET` | `REPLACE_ME` | A **Razorpay-issued** signature check. The application's own verification path was exercised live on 2026-09-03 by signing against the placeholder — see §10 |
+| ~~Razorpay key id~~ | `RAZORPAY_KEY_ID` | ✅ **Set — real `rzp_test_` key, verified** (live order created) | — |
+| ~~Razorpay secret~~ | `RAZORPAY_KEY_SECRET` | ✅ **Set and verified** | — |
+| ~~Razorpay webhook secret~~ | `RAZORPAY_WEBHOOK_SECRET` | ✅ **Set and verified** — a real Razorpay-signed `payment.captured` and `payment.failed` both validated against it on 2026-09-04 | — |
 
 All Razorpay values are **test-mode** keys — free, no real money.
 
