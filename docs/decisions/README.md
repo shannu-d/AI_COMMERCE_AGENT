@@ -34,6 +34,8 @@ superseded file keeps its text and gains a "Superseded by" status line.
 | [020](ADR-020-recommendations-surface-separate-from-transcript.md) | **The Recommendation Cards Are a Surface of Their Own, Not Part of the Transcript** | Accepted, implemented and browser-verified | M14 | — |
 | [021](ADR-021-category-agnostic-catalog-expansion.md) | **The Catalogue Is Category-Agnostic; Clothing and Furniture Need No Schema Change** | Accepted, implemented and verified | M16 | — |
 | [022](ADR-022-merchant-dashboard.md) | **The Merchant Dashboard: Single-Tenant, No Authentication, a Separate Write Side** | Accepted, implemented and browser-verified | M16 | — |
+| [023](ADR-023-authentication-and-authorization.md) | **Authentication and Authorization: one `users` table, opaque bearer tokens, ownership through the session** | Accepted, implemented | M16+ | — |
+| [024](ADR-024-mcp-surface-for-ai-buyers.md) | **An MCP Surface That Makes EASY BUY Sellable to AI Buyers** | Accepted, implemented and verified | M17 | — |
 
 "Closes" refers to the question IDs in [`docs/analysis/03-open-questions.md`](../analysis/03-open-questions.md).
 

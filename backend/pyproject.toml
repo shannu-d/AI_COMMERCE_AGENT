@@ -26,6 +26,10 @@ dependencies = [
     # `app/payments/sdk.py`, so the application still boots without it and every
     # test in `tests/payments/` runs against a double with no network.
     "razorpay>=1.4",
+    # ADR-024: the Model Context Protocol surface (`app/mcp/`). A separate
+    # entrypoint (`python -m app.mcp`); the FastAPI app never imports it, so the
+    # API still boots without it. Pinned to v1 — v2 renamed FastMCP to MCPServer.
+    "mcp>=1.9,<2",
 ]
 
 [project.optional-dependencies]
