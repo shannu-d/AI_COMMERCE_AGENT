@@ -185,7 +185,7 @@ def test_the_merchant_id_is_the_configured_one(seeded: sessionmaker[Session]) ->
         merchant = session.get(Merchant, DEFAULT_MERCHANT_ID)
 
     assert merchant is not None
-    assert merchant.name == "CircuitCraft"
+    assert merchant.name == "EASY BUY"  # ADR-021: display name; the id is unchanged
     assert merchant.currency == "INR"
 
 

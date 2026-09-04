@@ -47,15 +47,31 @@ def raw_catalog() -> dict:
 
 
 def test_the_shipped_catalog_validates(catalog: CatalogSeed) -> None:
-    assert catalog.merchant.name == "CircuitCraft"
+    assert catalog.merchant.name == "EASY BUY"
     assert catalog.merchant.currency == "INR"
 
 
-def test_sku_count_is_within_the_range_the_specification_describes(
+def test_the_catalog_is_the_expanded_multi_category_storefront(
     catalog: CatalogSeed,
 ) -> None:
-    """architecture.md R§18: a 30-36 SKU CircuitCraft prototype."""
-    assert 30 <= catalog.variant_count <= 36
+    """ADR-021: the catalog was grown past R§18's 30-36 SKU prototype scope,
+    at the project owner's explicit request, into electronics + clothing +
+    furniture. The original electronics rows are preserved unchanged (see
+    ``test_the_original_electronics_prototype_is_preserved`` below)."""
+    assert catalog.variant_count >= 150
+    families = {c.slug for c in catalog.categories}
+    assert {"electronics", "clothing", "furniture"} <= families
+
+
+def test_the_original_electronics_prototype_is_preserved(catalog: CatalogSeed) -> None:
+    """The architecture.md worked-example rows must never be edited (ADR-021)."""
+    variants = {v.sku: v for p in catalog.products for v in p.variants}
+    assert variants["CASE-IP16-BLK"].price == Decimal("999.00")  # D§34
+    assert variants["CHARGER-30W"].price == Decimal("1499.00")  # L§20-21
+    assert variants["SPRO-IP16-1"].price == Decimal("299.00")  # L§25
+    shield = next(p for p in catalog.products if p.slug == "shieldcase_premium")
+    assert shield.variants[0].price == Decimal("1299.00")  # R§10
+    assert shield.variants[0].quantity == 5  # R§10
 
 
 def test_every_sku_is_unique_across_the_merchant(catalog: CatalogSeed) -> None:

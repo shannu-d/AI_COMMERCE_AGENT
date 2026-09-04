@@ -1,95 +1,228 @@
 {
   "_readme": [
-    "CircuitCraft catalog — seed data for the Phase-1 schema.",
+    "EASY BUY catalog — seed data for the Phase-1 schema, expanded (2026-09-04).",
     "",
-    "architecture.md refers to a 30-36 SKU CircuitCraft prototype but supplies only one",
-    "complete record: AeroCase Pro / CASE-IP16-BLK / 999 / quantity 20 / compatible with",
-    "iphone_16 / cross-sells a screen protector (D§34). It also names a few prices in",
-    "worked examples: ShieldCase Premium 1299 with stock 5 (R§10), a 30W charger at 1499",
-    "with SKU CHARGER-30W (L§20, L§21), and a screen protector at 299 (L§25).",
+    "ORIGIN. The electronics section (categories electronics..laptop_sleeve, and every",
+    "product from aerocase_pro..feltfolio_sleeve_14) is the original CircuitCraft",
+    "prototype and is reproduced UNCHANGED. architecture.md supplies one complete record",
+    "(AeroCase Pro / CASE-IP16-BLK / 999 / qty 20 / iphone_16 / cross-sells a screen",
+    "protector, D§34) and a few worked-example prices (ShieldCase Premium 1299 stock 5,",
+    "R§10; 30W charger 1499 SKU CHARGER-30W, L§20-21; screen protector 299, L§25) — all",
+    "reproduced here exactly. Those rows must not be edited.",
     "",
-    "Every one of those values is reproduced here exactly. The remaining products are",
-    "authored, because the catalog does not exist anywhere else, and they are authored",
-    "under a rule: each is a fictional CircuitCraft own-brand item described only by",
-    "structural attributes - material, colour, wattage, port type, cable length, capacity,",
-    "battery hours, ANC yes/no. No certifications, ratings, review counts, test results,",
-    "warranty terms or real third-party brand names appear anywhere in this file.",
+    "EXPANSION (ADR-021). At the project owner's explicit request the catalog is grown",
+    "past R§18's 30-36 SKU prototype scope into a multi-category storefront: two new",
+    "top-level category trees (clothing, furniture) and their products. This is a",
+    "deliberate deviation from R§18 recorded in ADR-021 and docs/notes/deviations.md;",
+    "the schema needs no change because products/variants/attributes are JSONB and the",
+    "ranking, filter, tool and service layers are category-agnostic by design (D§7, D§26).",
+    "The merchant display name is now EASY BUY (the storefront brand); DEFAULT_MERCHANT_ID",
+    "is still uuid5(.../merchant/circuitcraft) and is unchanged.",
     "",
-    "Money is a STRING, never a JSON number: json.loads would turn 999.00 into a float",
-    "before any validation could intervene, and no float ever touches a price (ADR-008).",
+    "CLAIMS RULE (unchanged). Every product is a fictional own-brand item described only",
+    "by structural attributes — material, fit, size, colour, dimensions, capacity, wattage.",
+    "No certifications, ratings, review counts, test results, warranty terms or real",
+    "third-party brand names appear anywhere in this file. Clothing and furniture carry no",
+    "compatibility rules; compatibility stays an electronics concept.",
     "",
-    "The catalog is shaped so that every hard constraint in ADR-005 is individually",
-    "testable: an out-of-stock variant (CASE-IP16-CLR, SLV-14-NVY), an iPhone 15 case that",
-    "must be excluded from iPhone 16 searches (CASE-IP15-BLK), products either side of the",
-    "1500 budget line, earbuds with no compatibility rules at all, and pixel_9 as a",
-    "resolvable device with zero compatible products - which is the R§14 no-match path",
-    "rather than the ADR-003 unresolvable-device path."
+    "Money is a STRING, never a JSON number (ADR-008). The dataset still exercises every",
+    "ADR-005 hard constraint: out-of-stock variants across all three families, products",
+    "either side of common budget lines, size/colour variant axes, and (electronics only)",
+    "the iphone_15 exclusion and pixel_9 no-match paths."
   ],
-
   "merchant": {
-    "name": "CircuitCraft",
-    "description": "Consumer electronics accessories.",
+    "name": "EASY BUY",
+    "description": "A general marketplace: consumer-electronics accessories, everyday clothing, and flat-pack furniture.",
     "currency": "INR"
   },
-
   "categories": [
-    { "slug": "electronics",        "name": "Electronics",          "parent": null },
-    { "slug": "mobile_accessories", "name": "Mobile Accessories",   "parent": "electronics" },
-    { "slug": "laptop_accessories", "name": "Laptop Accessories",   "parent": "electronics" },
-    { "slug": "phone_case",         "name": "Phone Cases",          "parent": "mobile_accessories" },
-    { "slug": "screen_protector",   "name": "Screen Protectors",    "parent": "mobile_accessories" },
-    { "slug": "charger",            "name": "Chargers & Adapters",  "parent": "mobile_accessories" },
-    { "slug": "usb_cable",          "name": "USB Cables",           "parent": "mobile_accessories" },
-    { "slug": "power_bank",         "name": "Power Banks",          "parent": "mobile_accessories" },
-    { "slug": "earbuds",            "name": "Earbuds",              "parent": "mobile_accessories" },
-    { "slug": "laptop_sleeve",      "name": "Laptop Sleeves",       "parent": "laptop_accessories" }
+    {
+      "slug": "electronics",
+      "name": "Electronics",
+      "parent": null
+    },
+    {
+      "slug": "mobile_accessories",
+      "name": "Mobile Accessories",
+      "parent": "electronics"
+    },
+    {
+      "slug": "laptop_accessories",
+      "name": "Laptop Accessories",
+      "parent": "electronics"
+    },
+    {
+      "slug": "phone_case",
+      "name": "Phone Cases",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "screen_protector",
+      "name": "Screen Protectors",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "charger",
+      "name": "Chargers & Adapters",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "usb_cable",
+      "name": "USB Cables",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "power_bank",
+      "name": "Power Banks",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "earbuds",
+      "name": "Earbuds",
+      "parent": "mobile_accessories"
+    },
+    {
+      "slug": "laptop_sleeve",
+      "name": "Laptop Sleeves",
+      "parent": "laptop_accessories"
+    },
+    {
+      "slug": "clothing",
+      "name": "Clothing",
+      "parent": null
+    },
+    {
+      "slug": "t_shirt",
+      "name": "T-Shirts",
+      "parent": "clothing"
+    },
+    {
+      "slug": "shirt",
+      "name": "Shirts",
+      "parent": "clothing"
+    },
+    {
+      "slug": "jeans",
+      "name": "Jeans",
+      "parent": "clothing"
+    },
+    {
+      "slug": "hoodie",
+      "name": "Hoodies & Sweatshirts",
+      "parent": "clothing"
+    },
+    {
+      "slug": "jacket",
+      "name": "Jackets",
+      "parent": "clothing"
+    },
+    {
+      "slug": "dress",
+      "name": "Dresses",
+      "parent": "clothing"
+    },
+    {
+      "slug": "furniture",
+      "name": "Furniture",
+      "parent": null
+    },
+    {
+      "slug": "chair",
+      "name": "Chairs",
+      "parent": "furniture"
+    },
+    {
+      "slug": "table",
+      "name": "Tables",
+      "parent": "furniture"
+    },
+    {
+      "slug": "desk",
+      "name": "Desks",
+      "parent": "furniture"
+    },
+    {
+      "slug": "sofa",
+      "name": "Sofas",
+      "parent": "furniture"
+    },
+    {
+      "slug": "bed",
+      "name": "Beds",
+      "parent": "furniture"
+    },
+    {
+      "slug": "shelving",
+      "name": "Shelving & Storage",
+      "parent": "furniture"
+    }
   ],
-
   "compatibility_targets": [
     {
       "target_type": "phone_model",
       "canonical_identifier": "iphone_16",
       "display_name": "iPhone 16",
-      "aliases": ["iphone16", "apple_iphone_16"]
+      "aliases": [
+        "iphone16",
+        "apple_iphone_16"
+      ]
     },
     {
       "target_type": "phone_model",
       "canonical_identifier": "iphone_15",
       "display_name": "iPhone 15",
-      "aliases": ["iphone15", "apple_iphone_15"]
+      "aliases": [
+        "iphone15",
+        "apple_iphone_15"
+      ]
     },
     {
       "target_type": "phone_model",
       "canonical_identifier": "pixel_9",
       "display_name": "Google Pixel 9",
-      "aliases": ["pixel9", "google_pixel_9"]
+      "aliases": [
+        "pixel9",
+        "google_pixel_9"
+      ]
     },
     {
       "target_type": "laptop_model",
       "canonical_identifier": "macbook_air_m3",
       "display_name": "MacBook Air M3",
-      "aliases": ["macbookair_m3", "mba_m3", "macbook_air_13_m3"]
+      "aliases": [
+        "macbookair_m3",
+        "mba_m3",
+        "macbook_air_13_m3"
+      ]
     },
     {
       "target_type": "laptop_model",
       "canonical_identifier": "macbook_pro_14",
       "display_name": "MacBook Pro 14",
-      "aliases": ["macbookpro_14", "mbp_14"]
+      "aliases": [
+        "macbookpro_14",
+        "mbp_14"
+      ]
     },
     {
       "target_type": "device_port",
       "canonical_identifier": "usb_c",
       "display_name": "USB-C",
-      "aliases": ["usbc", "type_c", "usb_type_c"]
+      "aliases": [
+        "usbc",
+        "type_c",
+        "usb_type_c"
+      ]
     },
     {
       "target_type": "device_port",
       "canonical_identifier": "lightning",
       "display_name": "Lightning",
-      "aliases": ["apple_lightning"]
+      "aliases": [
+        "apple_lightning"
+      ]
     }
   ],
-
   "products": [
     {
       "slug": "aerocase_pro",
@@ -97,15 +230,50 @@
       "category": "phone_case",
       "brand": "CircuitCraft",
       "description": "Slim protective case for compatible smartphones.",
-      "attributes": { "material": "TPU", "protection": "shock_resistant", "profile": "slim" },
-      "tags": ["iphone", "protective", "slim"],
+      "attributes": {
+        "material": "TPU",
+        "protection": "shock_resistant",
+        "profile": "slim"
+      },
+      "tags": [
+        "iphone",
+        "protective",
+        "slim"
+      ],
       "variants": [
-        { "sku": "CASE-IP16-BLK", "name": "Black", "price": "999.00", "quantity": 20, "attributes": { "color": "black" } },
-        { "sku": "CASE-IP16-BLU", "name": "Blue",  "price": "999.00", "quantity": 12, "attributes": { "color": "blue" } },
-        { "sku": "CASE-IP16-CLR", "name": "Clear", "price": "949.00", "quantity": 0,  "attributes": { "color": "clear" } }
+        {
+          "sku": "CASE-IP16-BLK",
+          "name": "Black",
+          "price": "999.00",
+          "quantity": 20,
+          "attributes": {
+            "color": "black"
+          }
+        },
+        {
+          "sku": "CASE-IP16-BLU",
+          "name": "Blue",
+          "price": "999.00",
+          "quantity": 12,
+          "attributes": {
+            "color": "blue"
+          }
+        },
+        {
+          "sku": "CASE-IP16-CLR",
+          "name": "Clear",
+          "price": "949.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "clear"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_16"
+        }
       ]
     },
     {
@@ -114,13 +282,33 @@
       "category": "phone_case",
       "brand": "CircuitCraft",
       "description": "Reinforced case with a raised camera lip and corner cushioning.",
-      "attributes": { "material": "polycarbonate_tpu", "protection": "drop_resistant", "profile": "rugged" },
-      "tags": ["iphone", "protective", "premium", "rugged"],
+      "attributes": {
+        "material": "polycarbonate_tpu",
+        "protection": "drop_resistant",
+        "profile": "rugged"
+      },
+      "tags": [
+        "iphone",
+        "protective",
+        "premium",
+        "rugged"
+      ],
       "variants": [
-        { "sku": "CASE-IP16-SHD-BLK", "name": "Black", "price": "1299.00", "quantity": 5, "attributes": { "color": "black" } }
+        {
+          "sku": "CASE-IP16-SHD-BLK",
+          "name": "Black",
+          "price": "1299.00",
+          "quantity": 5,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_16"
+        }
       ]
     },
     {
@@ -129,13 +317,32 @@
       "category": "phone_case",
       "brand": "CircuitCraft",
       "description": "Slim protective case cut for the previous-generation body.",
-      "attributes": { "material": "TPU", "protection": "shock_resistant", "profile": "slim" },
-      "tags": ["iphone", "protective", "slim"],
+      "attributes": {
+        "material": "TPU",
+        "protection": "shock_resistant",
+        "profile": "slim"
+      },
+      "tags": [
+        "iphone",
+        "protective",
+        "slim"
+      ],
       "variants": [
-        { "sku": "CASE-IP15-BLK", "name": "Black", "price": "899.00", "quantity": 15, "attributes": { "color": "black" } }
+        {
+          "sku": "CASE-IP15-BLK",
+          "name": "Black",
+          "price": "899.00",
+          "quantity": 15,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_15" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_15"
+        }
       ]
     },
     {
@@ -144,31 +351,86 @@
       "category": "phone_case",
       "brand": "CircuitCraft",
       "description": "Folio case in full-grain leather with two card slots.",
-      "attributes": { "material": "leather", "protection": "folio", "profile": "folio", "card_slots": 2 },
-      "tags": ["iphone", "leather", "premium", "folio"],
+      "attributes": {
+        "material": "leather",
+        "protection": "folio",
+        "profile": "folio",
+        "card_slots": 2
+      },
+      "tags": [
+        "iphone",
+        "leather",
+        "premium",
+        "folio"
+      ],
       "variants": [
-        { "sku": "CASE-IP16-LTR-BLK", "name": "Black", "price": "1799.00", "quantity": 10, "attributes": { "color": "black" } },
-        { "sku": "CASE-IP16-LTR-BRN", "name": "Brown", "price": "1799.00", "quantity": 6,  "attributes": { "color": "brown" } }
+        {
+          "sku": "CASE-IP16-LTR-BLK",
+          "name": "Black",
+          "price": "1799.00",
+          "quantity": 10,
+          "attributes": {
+            "color": "black"
+          }
+        },
+        {
+          "sku": "CASE-IP16-LTR-BRN",
+          "name": "Brown",
+          "price": "1799.00",
+          "quantity": 6,
+          "attributes": {
+            "color": "brown"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_16"
+        }
       ]
     },
-
     {
       "slug": "guardglass_2_5d",
       "name": "GuardGlass 2.5D",
       "category": "screen_protector",
       "brand": "CircuitCraft",
       "description": "Tempered glass screen protector with rounded edges.",
-      "attributes": { "material": "tempered_glass", "hardness": "9h", "edge": "2_5d" },
-      "tags": ["iphone", "screen", "protection"],
+      "attributes": {
+        "material": "tempered_glass",
+        "hardness": "9h",
+        "edge": "2_5d"
+      },
+      "tags": [
+        "iphone",
+        "screen",
+        "protection"
+      ],
       "variants": [
-        { "sku": "SPRO-IP16-1", "name": "Single Pack", "price": "299.00", "quantity": 40, "attributes": { "pack_size": 1 } },
-        { "sku": "SPRO-IP16-2", "name": "Twin Pack",   "price": "499.00", "quantity": 25, "attributes": { "pack_size": 2 } }
+        {
+          "sku": "SPRO-IP16-1",
+          "name": "Single Pack",
+          "price": "299.00",
+          "quantity": 40,
+          "attributes": {
+            "pack_size": 1
+          }
+        },
+        {
+          "sku": "SPRO-IP16-2",
+          "name": "Twin Pack",
+          "price": "499.00",
+          "quantity": 25,
+          "attributes": {
+            "pack_size": 2
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_16"
+        }
       ]
     },
     {
@@ -177,32 +439,72 @@
       "category": "screen_protector",
       "brand": "CircuitCraft",
       "description": "Tempered glass screen protector with a narrow viewing angle.",
-      "attributes": { "material": "tempered_glass", "hardness": "9h", "privacy_filter": true },
-      "tags": ["iphone", "screen", "privacy"],
+      "attributes": {
+        "material": "tempered_glass",
+        "hardness": "9h",
+        "privacy_filter": true
+      },
+      "tags": [
+        "iphone",
+        "screen",
+        "privacy"
+      ],
       "variants": [
-        { "sku": "SPRO-IP16-PRV", "name": "Single Pack", "price": "649.00", "quantity": 10, "attributes": { "pack_size": 1 } }
+        {
+          "sku": "SPRO-IP16-PRV",
+          "name": "Single Pack",
+          "price": "649.00",
+          "quantity": 10,
+          "attributes": {
+            "pack_size": 1
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "phone_model", "target_identifier": "iphone_16" }
+        {
+          "target_type": "phone_model",
+          "target_identifier": "iphone_16"
+        }
       ]
     },
-
     {
       "slug": "voltedge_30w",
       "name": "VoltEdge 30W USB-C Charger",
       "category": "charger",
       "brand": "CircuitCraft",
       "description": "Single-port 30W USB-C wall charger.",
-      "attributes": { "wattage": 30, "port_type": "usb_c", "fast_charge": true, "ports": 1, "technology": "gan" },
-      "tags": ["charger", "fast_charging", "usb_c", "compact"],
+      "attributes": {
+        "wattage": 30,
+        "port_type": "usb_c",
+        "fast_charge": true,
+        "ports": 1,
+        "technology": "gan"
+      },
+      "tags": [
+        "charger",
+        "fast_charging",
+        "usb_c",
+        "compact"
+      ],
       "variants": [
-        { "sku": "CHARGER-30W", "name": "White", "price": "1499.00", "quantity": 18, "attributes": { "color": "white" } }
+        {
+          "sku": "CHARGER-30W",
+          "name": "White",
+          "price": "1499.00",
+          "quantity": 18,
+          "attributes": {
+            "color": "white"
+          }
+        }
       ],
       "compatibility": [
         {
           "target_type": "device",
           "target_identifier": "iphone_16",
-          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+          "constraints": {
+            "minimum_wattage": 20,
+            "fast_charge": true
+          }
         }
       ]
     },
@@ -212,16 +514,37 @@
       "category": "charger",
       "brand": "CircuitCraft",
       "description": "Single-port 20W USB-C wall charger.",
-      "attributes": { "wattage": 20, "port_type": "usb_c", "fast_charge": true, "ports": 1 },
-      "tags": ["charger", "fast_charging", "usb_c", "budget"],
+      "attributes": {
+        "wattage": 20,
+        "port_type": "usb_c",
+        "fast_charge": true,
+        "ports": 1
+      },
+      "tags": [
+        "charger",
+        "fast_charging",
+        "usb_c",
+        "budget"
+      ],
       "variants": [
-        { "sku": "CHARGER-20W", "name": "White", "price": "1099.00", "quantity": 30, "attributes": { "color": "white" } }
+        {
+          "sku": "CHARGER-20W",
+          "name": "White",
+          "price": "1099.00",
+          "quantity": 30,
+          "attributes": {
+            "color": "white"
+          }
+        }
       ],
       "compatibility": [
         {
           "target_type": "device",
           "target_identifier": "iphone_16",
-          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+          "constraints": {
+            "minimum_wattage": 20,
+            "fast_charge": true
+          }
         }
       ]
     },
@@ -231,22 +554,55 @@
       "category": "charger",
       "brand": "CircuitCraft",
       "description": "Two-port GaN wall charger rated at 65W total output.",
-      "attributes": { "wattage": 65, "port_type": "usb_c", "fast_charge": true, "ports": 2, "technology": "gan" },
-      "tags": ["charger", "fast_charging", "usb_c", "laptop", "gan"],
+      "attributes": {
+        "wattage": 65,
+        "port_type": "usb_c",
+        "fast_charge": true,
+        "ports": 2,
+        "technology": "gan"
+      },
+      "tags": [
+        "charger",
+        "fast_charging",
+        "usb_c",
+        "laptop",
+        "gan"
+      ],
       "variants": [
-        { "sku": "CHARGER-65W-WHT", "name": "White", "price": "2799.00", "quantity": 9, "attributes": { "color": "white" } },
-        { "sku": "CHARGER-65W-BLK", "name": "Black", "price": "2799.00", "quantity": 7, "attributes": { "color": "black" } }
+        {
+          "sku": "CHARGER-65W-WHT",
+          "name": "White",
+          "price": "2799.00",
+          "quantity": 9,
+          "attributes": {
+            "color": "white"
+          }
+        },
+        {
+          "sku": "CHARGER-65W-BLK",
+          "name": "Black",
+          "price": "2799.00",
+          "quantity": 7,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
         {
           "target_type": "device",
           "target_identifier": "macbook_air_m3",
-          "constraints": { "minimum_wattage": 30 }
+          "constraints": {
+            "minimum_wattage": 30
+          }
         },
         {
           "target_type": "device",
           "target_identifier": "iphone_16",
-          "constraints": { "minimum_wattage": 20, "fast_charge": true }
+          "constraints": {
+            "minimum_wattage": 20,
+            "fast_charge": true
+          }
         }
       ]
     },
@@ -256,39 +612,91 @@
       "category": "charger",
       "brand": "CircuitCraft",
       "description": "Two-port GaN wall charger rated at 100W total output.",
-      "attributes": { "wattage": 100, "port_type": "usb_c", "fast_charge": true, "ports": 2, "technology": "gan" },
-      "tags": ["charger", "fast_charging", "usb_c", "laptop", "gan", "high_power"],
+      "attributes": {
+        "wattage": 100,
+        "port_type": "usb_c",
+        "fast_charge": true,
+        "ports": 2,
+        "technology": "gan"
+      },
+      "tags": [
+        "charger",
+        "fast_charging",
+        "usb_c",
+        "laptop",
+        "gan",
+        "high_power"
+      ],
       "variants": [
-        { "sku": "CHARGER-100W", "name": "Black", "price": "3999.00", "quantity": 5, "attributes": { "color": "black" } }
+        {
+          "sku": "CHARGER-100W",
+          "name": "Black",
+          "price": "3999.00",
+          "quantity": 5,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
         {
           "target_type": "device",
           "target_identifier": "macbook_air_m3",
-          "constraints": { "minimum_wattage": 30 }
+          "constraints": {
+            "minimum_wattage": 30
+          }
         },
         {
           "target_type": "device",
           "target_identifier": "macbook_pro_14",
-          "constraints": { "minimum_wattage": 60 }
+          "constraints": {
+            "minimum_wattage": 60
+          }
         }
       ]
     },
-
     {
       "slug": "linkcord_usb_c",
       "name": "LinkCord USB-C to USB-C Cable",
       "category": "usb_cable",
       "brand": "CircuitCraft",
       "description": "Charge and sync cable with USB-C connectors at both ends.",
-      "attributes": { "connector_a": "usb_c", "connector_b": "usb_c", "max_wattage": 60, "data_speed": "usb_2_0" },
-      "tags": ["cable", "usb_c", "charging"],
+      "attributes": {
+        "connector_a": "usb_c",
+        "connector_b": "usb_c",
+        "max_wattage": 60,
+        "data_speed": "usb_2_0"
+      },
+      "tags": [
+        "cable",
+        "usb_c",
+        "charging"
+      ],
       "variants": [
-        { "sku": "CABLE-CC-1M", "name": "1 m", "price": "499.00", "quantity": 50, "attributes": { "length_m": 1 } },
-        { "sku": "CABLE-CC-2M", "name": "2 m", "price": "699.00", "quantity": 35, "attributes": { "length_m": 2 } }
+        {
+          "sku": "CABLE-CC-1M",
+          "name": "1 m",
+          "price": "499.00",
+          "quantity": 50,
+          "attributes": {
+            "length_m": 1
+          }
+        },
+        {
+          "sku": "CABLE-CC-2M",
+          "name": "2 m",
+          "price": "699.00",
+          "quantity": 35,
+          "attributes": {
+            "length_m": 2
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "usb_c" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "usb_c"
+        }
       ]
     },
     {
@@ -297,14 +705,36 @@
       "category": "usb_cable",
       "brand": "CircuitCraft",
       "description": "Charge and sync cable with a USB-C plug and a Lightning plug.",
-      "attributes": { "connector_a": "usb_c", "connector_b": "lightning", "max_wattage": 20 },
-      "tags": ["cable", "lightning", "charging"],
+      "attributes": {
+        "connector_a": "usb_c",
+        "connector_b": "lightning",
+        "max_wattage": 20
+      },
+      "tags": [
+        "cable",
+        "lightning",
+        "charging"
+      ],
       "variants": [
-        { "sku": "CABLE-CL-1M", "name": "1 m", "price": "899.00", "quantity": 20, "attributes": { "length_m": 1 } }
+        {
+          "sku": "CABLE-CL-1M",
+          "name": "1 m",
+          "price": "899.00",
+          "quantity": 20,
+          "attributes": {
+            "length_m": 1
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "lightning" },
-        { "target_type": "device", "target_identifier": "iphone_15" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "lightning"
+        },
+        {
+          "target_type": "device",
+          "target_identifier": "iphone_15"
+        }
       ]
     },
     {
@@ -313,29 +743,70 @@
       "category": "usb_cable",
       "brand": "CircuitCraft",
       "description": "Braided USB-C cable rated for 100W charging.",
-      "attributes": { "connector_a": "usb_c", "connector_b": "usb_c", "max_wattage": 100, "jacket": "braided_nylon" },
-      "tags": ["cable", "usb_c", "charging", "durable", "high_power"],
+      "attributes": {
+        "connector_a": "usb_c",
+        "connector_b": "usb_c",
+        "max_wattage": 100,
+        "jacket": "braided_nylon"
+      },
+      "tags": [
+        "cable",
+        "usb_c",
+        "charging",
+        "durable",
+        "high_power"
+      ],
       "variants": [
-        { "sku": "CABLE-CC-100W-2M", "name": "2 m", "price": "999.00", "quantity": 14, "attributes": { "length_m": 2 } }
+        {
+          "sku": "CABLE-CC-100W-2M",
+          "name": "2 m",
+          "price": "999.00",
+          "quantity": 14,
+          "attributes": {
+            "length_m": 2
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "usb_c" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "usb_c"
+        }
       ]
     },
-
     {
       "slug": "powercell_10000",
       "name": "PowerCell 10000",
       "category": "power_bank",
       "brand": "CircuitCraft",
       "description": "10000 mAh portable battery with two output ports.",
-      "attributes": { "capacity_mah": 10000, "output_wattage": 22, "port_type": "usb_c", "ports": 2 },
-      "tags": ["power_bank", "portable", "usb_c"],
+      "attributes": {
+        "capacity_mah": 10000,
+        "output_wattage": 22,
+        "port_type": "usb_c",
+        "ports": 2
+      },
+      "tags": [
+        "power_bank",
+        "portable",
+        "usb_c"
+      ],
       "variants": [
-        { "sku": "PWRB-10K", "name": "Black", "price": "1999.00", "quantity": 22, "attributes": { "color": "black" } }
+        {
+          "sku": "PWRB-10K",
+          "name": "Black",
+          "price": "1999.00",
+          "quantity": 22,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "usb_c" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "usb_c"
+        }
       ]
     },
     {
@@ -344,14 +815,44 @@
       "category": "power_bank",
       "brand": "CircuitCraft",
       "description": "20000 mAh portable battery with 45W USB-C output.",
-      "attributes": { "capacity_mah": 20000, "output_wattage": 45, "port_type": "usb_c", "ports": 3 },
-      "tags": ["power_bank", "portable", "usb_c", "fast_charging", "laptop"],
+      "attributes": {
+        "capacity_mah": 20000,
+        "output_wattage": 45,
+        "port_type": "usb_c",
+        "ports": 3
+      },
+      "tags": [
+        "power_bank",
+        "portable",
+        "usb_c",
+        "fast_charging",
+        "laptop"
+      ],
       "variants": [
-        { "sku": "PWRB-20K-BLK", "name": "Black", "price": "3299.00", "quantity": 11, "attributes": { "color": "black" } },
-        { "sku": "PWRB-20K-GRY", "name": "Grey",  "price": "3299.00", "quantity": 8,  "attributes": { "color": "grey" } }
+        {
+          "sku": "PWRB-20K-BLK",
+          "name": "Black",
+          "price": "3299.00",
+          "quantity": 11,
+          "attributes": {
+            "color": "black"
+          }
+        },
+        {
+          "sku": "PWRB-20K-GRY",
+          "name": "Grey",
+          "price": "3299.00",
+          "quantity": 8,
+          "attributes": {
+            "color": "grey"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "usb_c" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "usb_c"
+        }
       ]
     },
     {
@@ -360,27 +861,74 @@
       "category": "power_bank",
       "brand": "CircuitCraft",
       "description": "5000 mAh pocket battery with a single USB-C port.",
-      "attributes": { "capacity_mah": 5000, "output_wattage": 18, "port_type": "usb_c", "ports": 1, "profile": "slim" },
-      "tags": ["power_bank", "portable", "slim", "usb_c"],
+      "attributes": {
+        "capacity_mah": 5000,
+        "output_wattage": 18,
+        "port_type": "usb_c",
+        "ports": 1,
+        "profile": "slim"
+      },
+      "tags": [
+        "power_bank",
+        "portable",
+        "slim",
+        "usb_c"
+      ],
       "variants": [
-        { "sku": "PWRB-5K", "name": "Black", "price": "1299.00", "quantity": 16, "attributes": { "color": "black" } }
+        {
+          "sku": "PWRB-5K",
+          "name": "Black",
+          "price": "1299.00",
+          "quantity": 16,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "device_port", "target_identifier": "usb_c" }
+        {
+          "target_type": "device_port",
+          "target_identifier": "usb_c"
+        }
       ]
     },
-
     {
       "slug": "sonicbuds_air",
       "name": "SonicBuds Air",
       "category": "earbuds",
       "brand": "CircuitCraft",
       "description": "Wireless earbuds with a USB-C charging case.",
-      "attributes": { "anc": false, "battery_hours": 24, "driver_mm": 10, "port_type": "usb_c", "bluetooth": "5.3" },
-      "tags": ["earbuds", "wireless", "bluetooth"],
+      "attributes": {
+        "anc": false,
+        "battery_hours": 24,
+        "driver_mm": 10,
+        "port_type": "usb_c",
+        "bluetooth": "5.3"
+      },
+      "tags": [
+        "earbuds",
+        "wireless",
+        "bluetooth"
+      ],
       "variants": [
-        { "sku": "BUDS-AIR-WHT", "name": "White", "price": "2499.00", "quantity": 20, "attributes": { "color": "white" } },
-        { "sku": "BUDS-AIR-BLK", "name": "Black", "price": "2499.00", "quantity": 18, "attributes": { "color": "black" } }
+        {
+          "sku": "BUDS-AIR-WHT",
+          "name": "White",
+          "price": "2499.00",
+          "quantity": 20,
+          "attributes": {
+            "color": "white"
+          }
+        },
+        {
+          "sku": "BUDS-AIR-BLK",
+          "name": "Black",
+          "price": "2499.00",
+          "quantity": 18,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": []
     },
@@ -390,11 +938,39 @@
       "category": "earbuds",
       "brand": "CircuitCraft",
       "description": "Wireless earbuds with active noise cancellation.",
-      "attributes": { "anc": true, "battery_hours": 30, "driver_mm": 11, "port_type": "usb_c", "bluetooth": "5.3" },
-      "tags": ["earbuds", "wireless", "bluetooth", "anc", "premium"],
+      "attributes": {
+        "anc": true,
+        "battery_hours": 30,
+        "driver_mm": 11,
+        "port_type": "usb_c",
+        "bluetooth": "5.3"
+      },
+      "tags": [
+        "earbuds",
+        "wireless",
+        "bluetooth",
+        "anc",
+        "premium"
+      ],
       "variants": [
-        { "sku": "BUDS-PRO-BLK", "name": "Black", "price": "4499.00", "quantity": 12, "attributes": { "color": "black" } },
-        { "sku": "BUDS-PRO-IVY", "name": "Ivory", "price": "4499.00", "quantity": 6,  "attributes": { "color": "ivory" } }
+        {
+          "sku": "BUDS-PRO-BLK",
+          "name": "Black",
+          "price": "4499.00",
+          "quantity": 12,
+          "attributes": {
+            "color": "black"
+          }
+        },
+        {
+          "sku": "BUDS-PRO-IVY",
+          "name": "Ivory",
+          "price": "4499.00",
+          "quantity": 6,
+          "attributes": {
+            "color": "ivory"
+          }
+        }
       ],
       "compatibility": []
     },
@@ -404,28 +980,73 @@
       "category": "earbuds",
       "brand": "CircuitCraft",
       "description": "Entry-level wireless earbuds with a USB-C charging case.",
-      "attributes": { "anc": false, "battery_hours": 18, "driver_mm": 8, "port_type": "usb_c", "bluetooth": "5.2" },
-      "tags": ["earbuds", "wireless", "bluetooth", "budget"],
+      "attributes": {
+        "anc": false,
+        "battery_hours": 18,
+        "driver_mm": 8,
+        "port_type": "usb_c",
+        "bluetooth": "5.2"
+      },
+      "tags": [
+        "earbuds",
+        "wireless",
+        "bluetooth",
+        "budget"
+      ],
       "variants": [
-        { "sku": "BUDS-LITE", "name": "Black", "price": "1499.00", "quantity": 30, "attributes": { "color": "black" } }
+        {
+          "sku": "BUDS-LITE",
+          "name": "Black",
+          "price": "1499.00",
+          "quantity": 30,
+          "attributes": {
+            "color": "black"
+          }
+        }
       ],
       "compatibility": []
     },
-
     {
       "slug": "feltfolio_sleeve_13",
       "name": "FeltFolio Sleeve 13-inch",
       "category": "laptop_sleeve",
       "brand": "CircuitCraft",
       "description": "Wool-felt laptop sleeve with a magnetic closure.",
-      "attributes": { "material": "wool_felt", "fits_inches": 13, "closure": "magnetic" },
-      "tags": ["sleeve", "laptop", "felt"],
+      "attributes": {
+        "material": "wool_felt",
+        "fits_inches": 13,
+        "closure": "magnetic"
+      },
+      "tags": [
+        "sleeve",
+        "laptop",
+        "felt"
+      ],
       "variants": [
-        { "sku": "SLV-13-GRY", "name": "Grey", "price": "1199.00", "quantity": 14, "attributes": { "color": "grey" } },
-        { "sku": "SLV-13-NVY", "name": "Navy", "price": "1199.00", "quantity": 9,  "attributes": { "color": "navy" } }
+        {
+          "sku": "SLV-13-GRY",
+          "name": "Grey",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey"
+          }
+        },
+        {
+          "sku": "SLV-13-NVY",
+          "name": "Navy",
+          "price": "1199.00",
+          "quantity": 9,
+          "attributes": {
+            "color": "navy"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "laptop_model", "target_identifier": "macbook_air_m3" }
+        {
+          "target_type": "laptop_model",
+          "target_identifier": "macbook_air_m3"
+        }
       ]
     },
     {
@@ -434,30 +1055,2793 @@
       "category": "laptop_sleeve",
       "brand": "CircuitCraft",
       "description": "Wool-felt laptop sleeve with a magnetic closure.",
-      "attributes": { "material": "wool_felt", "fits_inches": 14, "closure": "magnetic" },
-      "tags": ["sleeve", "laptop", "felt"],
+      "attributes": {
+        "material": "wool_felt",
+        "fits_inches": 14,
+        "closure": "magnetic"
+      },
+      "tags": [
+        "sleeve",
+        "laptop",
+        "felt"
+      ],
       "variants": [
-        { "sku": "SLV-14-GRY", "name": "Grey", "price": "1399.00", "quantity": 11, "attributes": { "color": "grey" } },
-        { "sku": "SLV-14-NVY", "name": "Navy", "price": "1399.00", "quantity": 0,  "attributes": { "color": "navy" } }
+        {
+          "sku": "SLV-14-GRY",
+          "name": "Grey",
+          "price": "1399.00",
+          "quantity": 11,
+          "attributes": {
+            "color": "grey"
+          }
+        },
+        {
+          "sku": "SLV-14-NVY",
+          "name": "Navy",
+          "price": "1399.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "navy"
+          }
+        }
       ],
       "compatibility": [
-        { "target_type": "laptop_model", "target_identifier": "macbook_pro_14" }
+        {
+          "target_type": "laptop_model",
+          "target_identifier": "macbook_pro_14"
+        }
       ]
+    },
+    {
+      "slug": "everyday_cotton_crew",
+      "name": "Everyday Cotton Crew Tee",
+      "category": "t_shirt",
+      "brand": "EASY BUY",
+      "description": "Mid-weight combed-cotton crew-neck t-shirt with a regular fit.",
+      "attributes": {
+        "material": "cotton",
+        "fit": "regular",
+        "sleeve": "short",
+        "neck": "crew",
+        "gsm": 180
+      },
+      "tags": [
+        "t-shirt",
+        "cotton",
+        "everyday",
+        "crew",
+        "regular"
+      ],
+      "variants": [
+        {
+          "sku": "TSHIRT-CREW-BLK-S",
+          "name": "Black / S",
+          "price": "799.00",
+          "quantity": 3,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-BLK-M",
+          "name": "Black / M",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-BLK-L",
+          "name": "Black / L",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-BLK-XL",
+          "name": "Black / XL",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-WHT-S",
+          "name": "White / S",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-WHT-M",
+          "name": "White / M",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-WHT-L",
+          "name": "White / L",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-WHT-XL",
+          "name": "White / XL",
+          "price": "799.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "white",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-NVY-S",
+          "name": "Navy / S",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-NVY-M",
+          "name": "Navy / M",
+          "price": "799.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "navy",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-NVY-L",
+          "name": "Navy / L",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-NVY-XL",
+          "name": "Navy / XL",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-GRY-S",
+          "name": "Heather Grey / S",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-GRY-M",
+          "name": "Heather Grey / M",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-GRY-L",
+          "name": "Heather Grey / L",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-CREW-GRY-XL",
+          "name": "Heather Grey / XL",
+          "price": "799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "pima_pocket_tee",
+      "name": "Pima Pocket Tee",
+      "category": "t_shirt",
+      "brand": "EASY BUY",
+      "description": "Lightweight pima-cotton t-shirt with a chest pocket.",
+      "attributes": {
+        "material": "pima_cotton",
+        "fit": "slim",
+        "sleeve": "short",
+        "neck": "crew",
+        "pocket": true,
+        "gsm": 150
+      },
+      "tags": [
+        "t-shirt",
+        "pima",
+        "pocket",
+        "slim",
+        "lightweight"
+      ],
+      "variants": [
+        {
+          "sku": "TSHIRT-PIMA-WHT-S",
+          "name": "White / S",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-WHT-M",
+          "name": "White / M",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-WHT-L",
+          "name": "White / L",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-WHT-XL",
+          "name": "White / XL",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-OLV-S",
+          "name": "Olive / S",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-OLV-M",
+          "name": "Olive / M",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-OLV-L",
+          "name": "Olive / L",
+          "price": "1199.00",
+          "quantity": 2,
+          "attributes": {
+            "color": "olive",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-OLV-XL",
+          "name": "Olive / XL",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-CHR-S",
+          "name": "Charcoal / S",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-CHR-M",
+          "name": "Charcoal / M",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-CHR-L",
+          "name": "Charcoal / L",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-PIMA-CHR-XL",
+          "name": "Charcoal / XL",
+          "price": "1199.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "active_performance_tee",
+      "name": "Active Performance Tee",
+      "category": "t_shirt",
+      "brand": "EASY BUY",
+      "description": "Moisture-wicking recycled-polyester training t-shirt.",
+      "attributes": {
+        "material": "recycled_polyester",
+        "fit": "athletic",
+        "sleeve": "short",
+        "neck": "crew",
+        "moisture_wicking": true
+      },
+      "tags": [
+        "t-shirt",
+        "performance",
+        "gym",
+        "athletic",
+        "quick_dry"
+      ],
+      "variants": [
+        {
+          "sku": "TSHIRT-ACTV-BLK-S",
+          "name": "Black / S",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLK-M",
+          "name": "Black / M",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLK-L",
+          "name": "Black / L",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLK-XL",
+          "name": "Black / XL",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLU-S",
+          "name": "Cobalt / S",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLU-M",
+          "name": "Cobalt / M",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLU-L",
+          "name": "Cobalt / L",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-BLU-XL",
+          "name": "Cobalt / XL",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-GRY-S",
+          "name": "Slate / S",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-GRY-M",
+          "name": "Slate / M",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-GRY-L",
+          "name": "Slate / L",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "TSHIRT-ACTV-GRY-XL",
+          "name": "Slate / XL",
+          "price": "1299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "oxford_button_down",
+      "name": "Oxford Button-Down Shirt",
+      "category": "shirt",
+      "brand": "EASY BUY",
+      "description": "Cotton oxford-cloth shirt with a button-down collar and a tailored fit.",
+      "attributes": {
+        "material": "cotton",
+        "fit": "tailored",
+        "sleeve": "long",
+        "collar": "button_down",
+        "weave": "oxford"
+      },
+      "tags": [
+        "shirt",
+        "oxford",
+        "button-down",
+        "tailored",
+        "cotton"
+      ],
+      "variants": [
+        {
+          "sku": "SHIRT-OXFD-WHT-S",
+          "name": "White / S",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-WHT-M",
+          "name": "White / M",
+          "price": "1899.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "white",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-WHT-L",
+          "name": "White / L",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-WHT-XL",
+          "name": "White / XL",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-BLU-S",
+          "name": "Blue / S",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-BLU-M",
+          "name": "Blue / M",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-BLU-L",
+          "name": "Blue / L",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-BLU-XL",
+          "name": "Blue / XL",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "blue",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-PNK-S",
+          "name": "Pink / S",
+          "price": "1899.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "pink",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-PNK-M",
+          "name": "Pink / M",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "pink",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-PNK-L",
+          "name": "Pink / L",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "pink",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-OXFD-PNK-XL",
+          "name": "Pink / XL",
+          "price": "1899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "pink",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "linen_resort_shirt",
+      "name": "Linen Resort Shirt",
+      "category": "shirt",
+      "brand": "EASY BUY",
+      "description": "Relaxed pure-linen short-sleeve shirt with a camp collar.",
+      "attributes": {
+        "material": "linen",
+        "fit": "relaxed",
+        "sleeve": "short",
+        "collar": "camp"
+      },
+      "tags": [
+        "shirt",
+        "linen",
+        "summer",
+        "relaxed",
+        "camp_collar"
+      ],
+      "variants": [
+        {
+          "sku": "SHIRT-LINEN-WHT-S",
+          "name": "White / S",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-WHT-M",
+          "name": "White / M",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-WHT-L",
+          "name": "White / L",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "white",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SND-S",
+          "name": "Sand / S",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SND-M",
+          "name": "Sand / M",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SND-L",
+          "name": "Sand / L",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SGE-S",
+          "name": "Sage / S",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sage",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SGE-M",
+          "name": "Sage / M",
+          "price": "2299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sage",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-LINEN-SGE-L",
+          "name": "Sage / L",
+          "price": "2299.00",
+          "quantity": 3,
+          "attributes": {
+            "color": "sage",
+            "size": "l"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "flannel_overshirt",
+      "name": "Brushed Flannel Overshirt",
+      "category": "shirt",
+      "brand": "EASY BUY",
+      "description": "Heavyweight brushed-cotton flannel overshirt that layers over a tee.",
+      "attributes": {
+        "material": "cotton",
+        "fit": "relaxed",
+        "sleeve": "long",
+        "collar": "point",
+        "weight": "heavy",
+        "pattern": "check"
+      },
+      "tags": [
+        "shirt",
+        "flannel",
+        "overshirt",
+        "layering",
+        "check"
+      ],
+      "variants": [
+        {
+          "sku": "SHIRT-FLNL-RED-M",
+          "name": "Red Check / M",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "red",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-FLNL-RED-L",
+          "name": "Red Check / L",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "red",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-FLNL-RED-XL",
+          "name": "Red Check / XL",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "red",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "SHIRT-FLNL-GRN-M",
+          "name": "Green Check / M",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "SHIRT-FLNL-GRN-L",
+          "name": "Green Check / L",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "SHIRT-FLNL-GRN-XL",
+          "name": "Green Check / XL",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "straight_fit_denim",
+      "name": "Straight Fit Denim Jeans",
+      "category": "jeans",
+      "brand": "EASY BUY",
+      "description": "Mid-rise straight-leg jeans in rigid cotton denim.",
+      "attributes": {
+        "material": "cotton_denim",
+        "fit": "straight",
+        "rise": "mid",
+        "stretch": false
+      },
+      "tags": [
+        "jeans",
+        "denim",
+        "straight",
+        "mid_rise"
+      ],
+      "variants": [
+        {
+          "sku": "JEANS-STR-IND-30",
+          "name": "Indigo / 30",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "30"
+          }
+        },
+        {
+          "sku": "JEANS-STR-IND-32",
+          "name": "Indigo / 32",
+          "price": "2499.00",
+          "quantity": 2,
+          "attributes": {
+            "color": "indigo",
+            "size": "32"
+          }
+        },
+        {
+          "sku": "JEANS-STR-IND-34",
+          "name": "Indigo / 34",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "34"
+          }
+        },
+        {
+          "sku": "JEANS-STR-IND-36",
+          "name": "Indigo / 36",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "36"
+          }
+        },
+        {
+          "sku": "JEANS-STR-BLK-30",
+          "name": "Washed Black / 30",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "30"
+          }
+        },
+        {
+          "sku": "JEANS-STR-BLK-32",
+          "name": "Washed Black / 32",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "32"
+          }
+        },
+        {
+          "sku": "JEANS-STR-BLK-34",
+          "name": "Washed Black / 34",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "34"
+          }
+        },
+        {
+          "sku": "JEANS-STR-BLK-36",
+          "name": "Washed Black / 36",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "36"
+          }
+        },
+        {
+          "sku": "JEANS-STR-STN-30",
+          "name": "Stone / 30",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "stone",
+            "size": "30"
+          }
+        },
+        {
+          "sku": "JEANS-STR-STN-32",
+          "name": "Stone / 32",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "stone",
+            "size": "32"
+          }
+        },
+        {
+          "sku": "JEANS-STR-STN-34",
+          "name": "Stone / 34",
+          "price": "2499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "stone",
+            "size": "34"
+          }
+        },
+        {
+          "sku": "JEANS-STR-STN-36",
+          "name": "Stone / 36",
+          "price": "2499.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "stone",
+            "size": "36"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "slim_stretch_jeans",
+      "name": "Slim Stretch Jeans",
+      "category": "jeans",
+      "brand": "EASY BUY",
+      "description": "Slim-leg jeans with 2% elastane for movement.",
+      "attributes": {
+        "material": "cotton_elastane_denim",
+        "fit": "slim",
+        "rise": "mid",
+        "stretch": true
+      },
+      "tags": [
+        "jeans",
+        "denim",
+        "slim",
+        "stretch"
+      ],
+      "variants": [
+        {
+          "sku": "JEANS-SLM-IND-30",
+          "name": "Rinse Indigo / 30",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "30"
+          }
+        },
+        {
+          "sku": "JEANS-SLM-IND-32",
+          "name": "Rinse Indigo / 32",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "32"
+          }
+        },
+        {
+          "sku": "JEANS-SLM-IND-34",
+          "name": "Rinse Indigo / 34",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "indigo",
+            "size": "34"
+          }
+        },
+        {
+          "sku": "JEANS-SLM-BLK-30",
+          "name": "Black / 30",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "30"
+          }
+        },
+        {
+          "sku": "JEANS-SLM-BLK-32",
+          "name": "Black / 32",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "32"
+          }
+        },
+        {
+          "sku": "JEANS-SLM-BLK-34",
+          "name": "Black / 34",
+          "price": "2899.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "34"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "heavyweight_fleece_hoodie",
+      "name": "Heavyweight Fleece Hoodie",
+      "category": "hoodie",
+      "brand": "EASY BUY",
+      "description": "Brushed-back cotton-blend fleece pullover hoodie, 400 gsm.",
+      "attributes": {
+        "material": "cotton_polyester_fleece",
+        "fit": "regular",
+        "closure": "pullover",
+        "hood": "lined",
+        "gsm": 400
+      },
+      "tags": [
+        "hoodie",
+        "fleece",
+        "pullover",
+        "heavyweight",
+        "warm"
+      ],
+      "variants": [
+        {
+          "sku": "HOOD-HW-BLK-S",
+          "name": "Black / S",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "HOOD-HW-BLK-M",
+          "name": "Black / M",
+          "price": "2799.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "HOOD-HW-BLK-L",
+          "name": "Black / L",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "HOOD-HW-BLK-XL",
+          "name": "Black / XL",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "HOOD-HW-GRY-S",
+          "name": "Grey Marl / S",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "HOOD-HW-GRY-M",
+          "name": "Grey Marl / M",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "HOOD-HW-GRY-L",
+          "name": "Grey Marl / L",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "HOOD-HW-GRY-XL",
+          "name": "Grey Marl / XL",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "grey",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "HOOD-HW-FST-S",
+          "name": "Forest / S",
+          "price": "2799.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "green",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "HOOD-HW-FST-M",
+          "name": "Forest / M",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "HOOD-HW-FST-L",
+          "name": "Forest / L",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "HOOD-HW-FST-XL",
+          "name": "Forest / XL",
+          "price": "2799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "green",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "zip_through_hoodie",
+      "name": "Zip-Through Hoodie",
+      "category": "hoodie",
+      "brand": "EASY BUY",
+      "description": "Full-zip loopback-cotton hoodie with a two-way zip.",
+      "attributes": {
+        "material": "cotton_loopback",
+        "fit": "regular",
+        "closure": "full_zip",
+        "hood": "unlined"
+      },
+      "tags": [
+        "hoodie",
+        "zip",
+        "loopback",
+        "layering"
+      ],
+      "variants": [
+        {
+          "sku": "HOOD-ZIP-NVY-M",
+          "name": "Navy / M",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "HOOD-ZIP-NVY-L",
+          "name": "Navy / L",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "HOOD-ZIP-NVY-XL",
+          "name": "Navy / XL",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "navy",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "HOOD-ZIP-CHR-M",
+          "name": "Charcoal / M",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "HOOD-ZIP-CHR-L",
+          "name": "Charcoal / L",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "HOOD-ZIP-CHR-XL",
+          "name": "Charcoal / XL",
+          "price": "2599.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "quilted_puffer_jacket",
+      "name": "Quilted Puffer Jacket",
+      "category": "jacket",
+      "brand": "EASY BUY",
+      "description": "Lightweight recycled-nylon puffer jacket with synthetic insulation.",
+      "attributes": {
+        "material": "recycled_nylon",
+        "fit": "regular",
+        "insulation": "synthetic",
+        "water_resistant": true,
+        "packable": true
+      },
+      "tags": [
+        "jacket",
+        "puffer",
+        "insulated",
+        "packable",
+        "water_resistant"
+      ],
+      "variants": [
+        {
+          "sku": "JKT-PUFF-BLK-S",
+          "name": "Black / S",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-BLK-M",
+          "name": "Black / M",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-BLK-L",
+          "name": "Black / L",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-BLK-XL",
+          "name": "Black / XL",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-OLV-S",
+          "name": "Olive / S",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-OLV-M",
+          "name": "Olive / M",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-OLV-L",
+          "name": "Olive / L",
+          "price": "4999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "olive",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "JKT-PUFF-OLV-XL",
+          "name": "Olive / XL",
+          "price": "4999.00",
+          "quantity": 1,
+          "attributes": {
+            "color": "olive",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "cotton_bomber_jacket",
+      "name": "Cotton Bomber Jacket",
+      "category": "jacket",
+      "brand": "EASY BUY",
+      "description": "Cotton-twill bomber jacket with ribbed cuffs and hem.",
+      "attributes": {
+        "material": "cotton_twill",
+        "fit": "regular",
+        "collar": "ribbed",
+        "lining": "taffeta"
+      },
+      "tags": [
+        "jacket",
+        "bomber",
+        "cotton",
+        "casual"
+      ],
+      "variants": [
+        {
+          "sku": "JKT-BMBR-BLK-M",
+          "name": "Black / M",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-BMBR-BLK-L",
+          "name": "Black / L",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "JKT-BMBR-BLK-XL",
+          "name": "Black / XL",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xl"
+          }
+        },
+        {
+          "sku": "JKT-BMBR-KHK-M",
+          "name": "Khaki / M",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "khaki",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-BMBR-KHK-L",
+          "name": "Khaki / L",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "khaki",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "JKT-BMBR-KHK-XL",
+          "name": "Khaki / XL",
+          "price": "3799.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "khaki",
+            "size": "xl"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "rain_shell_jacket",
+      "name": "Packable Rain Shell",
+      "category": "jacket",
+      "brand": "EASY BUY",
+      "description": "Seam-sealed 2.5-layer rain shell that packs into its own pocket.",
+      "attributes": {
+        "material": "nylon_ripstop",
+        "fit": "regular",
+        "waterproof": true,
+        "seam_sealed": true,
+        "packable": true,
+        "hood": "adjustable"
+      },
+      "tags": [
+        "jacket",
+        "rain",
+        "waterproof",
+        "shell",
+        "packable"
+      ],
+      "variants": [
+        {
+          "sku": "JKT-RAIN-YEL-S",
+          "name": "Yellow / S",
+          "price": "4299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "yellow",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "JKT-RAIN-YEL-M",
+          "name": "Yellow / M",
+          "price": "4299.00",
+          "quantity": 2,
+          "attributes": {
+            "color": "yellow",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-RAIN-YEL-L",
+          "name": "Yellow / L",
+          "price": "4299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "yellow",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "JKT-RAIN-BLK-S",
+          "name": "Black / S",
+          "price": "4299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "JKT-RAIN-BLK-M",
+          "name": "Black / M",
+          "price": "4299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "JKT-RAIN-BLK-L",
+          "name": "Black / L",
+          "price": "4299.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "wrap_midi_dress",
+      "name": "Wrap Midi Dress",
+      "category": "dress",
+      "brand": "EASY BUY",
+      "description": "Fixed-wrap midi dress in a fluid viscose crepe.",
+      "attributes": {
+        "material": "viscose",
+        "fit": "wrap",
+        "length": "midi",
+        "sleeve": "short",
+        "neckline": "v"
+      },
+      "tags": [
+        "dress",
+        "wrap",
+        "midi",
+        "viscose"
+      ],
+      "variants": [
+        {
+          "sku": "DRESS-WRAP-BLK-XS",
+          "name": "Black / XS",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "xs"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BLK-S",
+          "name": "Black / S",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BLK-M",
+          "name": "Black / M",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BLK-L",
+          "name": "Black / L",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BUR-XS",
+          "name": "Burgundy / XS",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "burgundy",
+            "size": "xs"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BUR-S",
+          "name": "Burgundy / S",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "burgundy",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BUR-M",
+          "name": "Burgundy / M",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "burgundy",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-BUR-L",
+          "name": "Burgundy / L",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "burgundy",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-FLR-XS",
+          "name": "Floral / XS",
+          "price": "2999.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "floral",
+            "size": "xs"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-FLR-S",
+          "name": "Floral / S",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "floral",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-FLR-M",
+          "name": "Floral / M",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "floral",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-WRAP-FLR-L",
+          "name": "Floral / L",
+          "price": "2999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "floral",
+            "size": "l"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "linen_slip_dress",
+      "name": "Linen Slip Dress",
+      "category": "dress",
+      "brand": "EASY BUY",
+      "description": "Bias-cut linen slip dress with adjustable straps.",
+      "attributes": {
+        "material": "linen",
+        "fit": "bias",
+        "length": "midi",
+        "sleeve": "sleeveless",
+        "straps": "adjustable"
+      },
+      "tags": [
+        "dress",
+        "linen",
+        "slip",
+        "summer",
+        "bias_cut"
+      ],
+      "variants": [
+        {
+          "sku": "DRESS-SLIP-SND-S",
+          "name": "Sand / S",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-SLIP-SND-M",
+          "name": "Sand / M",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-SLIP-SND-L",
+          "name": "Sand / L",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "sand",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "DRESS-SLIP-BLK-S",
+          "name": "Black / S",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-SLIP-BLK-M",
+          "name": "Black / M",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-SLIP-BLK-L",
+          "name": "Black / L",
+          "price": "2699.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black",
+            "size": "l"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "knit_sweater_dress",
+      "name": "Knit Sweater Dress",
+      "category": "dress",
+      "brand": "EASY BUY",
+      "description": "Mid-length rib-knit sweater dress in a cotton-wool blend.",
+      "attributes": {
+        "material": "cotton_wool_knit",
+        "fit": "relaxed",
+        "length": "knee",
+        "sleeve": "long",
+        "neckline": "crew"
+      },
+      "tags": [
+        "dress",
+        "knit",
+        "sweater",
+        "winter",
+        "relaxed"
+      ],
+      "variants": [
+        {
+          "sku": "DRESS-KNIT-OAT-S",
+          "name": "Oatmeal / S",
+          "price": "3499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "oatmeal",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-KNIT-OAT-M",
+          "name": "Oatmeal / M",
+          "price": "3499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "oatmeal",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-KNIT-OAT-L",
+          "name": "Oatmeal / L",
+          "price": "3499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "oatmeal",
+            "size": "l"
+          }
+        },
+        {
+          "sku": "DRESS-KNIT-CHR-S",
+          "name": "Charcoal / S",
+          "price": "3499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "s"
+          }
+        },
+        {
+          "sku": "DRESS-KNIT-CHR-M",
+          "name": "Charcoal / M",
+          "price": "3499.00",
+          "quantity": 3,
+          "attributes": {
+            "color": "charcoal",
+            "size": "m"
+          }
+        },
+        {
+          "sku": "DRESS-KNIT-CHR-L",
+          "name": "Charcoal / L",
+          "price": "3499.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "charcoal",
+            "size": "l"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "ashwood_dining_chair",
+      "name": "Ashwood Dining Chair",
+      "category": "chair",
+      "brand": "EASY BUY",
+      "description": "Solid-ash dining chair with a contoured seat. Sold as a single chair.",
+      "attributes": {
+        "material": "solid_ash",
+        "room": "dining",
+        "assembly_required": true,
+        "width_cm": 46,
+        "depth_cm": 52,
+        "height_cm": 82,
+        "weight_capacity_kg": 120,
+        "seats": 1
+      },
+      "tags": [
+        "chair",
+        "dining",
+        "wood",
+        "ash",
+        "solid_wood"
+      ],
+      "variants": [
+        {
+          "sku": "CHR-ASH-OAK",
+          "name": "Oak Finish",
+          "price": "3499.00",
+          "quantity": 24,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural"
+          }
+        },
+        {
+          "sku": "CHR-ASH-WAL",
+          "name": "Walnut Finish",
+          "price": "3799.00",
+          "quantity": 16,
+          "attributes": {
+            "finish": "walnut",
+            "color": "brown"
+          }
+        },
+        {
+          "sku": "CHR-ASH-BLK",
+          "name": "Black Stain",
+          "price": "3799.00",
+          "quantity": 0,
+          "attributes": {
+            "finish": "black",
+            "color": "black"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "ergotask_office_chair",
+      "name": "ErgoTask Office Chair",
+      "category": "chair",
+      "brand": "EASY BUY",
+      "description": "Adjustable mesh-back task chair with lumbar support and a tilt lock.",
+      "attributes": {
+        "material": "mesh_nylon",
+        "room": "office",
+        "assembly_required": true,
+        "adjustable_height": true,
+        "armrests": "adjustable",
+        "width_cm": 66,
+        "depth_cm": 66,
+        "height_cm": 118,
+        "weight_capacity_kg": 130,
+        "seats": 1
+      },
+      "tags": [
+        "chair",
+        "office",
+        "task",
+        "ergonomic",
+        "mesh",
+        "adjustable"
+      ],
+      "variants": [
+        {
+          "sku": "CHR-ERGO-BLK",
+          "name": "Black",
+          "price": "8999.00",
+          "quantity": 14,
+          "attributes": {
+            "color": "black"
+          }
+        },
+        {
+          "sku": "CHR-ERGO-GRY",
+          "name": "Grey",
+          "price": "8999.00",
+          "quantity": 9,
+          "attributes": {
+            "color": "grey"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "accent_lounge_chair",
+      "name": "Accent Lounge Chair",
+      "category": "chair",
+      "brand": "EASY BUY",
+      "description": "Compact upholstered lounge chair with splayed wooden legs. Suits a small room.",
+      "attributes": {
+        "material": "polyester_weave",
+        "room": "living",
+        "assembly_required": true,
+        "compact": true,
+        "width_cm": 72,
+        "depth_cm": 76,
+        "height_cm": 80,
+        "weight_capacity_kg": 120,
+        "seats": 1
+      },
+      "tags": [
+        "chair",
+        "lounge",
+        "accent",
+        "compact",
+        "small_room",
+        "upholstered"
+      ],
+      "variants": [
+        {
+          "sku": "CHR-LNG-MST",
+          "name": "Mustard",
+          "price": "11999.00",
+          "quantity": 8,
+          "attributes": {
+            "color": "mustard"
+          }
+        },
+        {
+          "sku": "CHR-LNG-TEL",
+          "name": "Teal",
+          "price": "11999.00",
+          "quantity": 6,
+          "attributes": {
+            "color": "teal"
+          }
+        },
+        {
+          "sku": "CHR-LNG-GRY",
+          "name": "Light Grey",
+          "price": "11499.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "grey"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "ashwood_dining_table",
+      "name": "Ashwood Dining Table",
+      "category": "table",
+      "brand": "EASY BUY",
+      "description": "Solid-ash rectangular dining table with tapered legs.",
+      "attributes": {
+        "material": "solid_ash",
+        "room": "dining",
+        "assembly_required": true,
+        "shape": "rectangular"
+      },
+      "tags": [
+        "table",
+        "dining",
+        "wood",
+        "ash",
+        "solid_wood"
+      ],
+      "variants": [
+        {
+          "sku": "TBL-ASH-OAK-4",
+          "name": "Oak, 4-Seat (120 cm)",
+          "price": "18999.00",
+          "quantity": 10,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural",
+            "seats": 4,
+            "width_cm": 120,
+            "depth_cm": 75,
+            "height_cm": 75
+          }
+        },
+        {
+          "sku": "TBL-ASH-OAK-6",
+          "name": "Oak, 6-Seat (160 cm)",
+          "price": "24999.00",
+          "quantity": 7,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural",
+            "seats": 6,
+            "width_cm": 160,
+            "depth_cm": 90,
+            "height_cm": 75
+          }
+        },
+        {
+          "sku": "TBL-ASH-WAL-6",
+          "name": "Walnut, 6-Seat (160 cm)",
+          "price": "27999.00",
+          "quantity": 5,
+          "attributes": {
+            "finish": "walnut",
+            "color": "brown",
+            "seats": 6,
+            "width_cm": 160,
+            "depth_cm": 90,
+            "height_cm": 75
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "round_bistro_table",
+      "name": "Round Bistro Table",
+      "category": "table",
+      "brand": "EASY BUY",
+      "description": "Small round two-seat bistro table with a powder-coated steel base.",
+      "attributes": {
+        "material": "mdf_steel",
+        "room": "kitchen",
+        "assembly_required": true,
+        "shape": "round",
+        "compact": true,
+        "seats": 2,
+        "diameter_cm": 70,
+        "height_cm": 74
+      },
+      "tags": [
+        "table",
+        "bistro",
+        "round",
+        "compact",
+        "small_room",
+        "kitchen"
+      ],
+      "variants": [
+        {
+          "sku": "TBL-BSTRO-WHT",
+          "name": "White",
+          "price": "8999.00",
+          "quantity": 12,
+          "attributes": {
+            "color": "white"
+          }
+        },
+        {
+          "sku": "TBL-BSTRO-BLK",
+          "name": "Black",
+          "price": "8999.00",
+          "quantity": 8,
+          "attributes": {
+            "color": "black"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "compact_study_desk",
+      "name": "Compact Study Desk",
+      "category": "desk",
+      "brand": "EASY BUY",
+      "description": "Space-saving study desk with a single drawer. Fits a small room or study nook.",
+      "attributes": {
+        "material": "engineered_wood",
+        "room": "study",
+        "assembly_required": true,
+        "compact": true,
+        "drawers": 1,
+        "width_cm": 100,
+        "depth_cm": 50,
+        "height_cm": 75,
+        "weight_capacity_kg": 40
+      },
+      "tags": [
+        "desk",
+        "study",
+        "study_table",
+        "compact",
+        "small_room",
+        "home_office",
+        "writing"
+      ],
+      "variants": [
+        {
+          "sku": "DSK-STUDY-OAK",
+          "name": "Oak",
+          "price": "6999.00",
+          "quantity": 18,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural"
+          }
+        },
+        {
+          "sku": "DSK-STUDY-WHT",
+          "name": "White",
+          "price": "6499.00",
+          "quantity": 12,
+          "attributes": {
+            "finish": "white",
+            "color": "white"
+          }
+        },
+        {
+          "sku": "DSK-STUDY-BLK",
+          "name": "Black",
+          "price": "6999.00",
+          "quantity": 3,
+          "attributes": {
+            "finish": "black",
+            "color": "black"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "standing_desk_pro",
+      "name": "Standing Desk Pro",
+      "category": "desk",
+      "brand": "EASY BUY",
+      "description": "Electric sit-stand desk with a dual-motor frame and three memory presets.",
+      "attributes": {
+        "material": "engineered_wood_steel",
+        "room": "office",
+        "assembly_required": true,
+        "adjustable_height": true,
+        "motor": "dual",
+        "presets": 3,
+        "width_cm": 140,
+        "depth_cm": 70,
+        "height_min_cm": 72,
+        "height_max_cm": 120,
+        "weight_capacity_kg": 80
+      },
+      "tags": [
+        "desk",
+        "standing",
+        "sit_stand",
+        "electric",
+        "home_office",
+        "adjustable"
+      ],
+      "variants": [
+        {
+          "sku": "DSK-STAND-OAK",
+          "name": "Oak / Black Frame",
+          "price": "22999.00",
+          "quantity": 9,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural"
+          }
+        },
+        {
+          "sku": "DSK-STAND-BLK",
+          "name": "Black / Black Frame",
+          "price": "22999.00",
+          "quantity": 6,
+          "attributes": {
+            "finish": "black",
+            "color": "black"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "corner_writing_desk",
+      "name": "Corner Writing Desk",
+      "category": "desk",
+      "brand": "EASY BUY",
+      "description": "L-shaped corner desk that tucks two work surfaces into a room corner.",
+      "attributes": {
+        "material": "engineered_wood",
+        "room": "home_office",
+        "assembly_required": true,
+        "shape": "l_shaped",
+        "width_cm": 130,
+        "depth_cm": 130,
+        "height_cm": 75,
+        "weight_capacity_kg": 50
+      },
+      "tags": [
+        "desk",
+        "corner",
+        "l_shaped",
+        "writing",
+        "home_office"
+      ],
+      "variants": [
+        {
+          "sku": "DSK-CRNR-WAL",
+          "name": "Walnut",
+          "price": "12999.00",
+          "quantity": 7,
+          "attributes": {
+            "finish": "walnut",
+            "color": "brown"
+          }
+        },
+        {
+          "sku": "DSK-CRNR-WHT",
+          "name": "White",
+          "price": "11999.00",
+          "quantity": 5,
+          "attributes": {
+            "finish": "white",
+            "color": "white"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "loft_3_seater_sofa",
+      "name": "Loft 3-Seater Sofa",
+      "category": "sofa",
+      "brand": "EASY BUY",
+      "description": "Three-seat sofa with feather-blend cushions and a solid-timber frame.",
+      "attributes": {
+        "material": "polyester_linen_weave",
+        "room": "living",
+        "assembly_required": true,
+        "seats": 3,
+        "width_cm": 210,
+        "depth_cm": 95,
+        "height_cm": 85,
+        "frame": "solid_timber"
+      },
+      "tags": [
+        "sofa",
+        "3_seater",
+        "living_room",
+        "couch",
+        "upholstered"
+      ],
+      "variants": [
+        {
+          "sku": "SOFA-LOFT3-GRY",
+          "name": "Pebble Grey",
+          "price": "42999.00",
+          "quantity": 6,
+          "attributes": {
+            "color": "grey"
+          }
+        },
+        {
+          "sku": "SOFA-LOFT3-CHR",
+          "name": "Charcoal",
+          "price": "42999.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "charcoal"
+          }
+        },
+        {
+          "sku": "SOFA-LOFT3-BGE",
+          "name": "Oatmeal Beige",
+          "price": "44999.00",
+          "quantity": 0,
+          "attributes": {
+            "color": "beige"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "compact_2_seater_sofa",
+      "name": "Compact 2-Seater Sofa",
+      "category": "sofa",
+      "brand": "EASY BUY",
+      "description": "A narrow two-seat sofa scaled for apartments and small rooms.",
+      "attributes": {
+        "material": "polyester_weave",
+        "room": "living",
+        "assembly_required": true,
+        "seats": 2,
+        "compact": true,
+        "width_cm": 160,
+        "depth_cm": 85,
+        "height_cm": 82,
+        "frame": "engineered_wood"
+      },
+      "tags": [
+        "sofa",
+        "2_seater",
+        "compact",
+        "small_room",
+        "apartment",
+        "couch"
+      ],
+      "variants": [
+        {
+          "sku": "SOFA-CMP2-GRY",
+          "name": "Storm Grey",
+          "price": "22999.00",
+          "quantity": 9,
+          "attributes": {
+            "color": "grey"
+          }
+        },
+        {
+          "sku": "SOFA-CMP2-NVY",
+          "name": "Navy",
+          "price": "22999.00",
+          "quantity": 5,
+          "attributes": {
+            "color": "navy"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "platform_bed_frame",
+      "name": "Platform Bed Frame",
+      "category": "bed",
+      "brand": "EASY BUY",
+      "description": "Low-profile solid-wood platform bed with slatted support. No box spring needed.",
+      "attributes": {
+        "material": "solid_pine",
+        "room": "bedroom",
+        "assembly_required": true,
+        "style": "platform",
+        "slatted": true,
+        "headboard": false
+      },
+      "tags": [
+        "bed",
+        "platform",
+        "frame",
+        "wood",
+        "bedroom"
+      ],
+      "variants": [
+        {
+          "sku": "BED-PLTFM-OAK-Q",
+          "name": "Oak, Queen",
+          "price": "16999.00",
+          "quantity": 8,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural",
+            "bed_size": "queen",
+            "width_cm": 158,
+            "length_cm": 208
+          }
+        },
+        {
+          "sku": "BED-PLTFM-OAK-K",
+          "name": "Oak, King",
+          "price": "19999.00",
+          "quantity": 5,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural",
+            "bed_size": "king",
+            "width_cm": 193,
+            "length_cm": 208
+          }
+        },
+        {
+          "sku": "BED-PLTFM-BLK-Q",
+          "name": "Black, Queen",
+          "price": "16999.00",
+          "quantity": 6,
+          "attributes": {
+            "finish": "black",
+            "color": "black",
+            "bed_size": "queen",
+            "width_cm": 158,
+            "length_cm": 208
+          }
+        },
+        {
+          "sku": "BED-PLTFM-BLK-K",
+          "name": "Black, King",
+          "price": "19999.00",
+          "quantity": 2,
+          "attributes": {
+            "finish": "black",
+            "color": "black",
+            "bed_size": "king",
+            "width_cm": 193,
+            "length_cm": 208
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "upholstered_bed_frame",
+      "name": "Upholstered Bed Frame",
+      "category": "bed",
+      "brand": "EASY BUY",
+      "description": "Fabric-upholstered bed with a padded headboard and a sprung slat base.",
+      "attributes": {
+        "material": "polyester_upholstery",
+        "room": "bedroom",
+        "assembly_required": true,
+        "style": "upholstered",
+        "headboard": true,
+        "slatted": true
+      },
+      "tags": [
+        "bed",
+        "upholstered",
+        "headboard",
+        "fabric",
+        "bedroom"
+      ],
+      "variants": [
+        {
+          "sku": "BED-UPH-GRY-Q",
+          "name": "Grey, Queen",
+          "price": "24999.00",
+          "quantity": 7,
+          "attributes": {
+            "color": "grey",
+            "bed_size": "queen",
+            "width_cm": 160,
+            "length_cm": 210
+          }
+        },
+        {
+          "sku": "BED-UPH-GRY-K",
+          "name": "Grey, King",
+          "price": "29999.00",
+          "quantity": 4,
+          "attributes": {
+            "color": "grey",
+            "bed_size": "king",
+            "width_cm": 195,
+            "length_cm": 210
+          }
+        },
+        {
+          "sku": "BED-UPH-BGE-Q",
+          "name": "Beige, Queen",
+          "price": "24999.00",
+          "quantity": 3,
+          "attributes": {
+            "color": "beige",
+            "bed_size": "queen",
+            "width_cm": 160,
+            "length_cm": 210
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "modular_bookshelf",
+      "name": "Modular Bookshelf",
+      "category": "shelving",
+      "brand": "EASY BUY",
+      "description": "Five-tier open bookshelf that can stand alone or sit against a wall.",
+      "attributes": {
+        "material": "engineered_wood",
+        "room": "living",
+        "assembly_required": true,
+        "tiers": 5,
+        "anti_tip_kit": true,
+        "width_cm": 80,
+        "depth_cm": 30,
+        "height_cm": 180,
+        "weight_capacity_kg": 60
+      },
+      "tags": [
+        "shelving",
+        "bookshelf",
+        "storage",
+        "open",
+        "5_tier"
+      ],
+      "variants": [
+        {
+          "sku": "SHLF-MOD-OAK",
+          "name": "Oak",
+          "price": "7999.00",
+          "quantity": 15,
+          "attributes": {
+            "finish": "oak",
+            "color": "natural"
+          }
+        },
+        {
+          "sku": "SHLF-MOD-WHT",
+          "name": "White",
+          "price": "7499.00",
+          "quantity": 11,
+          "attributes": {
+            "finish": "white",
+            "color": "white"
+          }
+        },
+        {
+          "sku": "SHLF-MOD-BLK",
+          "name": "Black",
+          "price": "7999.00",
+          "quantity": 6,
+          "attributes": {
+            "finish": "black",
+            "color": "black"
+          }
+        }
+      ],
+      "compatibility": []
+    },
+    {
+      "slug": "ladder_shelf",
+      "name": "Leaning Ladder Shelf",
+      "category": "shelving",
+      "brand": "EASY BUY",
+      "description": "Four-tier leaning ladder shelf with a compact footprint for small rooms.",
+      "attributes": {
+        "material": "solid_pine_steel",
+        "room": "living",
+        "assembly_required": true,
+        "tiers": 4,
+        "compact": true,
+        "width_cm": 56,
+        "depth_cm": 35,
+        "height_cm": 160,
+        "weight_capacity_kg": 25
+      },
+      "tags": [
+        "shelving",
+        "ladder",
+        "leaning",
+        "compact",
+        "small_room",
+        "storage"
+      ],
+      "variants": [
+        {
+          "sku": "SHLF-LDR-WAL",
+          "name": "Walnut",
+          "price": "5499.00",
+          "quantity": 13,
+          "attributes": {
+            "finish": "walnut",
+            "color": "brown"
+          }
+        },
+        {
+          "sku": "SHLF-LDR-WHT",
+          "name": "White",
+          "price": "4999.00",
+          "quantity": 9,
+          "attributes": {
+            "finish": "white",
+            "color": "white"
+          }
+        }
+      ],
+      "compatibility": []
     }
   ],
-
   "relationships": [
-    { "source": "aerocase_pro",          "target": "guardglass_2_5d",       "type": "cross_sell", "priority": 1 },
-    { "source": "aerocase_pro",          "target": "voltedge_30w",          "type": "cross_sell", "priority": 2 },
-    { "source": "shieldcase_premium",    "target": "guardglass_2_5d",       "type": "cross_sell", "priority": 1 },
-    { "source": "leatherline_folio",     "target": "guardglass_privacy",    "type": "cross_sell", "priority": 1 },
-    { "source": "voltedge_30w",          "target": "linkcord_usb_c",        "type": "bundle",     "priority": 1 },
-    { "source": "voltedge_65w_gan_dual", "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
-    { "source": "voltedge_100w_gan",     "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
-    { "source": "powercell_20000_pd",    "target": "linkcord_braided_100w", "type": "bundle",     "priority": 1 },
-    { "source": "feltfolio_sleeve_13",   "target": "voltedge_65w_gan_dual", "type": "cross_sell", "priority": 1 },
-    { "source": "feltfolio_sleeve_14",   "target": "voltedge_100w_gan",     "type": "cross_sell", "priority": 1 },
-    { "source": "sonicbuds_air",         "target": "sonicbuds_pro_anc",     "type": "related",    "priority": 1 },
-    { "source": "sonicbuds_pro_anc",     "target": "powercell_slim_5000",   "type": "cross_sell", "priority": 2 }
+    {
+      "source": "aerocase_pro",
+      "target": "guardglass_2_5d",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "aerocase_pro",
+      "target": "voltedge_30w",
+      "type": "cross_sell",
+      "priority": 2
+    },
+    {
+      "source": "shieldcase_premium",
+      "target": "guardglass_2_5d",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "leatherline_folio",
+      "target": "guardglass_privacy",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "voltedge_30w",
+      "target": "linkcord_usb_c",
+      "type": "bundle",
+      "priority": 1
+    },
+    {
+      "source": "voltedge_65w_gan_dual",
+      "target": "linkcord_braided_100w",
+      "type": "bundle",
+      "priority": 1
+    },
+    {
+      "source": "voltedge_100w_gan",
+      "target": "linkcord_braided_100w",
+      "type": "bundle",
+      "priority": 1
+    },
+    {
+      "source": "powercell_20000_pd",
+      "target": "linkcord_braided_100w",
+      "type": "bundle",
+      "priority": 1
+    },
+    {
+      "source": "feltfolio_sleeve_13",
+      "target": "voltedge_65w_gan_dual",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "feltfolio_sleeve_14",
+      "target": "voltedge_100w_gan",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "sonicbuds_air",
+      "target": "sonicbuds_pro_anc",
+      "type": "related",
+      "priority": 1
+    },
+    {
+      "source": "sonicbuds_pro_anc",
+      "target": "powercell_slim_5000",
+      "type": "cross_sell",
+      "priority": 2
+    },
+    {
+      "source": "ashwood_dining_table",
+      "target": "ashwood_dining_chair",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "round_bistro_table",
+      "target": "accent_lounge_chair",
+      "type": "related",
+      "priority": 1
+    },
+    {
+      "source": "compact_study_desk",
+      "target": "ergotask_office_chair",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "standing_desk_pro",
+      "target": "ergotask_office_chair",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "platform_bed_frame",
+      "target": "upholstered_bed_frame",
+      "type": "related",
+      "priority": 1
+    },
+    {
+      "source": "loft_3_seater_sofa",
+      "target": "modular_bookshelf",
+      "type": "related",
+      "priority": 2
+    },
+    {
+      "source": "heavyweight_fleece_hoodie",
+      "target": "everyday_cotton_crew",
+      "type": "related",
+      "priority": 1
+    },
+    {
+      "source": "oxford_button_down",
+      "target": "straight_fit_denim",
+      "type": "cross_sell",
+      "priority": 1
+    },
+    {
+      "source": "quilted_puffer_jacket",
+      "target": "heavyweight_fleece_hoodie",
+      "type": "cross_sell",
+      "priority": 1
+    }
   ]
 }

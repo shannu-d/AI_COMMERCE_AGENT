@@ -85,7 +85,10 @@ class Settings(BaseSettings):
     # -- Merchant scoping (ADR-002) -----------------------------------------
     # Resolved server-side and injected into every service call. Never read from
     # model output; never taken from a client request body.
-    default_merchant_name: str = "CircuitCraft"
+    # Display name only. The identifier below is derived from the original
+    # "circuitcraft" natural key and is deliberately unchanged (ADR-021) — the
+    # storefront brand is EASY BUY, the merchant row it points at is the same.
+    default_merchant_name: str = "EASY BUY"
     default_merchant_id: uuid.UUID = DEFAULT_MERCHANT_ID
 
     # -- Groq (M4, ADR-018) --------------------------------------------------
