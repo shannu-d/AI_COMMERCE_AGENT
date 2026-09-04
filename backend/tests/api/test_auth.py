@@ -21,11 +21,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.api.routes.chat import get_llm_client
 from app.db.models import AuthToken, User
 from app.db.session import get_db
 from app.identifiers import DEFAULT_MERCHANT_ID
 from app.main import create_app
 from app.services.auth_service import AuthService
+from tests.agent.conftest import FakeClient
 from tests.api.conftest import PASSWORD, unique_email
 
 pytestmark = pytest.mark.requires_db
@@ -35,6 +37,11 @@ pytestmark = pytest.mark.requires_db
 def api(session: Session) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_db] = lambda: session
+    # The chat route resolves an LLM client as a dependency, before the handler
+    # runs its ownership check. The suite is hermetic (no GROQ_API_KEY — see
+    # tests/conftest.py), so a real client cannot be constructed; a fake keeps
+    # the auth tests about auth. No auth test gets far enough to call it.
+    app.dependency_overrides[get_llm_client] = lambda: FakeClient()
     return TestClient(app)
 
 

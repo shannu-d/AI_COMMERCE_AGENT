@@ -35,6 +35,19 @@ from app.seed.schema import CatalogSeed, load_catalog
 # Tests must never touch the development database or read a developer's .env.
 os.environ["ENVIRONMENT"] = "test"
 
+# ...and that second clause is now actually enforced. `Settings` hard-codes an
+# `env_file` in its `model_config`, so without this every test reads the
+# developer's real `.env` — harmless while the secrets were placeholders, but
+# once real Razorpay test-mode keys live there, `POST /api/orders` starts making
+# a live provider call mid-suite (slow, network-bound, pollutes the account).
+# Blanking `env_file` here keeps the suite hermetic at the payment boundary —
+# the same rule ADR-015 sets for the model — so an order stays `ORDER_CREATED`
+# with a null `razorpay_order_id`, exactly what the M10/M11 tests assert. Tests
+# that need a secret pass their own (see tests/api/test_webhooks).
+from app.config import Settings  # noqa: E402
+
+Settings.model_config["env_file"] = None
+
 _DB_SKIP_REASON = (
     "No reachable PostgreSQL. Set TEST_DATABASE_URL, or run "
     "`docker compose up -d db` from the repository root. "

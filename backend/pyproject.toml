@@ -22,6 +22,10 @@ dependencies = [
     # ADR-023: argon2id password hashing. Only `app/services/auth_service.py`
     # imports it; nothing else hashes or verifies a password.
     "argon2-cffi>=23.1",
+    # ADR-011: the payment provider. Imported lazily and only by
+    # `app/payments/sdk.py`, so the application still boots without it and every
+    # test in `tests/payments/` runs against a double with no network.
+    "razorpay>=1.4",
 ]
 
 [project.optional-dependencies]
