@@ -42,8 +42,9 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DbSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import Cart, IdempotencyKey, Inventory, Order, OrderItem, ProductVariant
 from app.domain.approval import FingerprintLine, items_fingerprint
@@ -242,8 +243,49 @@ class OrderService:
 
     def get(self, merchant_id: uuid.UUID, order_id: uuid.UUID) -> Order | None:
         return self._session.execute(
-            select(Order).where(Order.id == order_id, Order.merchant_id == merchant_id)
+            select(Order)
+            .options(selectinload(Order.items))
+            .where(Order.id == order_id, Order.merchant_id == merchant_id)
         ).scalar_one_or_none()
+
+    def list_for_merchant(
+        self,
+        merchant_id: uuid.UUID,
+        *,
+        status: str | None = None,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> tuple[list[Order], int]:
+        """A page of the merchant's orders, newest first, with a total count.
+
+        Read-only. The state machine is owned by `create_order` and the webhook
+        handler; the dashboard only observes it, so no transition can happen
+        here. Scoped to `merchant_id`, which the route resolves server-side.
+        """
+        limit = max(1, min(limit, 100))
+        offset = max(0, offset)
+        where = [Order.merchant_id == merchant_id]
+        if status is not None:
+            where.append(Order.status == status.upper())
+
+        total = int(
+            self._session.execute(
+                select(func.count()).select_from(Order).where(*where)
+            ).scalar_one()
+        )
+        rows = list(
+            self._session.execute(
+                select(Order)
+                .options(selectinload(Order.items))
+                .where(*where)
+                .order_by(Order.created_at.desc(), Order.id)
+                .offset(offset)
+                .limit(limit)
+            )
+            .scalars()
+            .all()
+        )
+        return rows, total
 
     def _audit_refusal(self, cart, decision, context) -> None:
         """Record *why* a purchase was refused, not merely that it was.

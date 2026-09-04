@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.models import Category, Product, ProductVariant
@@ -35,6 +35,9 @@ class VariantQuery:
     attributes: dict[str, Any] = field(default_factory=dict)
     include_inactive: bool = False
     limit: int | None = None
+    #: Row offset, for the merchant dashboard's paginated product list. The
+    #: storefront never sets this — it pages in the route over a small result.
+    offset: int = 0
 
 
 class VariantRepository:
@@ -122,14 +125,13 @@ class VariantRepository:
             .all()
         )
 
-    def search(self, merchant_id: uuid.UUID, query: VariantQuery) -> list[ProductVariant]:
-        """Catalog search. One row per variant (ADR-009, open question B7).
+    def _filtered(
+        self, merchant_id: uuid.UUID, query: VariantQuery
+    ) -> Select[tuple[ProductVariant]]:
+        """The `search` filters, without ordering, limit or offset.
 
-        Ordering is `(price, sku)`: deterministic and stable, so the same query
-        against the same catalog always returns the same sequence. Ranking is
-        M3's job and does not happen here — R§8 requires ranking to be
-        deterministic, and a search that quietly imposed its own order would
-        make the ranker's output depend on it.
+        Split out so `search` and `count` cannot drift about what a query
+        matches.
         """
         statement = self._base(merchant_id, include_inactive=query.include_inactive)
 
@@ -145,15 +147,16 @@ class VariantRepository:
             statement = statement.where(ProductVariant.currency == query.currency)
 
         if query.search_text:
-            # ILIKE rather than a text index: the catalog is ~30 SKUs, and a
-            # deterministic substring match is explainable to a buyer in a way a
-            # relevance-ranked full-text query is not. M3 scores text relevance
-            # separately (ADR-004).
+            # ILIKE rather than a text index: a deterministic substring match is
+            # explainable in a way a relevance-ranked full-text query is not. M3
+            # scores text relevance separately (ADR-004). Also matches SKU, which
+            # the merchant dashboard's search box needs.
             pattern = f"%{query.search_text.strip()}%"
             statement = statement.where(
                 Product.name.ilike(pattern)
                 | Product.description.ilike(pattern)
                 | ProductVariant.name.ilike(pattern)
+                | ProductVariant.sku.ilike(pattern)
             )
 
         for key, value in query.attributes.items():
@@ -164,8 +167,31 @@ class VariantRepository:
                 | Product.attributes.contains({key: value})
             )
 
-        statement = statement.order_by(ProductVariant.price, ProductVariant.sku)
+        return statement
+
+    def search(self, merchant_id: uuid.UUID, query: VariantQuery) -> list[ProductVariant]:
+        """Catalog search. One row per variant (ADR-009, open question B7).
+
+        Ordering is `(price, sku)`: deterministic and stable, so the same query
+        against the same catalog always returns the same sequence. Ranking is
+        M3's job and does not happen here — R§8 requires ranking to be
+        deterministic, and a search that quietly imposed its own order would
+        make the ranker's output depend on it.
+        """
+        statement = self._filtered(merchant_id, query).order_by(
+            ProductVariant.price, ProductVariant.sku
+        )
+        if query.offset:
+            statement = statement.offset(query.offset)
         if query.limit is not None:
             statement = statement.limit(query.limit)
-
         return list(self._session.execute(statement).scalars().all())
+
+    def count(self, merchant_id: uuid.UUID, query: VariantQuery) -> int:
+        """How many variants match `query`, ignoring limit/offset.
+
+        For the merchant dashboard's paginated list, so a page can say "showing
+        1-25 of 216".
+        """
+        subquery = self._filtered(merchant_id, query).order_by(None).subquery()
+        return int(self._session.execute(select(func.count()).select_from(subquery)).scalar_one())
