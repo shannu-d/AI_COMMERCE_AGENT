@@ -1,24 +1,28 @@
-# CircuitCraft frontend
+# EASY BUY frontend
 
-React 18 + TypeScript on Vite (ADR-017). Milestone **M14**, phase **F0** complete.
+React 18 + TypeScript on Vite (ADR-017). Chat, recommendations, cart, checkout, order status,
+sign-in, and the merchant dashboard — see the repo root [`README.md`](../README.md) and
+[`docs/SUBMISSION.md`](../docs/SUBMISSION.md) for the full picture.
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run test       # vitest
+echo "VITE_API_BASE_URL=http://127.0.0.1:8004" > .env   # git-ignored; see .env.example
+npm run dev -- --host 127.0.0.1 --port 5173
+npm run test        # vitest
 npm run typecheck
 npm run build
 ```
 
-The backend must be running and must list this origin in `CORS_ALLOWED_ORIGINS`:
+The backend must be running on the same port and must list this origin in
+`CORS_ALLOWED_ORIGINS`:
 
 ```bash
-cd ../backend && uvicorn app.main:app --port 8000
+cd ../backend && uvicorn app.main:app --host 127.0.0.1 --port 8004
 ```
 
-If the health panel says the response was malformed, check **what is actually listening on port
-8000** — another project's server there will answer with a different shape. Point
-`VITE_API_BASE_URL` elsewhere if needed (see `.env.example`).
+Port 8000 may be occupied by an unrelated application on the build machine — this project
+deliberately runs on 8004. If the health panel says the response was malformed, check **what is
+actually listening on the port** `VITE_API_BASE_URL` points at.
 
 ## Rules this code follows
 
