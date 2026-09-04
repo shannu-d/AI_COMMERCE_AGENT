@@ -46,7 +46,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DbSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Cart, IdempotencyKey, Inventory, Order, OrderItem, ProductVariant
+from app.db.models import (
+    Cart,
+    IdempotencyKey,
+    Inventory,
+    Order,
+    OrderItem,
+    ProductVariant,
+)
+from app.db.models import (
+    Session as SessionRow,
+)
 from app.domain.approval import FingerprintLine, items_fingerprint
 from app.domain.commerce import (
     ApprovalStatus,
@@ -276,6 +286,52 @@ class OrderService:
         rows = list(
             self._session.execute(
                 select(Order)
+                .options(selectinload(Order.items))
+                .where(*where)
+                .order_by(Order.created_at.desc(), Order.id)
+                .offset(offset)
+                .limit(limit)
+            )
+            .scalars()
+            .all()
+        )
+        return rows, total
+
+    def list_for_customer(
+        self,
+        merchant_id: uuid.UUID,
+        user_id: uuid.UUID,
+        *,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> tuple[list[Order], int]:
+        """A page of one customer's orders, newest first, with a total count.
+
+        Ownership is **derived, not stored** (ADR-023 §2): an order belongs to
+        whoever owns the session it was placed in, so the join to
+        `sessions.user_id` is the whole of the rule and there is no
+        `orders.user_id` that could disagree with it.
+
+        Orders placed before the buyer ever signed in are included exactly when
+        that session was claimed at login — which is the behaviour a shopper
+        expects and the reason claiming is done at all.
+        """
+        limit = max(1, min(limit, 100))
+        offset = max(0, offset)
+        where = [Order.merchant_id == merchant_id, SessionRow.user_id == user_id]
+
+        total = int(
+            self._session.execute(
+                select(func.count())
+                .select_from(Order)
+                .join(SessionRow, SessionRow.id == Order.session_id)
+                .where(*where)
+            ).scalar_one()
+        )
+        rows = list(
+            self._session.execute(
+                select(Order)
+                .join(SessionRow, SessionRow.id == Order.session_id)
                 .options(selectinload(Order.items))
                 .where(*where)
                 .order_by(Order.created_at.desc(), Order.id)

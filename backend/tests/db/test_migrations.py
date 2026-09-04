@@ -57,6 +57,27 @@ def _statements(sql: str) -> list[str]:
     return out
 
 
+def _alterations(sql: str) -> dict[str, set[str]]:
+    """Clauses a later migration ALTERs onto an already-created table.
+
+    A column or constraint added by ``ALTER TABLE`` never appears in the
+    ``CREATE TABLE`` an earlier revision emitted, so without this the anti-drift
+    test below would report every altered table as "only in models" — which is
+    the very drift it exists to catch, blamed on the wrong cause.
+    ``sessions.user_id`` (migration 0005, ADR-023) is the first of these.
+    """
+    added: dict[str, set[str]] = {}
+    pattern = re.compile(r"ALTER TABLE (\w+) ADD (?:COLUMN (.+)|(CONSTRAINT .+))$", re.IGNORECASE)
+    for chunk in sql.split(";"):
+        body = "\n".join(line for line in chunk.splitlines() if not line.strip().startswith("--"))
+        normalized = " ".join(body.split())
+        match = pattern.match(normalized)
+        if match:
+            clause = match.group(2) or match.group(3)
+            added.setdefault(match.group(1), set()).add(clause.strip())
+    return added
+
+
 def _object_name(statement: str) -> str:
     match = re.match(r"CREATE (?:TABLE|(?:UNIQUE )?INDEX) (\w+)", statement)
     assert match, statement
@@ -103,7 +124,7 @@ def test_migration_chain_is_linear_and_starts_from_nothing() -> None:
     script = ScriptDirectory.from_config(alembic_config())
     revisions = list(script.walk_revisions())
 
-    assert [rev.revision for rev in revisions] == ["0004", "0003", "0002", "0001"]
+    assert [rev.revision for rev in revisions] == ["0006", "0005", "0004", "0003", "0002", "0001"]
     assert revisions[-1].down_revision is None
     assert len(script.get_heads()) == 1, "a branched history would make `head` ambiguous"
 
@@ -125,6 +146,7 @@ def test_migrations_produce_exactly_the_schema_the_models_describe(rendered_sql:
     migration = {_object_name(s): s for s in _statements(rendered_sql)}
     migration.pop("alembic_version", None)
     metadata = _metadata_statements()
+    altered = _alterations(rendered_sql)
 
     assert set(migration) == set(metadata)
 
@@ -135,8 +157,9 @@ def test_migrations_produce_exactly_the_schema_the_models_describe(rendered_sql:
             if produced != expected:
                 differences.append(f"{name}\n  migration: {produced}\n  models:    {expected}")
             continue
-        only_migration = _clauses(produced) - _clauses(expected)
-        only_models = _clauses(expected) - _clauses(produced)
+        produced_clauses = _clauses(produced) | altered.get(name, set())
+        only_migration = produced_clauses - _clauses(expected)
+        only_models = _clauses(expected) - produced_clauses
         if only_migration or only_models:
             differences.append(
                 f"{name}\n  only in migration: {sorted(only_migration)}"

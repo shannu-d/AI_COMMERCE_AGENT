@@ -30,10 +30,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
 from app.agent.errors import ApiErrorCode
+from app.api.deps import MaybeUser
 from app.api.schemas.order import CreateOrderRequest, OrderResponse
 from app.config import Settings, get_settings
 from app.db.session import get_db
+from app.domain.identity import AuthenticatedUser
 from app.payments import RazorpayClient, RazorpayError
+from app.services.auth_service import AuthService
 from app.services.order_service import OrderError, OrderService
 
 logger = logging.getLogger(__name__)
@@ -50,6 +53,20 @@ _STATUS: dict[str, int] = {
     "VALIDATION_ERROR": status.HTTP_400_BAD_REQUEST,
     "SERVER_ERROR": status.HTTP_500_INTERNAL_SERVER_ERROR,
 }
+
+
+def _guard_session(db: DbSession, user: AuthenticatedUser | None, session_id: uuid.UUID) -> None:
+    """Refuse to act on a session this caller does not own (ADR-023 §6).
+
+    Anonymous sessions stay open to whoever holds the id — the pre-auth
+    contract. A claimed one is its owner's alone. `404`, never `403`, so the
+    money path never confirms that a session or an order exists.
+    """
+    if not AuthService(db).owns_session(user, session_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": ApiErrorCode.VALIDATION_ERROR.value, "message": "no such order"},
+        )
 
 
 def _build(db: DbSession, settings: Settings) -> OrderService:
@@ -73,6 +90,7 @@ def _build(db: DbSession, settings: Settings) -> OrderService:
 )
 def create_order(
     request: CreateOrderRequest,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> OrderResponse:
@@ -177,6 +195,7 @@ def _razorpay(settings: Settings) -> RazorpayClient:
 )
 def get_order(
     order_id: uuid.UUID,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> OrderResponse:
@@ -195,6 +214,7 @@ def get_order(
                 "message": "no such order",
             },
         )
+    _guard_session(db, user, order.session_id)
     return OrderResponse.from_row(order)
 
 
@@ -208,6 +228,7 @@ def get_order(
 )
 def checkout(
     order_id: uuid.UUID,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict:
@@ -231,6 +252,7 @@ def checkout(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": ApiErrorCode.VALIDATION_ERROR.value, "message": "no such order"},
         )
+    _guard_session(db, user, order.session_id)
 
     try:
         client = _razorpay(settings)

@@ -47,8 +47,19 @@ created by migration ``0004``:
 
 The load-bearing one is ``orders.approval_id NOT NULL``: the database itself
 refuses to store an unapproved order.
+
+**Phase 3 - identity (ADR-023).** ``users`` and ``auth_tokens``, created by
+migration ``0005``, plus one nullable ``sessions.user_id``. Ownership of a cart
+or an order is *derived* through that column rather than stored on either table,
+so authentication cost the commerce schema no data migration.
+
+``merchant_activity`` (migration ``0006``) records what an administrator changed
+in the dashboard. It is deliberately not ``audit_events``: that table
+reconstructs one transaction and hangs off a session, cart, order or payment,
+none of which a price edit has.
 """
 
+from app.db.models.activity import MerchantActivity
 from app.db.models.approval import Approval
 from app.db.models.cart import Cart, CartItem
 from app.db.models.category import Category
@@ -68,6 +79,7 @@ from app.db.models.payment import AuditEvent, Payment, WebhookEvent
 from app.db.models.product import Product
 from app.db.models.relationship import PRODUCT_RELATIONSHIP_TYPES, ProductRelationship
 from app.db.models.session import SESSION_MESSAGE_ROLES, Session, SessionMessage
+from app.db.models.user import AuthToken, User
 from app.db.models.variant import ProductVariant
 
 #: The seven tables architecture.md specifies, in dependency order.
@@ -84,6 +96,12 @@ CATALOG_TABLES: tuple[str, ...] = (
 #: The two tables M5 adds. Not part of ``CATALOG_TABLES``: they are conversation
 #: state, not catalog.
 SESSION_TABLES: tuple[str, ...] = ("sessions", "session_messages")
+
+#: The two tables ADR-023 adds. Deliberately their own group rather than
+#: appended to ``SESSION_TABLES``: identity is not conversation state, and the
+#: schema guard should say *when* and *why* each table arrived rather than
+#: accumulating a single undifferentiated list.
+IDENTITY_TABLES: tuple[str, ...] = ("users", "auth_tokens", "merchant_activity")
 
 #: The nine tables M6 adds, in dependency order.
 COMMERCE_TABLES: tuple[str, ...] = (
@@ -104,11 +122,13 @@ __all__ = [
     "COMPATIBILITY_RULE_TYPES",
     "COMPATIBILITY_TARGET_KINDS",
     "COMPATIBILITY_TARGET_TYPES",
+    "IDENTITY_TABLES",
     "PRODUCT_RELATIONSHIP_TYPES",
     "SESSION_MESSAGE_ROLES",
     "SESSION_TABLES",
     "Approval",
     "AuditEvent",
+    "AuthToken",
     "Cart",
     "CartItem",
     "Category",
@@ -117,6 +137,7 @@ __all__ = [
     "IdempotencyKey",
     "Inventory",
     "Merchant",
+    "MerchantActivity",
     "Order",
     "OrderItem",
     "Payment",
@@ -125,5 +146,6 @@ __all__ = [
     "ProductVariant",
     "Session",
     "SessionMessage",
+    "User",
     "WebhookEvent",
 ]

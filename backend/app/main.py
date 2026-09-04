@@ -19,6 +19,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api.routes import (
+    account,
+    auth,
     cart,
     catalog,
     chat,
@@ -83,13 +85,18 @@ def create_app() -> FastAPI:
         allow_origins=settings.cors_allowed_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        # Only Content-Type: every identifier this API trusts - session_id,
-        # cart_version, idempotency_key - travels in the request body, so
-        # there is no custom request header to permit.
-        allow_headers=["Content-Type"],
+        # Content-Type, plus Authorization for the bearer token ADR-023
+        # introduced. Every *other* identifier this API trusts - session_id,
+        # cart_version, idempotency_key - still travels in the request body.
+        # Note what is still absent: `allow_credentials`. The token is sent
+        # explicitly by the client, never attached ambiently by the browser,
+        # which is what keeps this API free of CSRF.
+        allow_headers=["Content-Type", "Authorization"],
     )
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(account.router, prefix="/api")
     app.include_router(catalog.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(sessions.router, prefix="/api")

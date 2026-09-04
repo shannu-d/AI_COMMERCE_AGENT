@@ -1,12 +1,16 @@
 """The merchant dashboard API — `/api/merchant/*`.
 
-**Single-tenant, no authentication** (ADR-022). ADR-006 has no `users` table and
-the project has no login of any kind. Every handler here resolves the merchant
-from `settings.default_merchant_id`, server-side — the merchant is **never** read
-from a path parameter, a header or a request body. That is the whole of the
-isolation guarantee: a client cannot name a merchant, so it cannot name another
+**Authenticated and merchant-scoped** (ADR-023, superseding ADR-022's
+single-tenant stance). Every handler depends on `require_merchant_id`, which
+resolves the merchant from the **bearer token's user row** (`users.merchant_id`).
+The merchant is never read from a path parameter, a query string or a request
+body, and the request schemas are `extra="forbid"`, so there is no field a client
+could put one in.
+
+That keeps ADR-022's structural guarantee and strengthens it: a caller cannot
+name a merchant, *and* cannot reach any merchant without proving they administer
 one. A row whose `merchant_id` does not match is reported as *not found*, never
-acted on.
+acted on. Without a token these routes answer 401; with a customer's token, 403.
 
 **Reuses the deterministic services.** Reads go through `CatalogService` /
 `InventoryService` / `OrderService`; writes through `MerchantCatalogService`,
@@ -25,9 +29,11 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session as DbSession
 
 from app.agent.errors import ApiErrorCode
+from app.api.deps import CurrentMerchant, require_merchant_id
 from app.api.schemas.merchant import (
     CategoryCreateRequest,
     MerchantCategoryItem,
@@ -45,8 +51,10 @@ from app.api.schemas.merchant import (
     VariantUpdateRequest,
 )
 from app.config import Settings, get_settings
-from app.db.models import Order
+from app.db.models import Merchant, Order
 from app.db.session import get_db
+from app.domain.activity import MerchantAction, MerchantEntityType
+from app.services.activity_service import ActivityService
 from app.services.catalog_service import CatalogService
 from app.services.inventory_service import InventoryService
 from app.services.merchant_service import (
@@ -138,15 +146,53 @@ def _detail(
     )
 
 
+# -- identity ----------------------------------------------------------
+
+
+class MerchantMeResponse(BaseModel):
+    """Who the dashboard is signed in as, and which merchant it administers."""
+
+    id: uuid.UUID
+    email: str
+    role: str
+    display_name: str | None = None
+    merchant_id: uuid.UUID
+    merchant_name: str
+
+
+@router.get("/me", response_model=MerchantMeResponse, summary="The signed-in merchant")
+def merchant_me(
+    merchant: CurrentMerchant,
+    db: DbSession = Depends(get_db),
+) -> MerchantMeResponse:
+    """The dashboard's boot call — 401 tells the client to show the login page.
+
+    The merchant name is read from the `merchants` row rather than from
+    configuration, so it is the tenant's own name once there is more than one.
+    """
+    assert merchant.merchant_id is not None  # require_merchant guarantees this
+    row = db.get(Merchant, merchant.merchant_id)
+    return MerchantMeResponse(
+        id=merchant.id,
+        email=merchant.email,
+        role=merchant.role.value,
+        display_name=merchant.display_name,
+        merchant_id=merchant.merchant_id,
+        merchant_name=row.name if row is not None else "",
+    )
+
+
 # -- overview ----------------------------------------------------------
 
 
 @router.get("/overview", response_model=MerchantOverviewResponse, summary="Dashboard metrics")
 def overview(
-    db: DbSession = Depends(get_db), settings: Settings = Depends(get_settings)
+    db: DbSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantOverviewResponse:
     result = MerchantAnalyticsService(db).overview(
-        settings.default_merchant_id, currency=settings.spending_limit_currency
+        merchant_id, currency=settings.spending_limit_currency
     )
     return MerchantOverviewResponse.of(result)
 
@@ -156,9 +202,11 @@ def overview(
 
 @router.get("/categories", response_model=list[MerchantCategoryItem], summary="Merchant categories")
 def list_categories(
-    db: DbSession = Depends(get_db), settings: Settings = Depends(get_settings)
+    db: DbSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> list[MerchantCategoryItem]:
-    cats = CatalogService(db).list_categories(settings.default_merchant_id)
+    cats = CatalogService(db).list_categories(merchant_id)
     return [
         MerchantCategoryItem(id=c.id, slug=c.slug, name=c.name, parent_slug=c.parent_slug)
         for c in cats
@@ -172,21 +220,31 @@ def list_categories(
     summary="Create a category",
 )
 def create_category(
+    merchant: CurrentMerchant,
     body: CategoryCreateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantCategoryItem:
     try:
         category = MerchantCatalogService(db).create_category(
-            settings.default_merchant_id, name=body.name, slug=body.slug, parent_slug=body.parent
+            merchant_id, name=body.name, slug=body.slug, parent_slug=body.parent
         )
     except MerchantError as error:
         raise _fail(error) from error
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.CATEGORY_CREATED,
+        MerchantEntityType.CATEGORY,
+        entity_id=category.id,
+        subject=category.slug,
+        payload={"name": category.name, "parent": body.parent},
+    )
     db.commit()
     parent_slug = None
     if category.parent_id is not None:
         parent = CatalogService(db)
-        for c in parent.list_categories(settings.default_merchant_id):
+        for c in parent.list_categories(merchant_id):
             if c.id == category.parent_id:
                 parent_slug = c.slug
     return MerchantCategoryItem(
@@ -211,10 +269,11 @@ def list_products(
     offset: int = Query(default=0, ge=0),
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductListResponse:
     try:
         page = MerchantCatalogService(db).list_products(
-            settings.default_merchant_id,
+            merchant_id,
             category_slug=category,
             search=q,
             stock_status=stock_status,
@@ -236,11 +295,10 @@ def get_product(
     product_id: uuid.UUID,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
-    return _detail(
-        CatalogService(db), InventoryService(db), settings.default_merchant_id, product_id, writer
-    )
+    return _detail(CatalogService(db), InventoryService(db), merchant_id, product_id, writer)
 
 
 @router.post(
@@ -250,14 +308,16 @@ def get_product(
     summary="Create a product (and, optionally, its first variants)",
 )
 def create_product(
+    merchant: CurrentMerchant,
     body: ProductCreateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
     try:
         detail = writer.create_product(
-            settings.default_merchant_id,
+            merchant_id,
             name=body.name,
             category_slug=body.category,
             description=body.description,
@@ -269,11 +329,24 @@ def create_product(
         )
     except MerchantError as error:
         raise _fail(error) from error
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.PRODUCT_CREATED,
+        MerchantEntityType.PRODUCT,
+        entity_id=detail.product.id,
+        subject=detail.product.name,
+        payload={
+            "slug": detail.product.slug,
+            "category": detail.product.category_slug,
+            # Prices as strings, here as everywhere (ADR-008).
+            "variants": [{"sku": v.sku, "price": str(v.price)} for v in detail.variants],
+        },
+    )
     db.commit()
     return _detail(
         CatalogService(db),
         InventoryService(db),
-        settings.default_merchant_id,
+        merchant_id,
         detail.product.id,
         writer,
     )
@@ -285,10 +358,12 @@ def create_product(
     summary="Update a product",
 )
 def update_product(
+    merchant: CurrentMerchant,
     product_id: uuid.UUID,
     body: ProductUpdateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
     unset = frozenset(
@@ -298,7 +373,7 @@ def update_product(
     )
     try:
         writer.update_product(
-            settings.default_merchant_id,
+            merchant_id,
             product_id,
             name=body.name,
             category_slug=body.category,
@@ -311,10 +386,18 @@ def update_product(
         )
     except MerchantError as error:
         raise _fail(error) from error
-    db.commit()
-    return _detail(
-        CatalogService(db), InventoryService(db), settings.default_merchant_id, product_id, writer
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.PRODUCT_UPDATED,
+        MerchantEntityType.PRODUCT,
+        entity_id=product_id,
+        subject=body.name,
+        # Only the fields the request actually set — an update that changed a
+        # name should not read as though it also confirmed every other value.
+        payload={"changed": sorted(body.model_fields_set), "unset": sorted(unset)},
     )
+    db.commit()
+    return _detail(CatalogService(db), InventoryService(db), merchant_id, product_id, writer)
 
 
 @router.post(
@@ -323,19 +406,25 @@ def update_product(
     summary="Archive a product (soft delete — order history is preserved)",
 )
 def archive_product(
+    merchant: CurrentMerchant,
     product_id: uuid.UUID,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
     try:
-        writer.set_product_active(settings.default_merchant_id, product_id, active=False)
+        writer.set_product_active(merchant_id, product_id, active=False)
     except MerchantError as error:
         raise _fail(error) from error
-    db.commit()
-    return _detail(
-        CatalogService(db), InventoryService(db), settings.default_merchant_id, product_id, writer
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.PRODUCT_ARCHIVED,
+        MerchantEntityType.PRODUCT,
+        entity_id=product_id,
     )
+    db.commit()
+    return _detail(CatalogService(db), InventoryService(db), merchant_id, product_id, writer)
 
 
 @router.post(
@@ -344,19 +433,25 @@ def archive_product(
     summary="Restore an archived product",
 )
 def restore_product(
+    merchant: CurrentMerchant,
     product_id: uuid.UUID,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
     try:
-        writer.set_product_active(settings.default_merchant_id, product_id, active=True)
+        writer.set_product_active(merchant_id, product_id, active=True)
     except MerchantError as error:
         raise _fail(error) from error
-    db.commit()
-    return _detail(
-        CatalogService(db), InventoryService(db), settings.default_merchant_id, product_id, writer
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.PRODUCT_RESTORED,
+        MerchantEntityType.PRODUCT,
+        entity_id=product_id,
     )
+    db.commit()
+    return _detail(CatalogService(db), InventoryService(db), merchant_id, product_id, writer)
 
 
 # -- variants ------------------------------------------------------
@@ -369,20 +464,28 @@ def restore_product(
     summary="Add a variant to a product",
 )
 def create_variant(
+    merchant: CurrentMerchant,
     product_id: uuid.UUID,
     body: VariantCreateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
     try:
-        writer.create_variant(settings.default_merchant_id, product_id, body.model_dump())
+        writer.create_variant(merchant_id, product_id, body.model_dump())
     except MerchantError as error:
         raise _fail(error) from error
-    db.commit()
-    return _detail(
-        CatalogService(db), InventoryService(db), settings.default_merchant_id, product_id, writer
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.VARIANT_CREATED,
+        MerchantEntityType.VARIANT,
+        entity_id=product_id,
+        subject=body.sku,
+        payload={"price": body.price, "quantity": body.quantity},
     )
+    db.commit()
+    return _detail(CatalogService(db), InventoryService(db), merchant_id, product_id, writer)
 
 
 @router.patch(
@@ -391,15 +494,21 @@ def create_variant(
     summary="Update a variant (price, name, attributes, active)",
 )
 def update_variant(
+    merchant: CurrentMerchant,
     variant_id: uuid.UUID,
     body: VariantUpdateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductDetailResponse:
     writer = MerchantCatalogService(db)
+    # Read the old price before the write: a PRICE_CHANGED entry that cannot say
+    # what the price changed *from* answers half the question it exists for.
+    before = CatalogService(db).get_variant(merchant_id, variant_id)
+    previous_price = None if before is None else str(before.price)
     try:
         detail = writer.update_variant(
-            settings.default_merchant_id,
+            merchant_id,
             variant_id,
             name=body.name,
             price=body.price,
@@ -408,11 +517,34 @@ def update_variant(
         )
     except MerchantError as error:
         raise _fail(error) from error
+
+    activity = ActivityService(db)
+    sku = next((v.sku for v in detail.variants if v.id == variant_id), None)
+    if body.price is not None and body.price != previous_price:
+        # A price move gets its own action, not a generic "updated": it is the
+        # one dashboard edit that changes what a buyer is quoted.
+        activity.record(
+            merchant,
+            MerchantAction.PRICE_CHANGED,
+            MerchantEntityType.VARIANT,
+            entity_id=variant_id,
+            subject=sku,
+            payload={"from": previous_price, "to": body.price},
+        )
+    else:
+        activity.record(
+            merchant,
+            MerchantAction.VARIANT_UPDATED,
+            MerchantEntityType.VARIANT,
+            entity_id=variant_id,
+            subject=sku,
+            payload={"changed": sorted(body.model_fields_set)},
+        )
     db.commit()
     return _detail(
         CatalogService(db),
         InventoryService(db),
-        settings.default_merchant_id,
+        merchant_id,
         detail.product.id,
         writer,
     )
@@ -432,9 +564,10 @@ def list_inventory(
     offset: int = Query(default=0, ge=0),
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantProductListResponse:
     page = MerchantCatalogService(db).stock_rows(
-        settings.default_merchant_id, low_only=low_only, limit=limit, offset=offset
+        merchant_id, low_only=low_only, limit=limit, offset=offset
     )
     return MerchantProductListResponse.of(page)
 
@@ -445,19 +578,95 @@ def list_inventory(
     summary="Set a variant's on-hand quantity",
 )
 def set_stock(
+    merchant: CurrentMerchant,
     variant_id: uuid.UUID,
     body: StockUpdateRequest,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantVariantItem:
+    stock = InventoryService(db).get_stock_map(merchant_id, [variant_id])
+    was = stock[variant_id].quantity if variant_id in stock else None
     try:
-        row = MerchantCatalogService(db).set_stock(
-            settings.default_merchant_id, variant_id, quantity=body.quantity
-        )
+        row = MerchantCatalogService(db).set_stock(merchant_id, variant_id, quantity=body.quantity)
     except MerchantError as error:
         raise _fail(error) from error
+    ActivityService(db).record(
+        merchant,
+        MerchantAction.STOCK_CHANGED,
+        MerchantEntityType.VARIANT,
+        entity_id=variant_id,
+        subject=row.sku,
+        payload={"from": was, "to": body.quantity, "stock_status": row.stock_status.value},
+    )
     db.commit()
     return MerchantVariantItem.of(row)
+
+
+# -- activity log ------------------------------------------------
+
+
+class MerchantActivityItem(BaseModel):
+    """One recorded administrative action."""
+
+    id: uuid.UUID
+    seq: int
+    action: str
+    entity_type: str
+    entity_id: uuid.UUID | None = None
+    subject: str | None = None
+    actor_email: str
+    payload: dict = {}
+    created_at: str
+
+
+class MerchantActivityPage(BaseModel):
+    items: list[MerchantActivityItem]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get(
+    "/activity",
+    response_model=MerchantActivityPage,
+    summary="Who changed what, newest first",
+)
+def list_activity(
+    action: str | None = Query(default=None, max_length=48),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: DbSession = Depends(get_db),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
+) -> MerchantActivityPage:
+    """Read-only, and scoped to the token's own merchant.
+
+    Ordered by `seq` rather than by timestamp: two edits inside one transaction
+    share a `created_at`, and "what happened next" is the question a log is read
+    to answer.
+    """
+    rows, total = ActivityService(db).list_for_merchant(
+        merchant_id, action=action, limit=limit, offset=offset
+    )
+    return MerchantActivityPage(
+        items=[
+            MerchantActivityItem(
+                id=row.id,
+                seq=row.seq,
+                action=row.action,
+                entity_type=row.entity_type,
+                entity_id=row.entity_id,
+                subject=row.subject,
+                actor_email=row.actor_email,
+                payload=row.payload,
+                created_at=row.created_at.isoformat(),
+            )
+            for row in rows
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 # -- orders ----------------------------------------------------
@@ -507,9 +716,10 @@ def list_orders(
     offset: int = Query(default=0, ge=0),
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantOrderPage:
     rows, total = _orders(db, settings).list_for_merchant(
-        settings.default_merchant_id, status=status_filter, limit=limit, offset=offset
+        merchant_id, status=status_filter, limit=limit, offset=offset
     )
     return MerchantOrderPage(
         items=[_order_item(o) for o in rows], total=total, limit=limit, offset=offset
@@ -523,8 +733,9 @@ def get_order(
     order_id: uuid.UUID,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
+    merchant_id: uuid.UUID = Depends(require_merchant_id),
 ) -> MerchantOrderItem:
-    order = _orders(db, settings).get(settings.default_merchant_id, order_id)
+    order = _orders(db, settings).get(merchant_id, order_id)
     if order is None:
         raise _not_found(f"no order {order_id} for this merchant")
     return _order_item(order)

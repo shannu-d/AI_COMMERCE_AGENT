@@ -306,3 +306,45 @@ def test_services_are_constructed_from_a_session_only(service: type) -> None:
     parameters = list(inspect.signature(service.__init__).parameters)
 
     assert parameters[1] == "session"
+
+
+# --------------------------------------------------------------------------
+# Identity (ADR-023)
+# --------------------------------------------------------------------------
+
+
+def test_only_the_auth_service_hashes_a_password() -> None:
+    """One module hashes, verifies and digests, and it is `auth_service`.
+
+    The rules that make a password store safe — argon2id and not a faster hash,
+    a constant-time answer for an unknown address, SHA-256 over a
+    high-entropy token rather than a slow KDF — are only reviewable if they live
+    in one file. A second importer of `argon2` would be a second set of
+    parameters nobody compared with the first.
+    """
+    importers = {
+        path.relative_to(BACKEND_DIR).as_posix()
+        for path in python_files("app")
+        if any(
+            module.split(".")[0] in {"argon2", "passlib", "bcrypt"}
+            for module in imported_modules(path)
+        )
+    }
+    assert importers == {"app/services/auth_service.py"}
+
+
+def test_no_route_resolves_a_merchant_from_configuration() -> None:
+    """ADR-023 §6 replaced `settings.default_merchant_id` in the dashboard with
+    the merchant on the token. The storefront still reads it — there is one
+    merchant to browse — but no `/api/merchant/*` handler may, or the isolation
+    would be configuration rather than authorization.
+    """
+    source = (BACKEND_DIR / "app/api/routes/merchant.py").read_text(encoding="utf-8")
+    assert "default_merchant_id" not in source
+
+
+def test_identity_lives_on_the_deterministic_side() -> None:
+    """`auth_service` decides who a caller is; a model must never be able to
+    influence that, and cannot influence what it cannot reach."""
+    modules = imported_modules(BACKEND_DIR / "app/services/auth_service.py")
+    assert not any(module.startswith(FORBIDDEN_IMPORT_ROOTS) for module in modules)

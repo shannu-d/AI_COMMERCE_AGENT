@@ -20,25 +20,30 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.db.models import Category, Inventory, Merchant, Product, ProductVariant
+from app.db.models import Category, Inventory, Product, ProductVariant
 from app.db.session import get_db
+from app.identifiers import DEFAULT_MERCHANT_ID
 from app.main import create_app
 
 pytestmark = pytest.mark.requires_db
 
 
 @pytest.fixture
-def api(session: Session) -> TestClient:
+def api(session: Session, merchant_headers: dict[str, str]) -> TestClient:
+    """A client already signed in as an administrator of the seeded merchant.
+
+    Authentication is the *default* for this module because every route here
+    requires it (ADR-023). The unauthenticated and wrong-role cases are proved
+    explicitly at the bottom of the file rather than by omission.
+    """
     app = create_app()
     app.dependency_overrides[get_db] = lambda: session
-    return TestClient(app)
+    return TestClient(app, headers=merchant_headers)
 
 
 @pytest.fixture
-def rival_variant(session: Session) -> ProductVariant:
-    mid = uuid.uuid4()
-    session.add(Merchant(id=mid, name=f"Rival {mid.hex[:6]}", currency="INR", is_active=True))
-    session.flush()
+def rival_variant(session: Session, rival_merchant: uuid.UUID) -> ProductVariant:
+    mid = rival_merchant
     cat = Category(id=uuid.uuid4(), merchant_id=mid, name="W", slug="rival_widgets")
     session.add(cat)
     session.flush()
@@ -236,3 +241,85 @@ def test_the_merchant_api_has_no_field_for_a_merchant_id(api: TestClient) -> Non
         json={"name": "X", "category": "t_shirt", "merchant_id": str(uuid.uuid4())},
     )
     assert r.status_code == 422  # extra="forbid"
+
+
+# -- AUTHENTICATION AND ROLE ---------------------------------------
+#
+# `api` is signed in as the seeded merchant, so every test above proves the
+# happy path. These prove the closed ones, and they use a *bare* client so
+# there is no chance a header leaks in from the fixture.
+
+
+@pytest.fixture
+def anon(session: Session) -> TestClient:
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: session
+    return TestClient(app)
+
+
+MERCHANT_ROUTES = [
+    ("GET", "/api/merchant/overview"),
+    ("GET", "/api/merchant/products"),
+    ("GET", "/api/merchant/categories"),
+    ("GET", "/api/merchant/inventory"),
+    ("GET", "/api/merchant/orders"),
+    ("GET", "/api/merchant/me"),
+]
+
+
+@pytest.mark.parametrize(("method", "path"), MERCHANT_ROUTES)
+def test_every_merchant_route_refuses_an_anonymous_caller(
+    anon: TestClient, method: str, path: str
+) -> None:
+    assert anon.request(method, path).status_code == 401
+
+
+@pytest.mark.parametrize(("method", "path"), MERCHANT_ROUTES)
+def test_every_merchant_route_refuses_a_customer(
+    anon: TestClient, customer_headers: dict[str, str], method: str, path: str
+) -> None:
+    """A valid token is not authority. A shopper is 403, not 401 — they are
+    authenticated, just not an administrator."""
+    assert anon.request(method, path, headers=customer_headers).status_code == 403
+
+
+def test_a_garbage_token_is_anonymous_not_an_error(anon: TestClient) -> None:
+    r = anon.get("/api/merchant/overview", headers={"Authorization": "Bearer not-a-token"})
+    assert r.status_code == 401
+
+
+def test_me_reports_the_merchant_from_the_token_not_the_request(api: TestClient) -> None:
+    body = api.get("/api/merchant/me").json()
+    assert body["role"] == "MERCHANT"
+    assert body["merchant_id"] == str(DEFAULT_MERCHANT_ID)
+    assert body["merchant_name"]
+
+
+# -- CROSS-MERCHANT ------------------------------------------------
+
+
+def test_a_rival_administrator_sees_none_of_the_seeded_catalogue(
+    anon: TestClient, rival_merchant_headers: dict[str, str]
+) -> None:
+    """Merchant B's token reaches Merchant B's data and nothing else — the
+    scope comes from `users.merchant_id`, which no request can influence."""
+    body = anon.get("/api/merchant/products", headers=rival_merchant_headers).json()
+    assert body["total"] == 0
+
+    overview = anon.get("/api/merchant/overview", headers=rival_merchant_headers).json()
+    assert overview["total_products"] == 0
+    assert overview["total_variants"] == 0
+
+
+def test_a_rival_administrator_cannot_edit_a_seeded_variant(
+    anon: TestClient,
+    api: TestClient,
+    rival_merchant_headers: dict[str, str],
+) -> None:
+    mine = api.get("/api/merchant/inventory", params={"limit": 1}).json()["items"][0]
+    r = anon.patch(
+        f"/api/merchant/variants/{mine['variant_id']}",
+        json={"price": "1.00"},
+        headers=rival_merchant_headers,
+    )
+    assert r.status_code == 404  # not found, never "forbidden" — no existence oracle

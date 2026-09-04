@@ -19,6 +19,9 @@ dependencies = [
     # `app/llm/client.py`; a test asserts no deterministic package imports it,
     # and another asserts no *other* model SDK is imported anywhere.
     "groq>=1.7",
+    # ADR-023: argon2id password hashing. Only `app/services/auth_service.py`
+    # imports it; nothing else hashes or verifies a password.
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]

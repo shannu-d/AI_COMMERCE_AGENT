@@ -26,6 +26,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
 from app.agent.errors import ApiErrorCode
+from app.api.deps import MaybeUser
 from app.api.schemas.cart import (
     AddItemRequest,
     ApprovalResponse,
@@ -37,21 +38,43 @@ from app.config import Settings, get_settings
 from app.db.session import get_db
 from app.domain.approval import ApprovalFailure
 from app.domain.conversation import ConversationState
+from app.domain.identity import AuthenticatedUser
 from app.services.approval_service import ApprovalError, ApprovalService
+from app.services.auth_service import AuthService
 from app.services.cart_service import CartError, CartService
 from app.services.session_service import SessionService
 
 router = APIRouter(tags=["cart"])
 
 
-def _require_session(db: DbSession, merchant_id: uuid.UUID, session_id: uuid.UUID) -> uuid.UUID:
-    """The session, or a 404.
+def _require_session(
+    db: DbSession,
+    merchant_id: uuid.UUID,
+    session_id: uuid.UUID,
+    user: AuthenticatedUser | None = None,
+) -> uuid.UUID:
+    """The session, or a 404 — existence *and* ownership (ADR-023 §6).
 
     Same rule as `/api/chat` (ADR-010): an unknown session is rejected rather
     than silently created, so a typo cannot strand a buyer in a cart they will
     never see again.
+
+    Ownership narrows that and never widens it. An **anonymous** session stays
+    reachable by whoever holds its unguessable id, which is what keeps
+    logged-out shopping working; a session that a login has **claimed** is
+    reachable only by its owner. Someone else's cart therefore answers `404`
+    rather than `403`: the two are indistinguishable to a caller, so the API
+    never confirms that a session id it was handed is real.
     """
     if SessionService(db).get(merchant_id, session_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": ApiErrorCode.VALIDATION_ERROR.value,
+                "message": "SESSION_NOT_FOUND: no such session for this merchant",
+            },
+        )
+    if not AuthService(db).owns_session(user, session_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -125,12 +148,13 @@ def _handle_approval(error: Exception) -> HTTPException:
 )
 def get_cart(
     session_id: uuid.UUID,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> CartResponse:
     """Read the cart. Creates nothing — an empty response means no cart yet."""
     merchant_id = settings.default_merchant_id
-    _require_session(db, merchant_id, session_id)
+    _require_session(db, merchant_id, session_id, user)
 
     cart = CartService(db).get_active(merchant_id, session_id)
     if cart is None:
@@ -152,11 +176,12 @@ def get_cart(
 )
 def add_item(
     request: AddItemRequest,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> CartResponse:
     merchant_id = settings.default_merchant_id
-    session_id = _require_session(db, merchant_id, request.session_id)
+    session_id = _require_session(db, merchant_id, request.session_id, user)
     try:
         cart = CartService(db).add_item(
             merchant_id, session_id, request.variant_id, request.quantity
@@ -176,11 +201,12 @@ def add_item(
 def update_item(
     item_id: uuid.UUID,
     request: UpdateItemRequest,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> CartResponse:
     merchant_id = settings.default_merchant_id
-    session_id = _require_session(db, merchant_id, request.session_id)
+    session_id = _require_session(db, merchant_id, request.session_id, user)
     try:
         cart = CartService(db).set_quantity(merchant_id, session_id, item_id, request.quantity)
     except CartError as error:
@@ -198,11 +224,12 @@ def update_item(
 def remove_item(
     item_id: uuid.UUID,
     session_id: uuid.UUID,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> CartResponse:
     merchant_id = settings.default_merchant_id
-    _require_session(db, merchant_id, session_id)
+    _require_session(db, merchant_id, session_id, user)
     try:
         cart = CartService(db).remove_item(merchant_id, session_id, item_id)
     except CartError as error:
@@ -224,6 +251,7 @@ def remove_item(
 )
 def approve_cart(
     request: ApproveCartRequest,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> ApprovalResponse:
@@ -238,7 +266,7 @@ def approve_cart(
     review it again", which is a recovery flow rather than a bug report.
     """
     merchant_id = settings.default_merchant_id
-    session_id = _require_session(db, merchant_id, request.session_id)
+    session_id = _require_session(db, merchant_id, request.session_id, user)
 
     carts = CartService(db)
     cart = carts.get_active(merchant_id, session_id)

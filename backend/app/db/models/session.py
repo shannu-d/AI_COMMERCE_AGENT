@@ -69,6 +69,8 @@ class Session(Base, TimestampMixin):
         # merchant server-side on every call, so it is part of the lookup rather
         # than a filter applied afterwards.
         Index("ix_sessions_merchant_id", "merchant_id"),
+        # "my sessions" — the lookup behind a customer's order history.
+        Index("ix_sessions_user_id", "user_id"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -76,6 +78,14 @@ class Session(Base, TimestampMixin):
         PGUUID(as_uuid=True),
         ForeignKey("merchants.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    #: Null while the shopper is anonymous; set when a login *claims* this
+    #: session (ADR-023). Carts and orders hang off the session, so ownership
+    #: derives through here and neither of those tables changes shape.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     conversation_state: Mapped[str] = mapped_column(
         String(48),

@@ -29,10 +29,12 @@ from app.agent.context import AgentContext
 from app.agent.errors import ApiErrorCode
 from app.agent.registry import build_registry
 from app.agent.runtime import AgentRuntime, TurnResult
+from app.api.deps import MaybeUser
 from app.api.schemas.chat import ChatError, ChatRequest, ChatResponse, Recommendation
 from app.config import Settings, get_settings
 from app.db.session import get_db
 from app.llm.client import LLMClient, build_client
+from app.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,7 @@ def _to_response(result: TurnResult) -> ChatResponse:
 )
 def chat(
     request: ChatRequest,
+    user: MaybeUser,
     db: DbSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
     client: LLMClient = Depends(get_llm_client),
@@ -128,7 +131,13 @@ def chat(
         # ADR-010: an unknown session is rejected rather than silently created,
         # so a typo cannot strand a conversation in a new one the buyer will
         # never see again.
-        if context.sessions.get(merchant_id, request.session_id) is None:
+        #
+        # Ownership is checked in the same breath and reported identically
+        # (ADR-023 §6): a conversation a login has claimed belongs to its owner,
+        # an anonymous one stays open to whoever holds the id, and a caller
+        # cannot tell the two refusals apart.
+        known = context.sessions.get(merchant_id, request.session_id) is not None
+        if not known or not AuthService(db).owns_session(user, request.session_id):
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

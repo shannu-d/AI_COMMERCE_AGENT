@@ -22,7 +22,7 @@ from sqlalchemy.schema import CreateTable
 
 from app.config import BACKEND_DIR
 from app.db.base import Base
-from app.db.models import CATALOG_TABLES, COMMERCE_TABLES, SESSION_TABLES
+from app.db.models import CATALOG_TABLES, COMMERCE_TABLES, IDENTITY_TABLES, SESSION_TABLES
 
 CATALOG_TABLE_SET = set(CATALOG_TABLES)
 
@@ -109,14 +109,25 @@ def test_the_session_tables_arrived_with_the_agent_runtime() -> None:
 
 
 def test_no_table_beyond_the_catalog_the_vocabulary_and_the_commerce_schema_exists() -> None:
-    """ADR-003 and ADR-006. Any other extra table is unintended scope.
+    """ADR-003, ADR-006 and ADR-023. Any other extra table is unintended scope.
 
-    Eleven of the twelve additions were designed at column level before a line of
-    them was written; `compatibility_targets` is the twelfth and has ADR-003. A
-    table outside this set is one nobody decided on.
+    Every addition beyond the specified seven names the decision that put it
+    there: `compatibility_targets` has ADR-003, the session and commerce tables
+    have ADR-006, and `users` / `auth_tokens` have ADR-023. A table outside this
+    set is one nobody decided on.
+
+    Note what is *not* here: no `customers` table, and no ownership column on
+    `carts` or `orders`. ADR-023 derives ownership through `sessions.user_id`,
+    so authentication cost the commerce schema one nullable column and no data
+    migration.
     """
     extra = set(Base.metadata.tables) - CATALOG_TABLE_SET
-    assert extra == {"compatibility_targets", *SESSION_TABLES, *COMMERCE_TABLES}
+    assert extra == {
+        "compatibility_targets",
+        *SESSION_TABLES,
+        *COMMERCE_TABLES,
+        *IDENTITY_TABLES,
+    }
 
 
 # --------------------------------------------------------------------------
