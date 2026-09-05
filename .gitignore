@@ -9,6 +9,14 @@
 *.key
 secrets/
 
+# Database dumps. A dump of this database contains argon2 password digests and
+# live bearer tokens (`users`, `auth_tokens`), so it is a credential store even
+# though it is not a key file. Never commit one — see backups/README.md.
+backups/*
+!backups/README.md
+*.dump
+*.sql.gz
+
 # ---------------------------------------------------------------------------
 # Python
 # ---------------------------------------------------------------------------
