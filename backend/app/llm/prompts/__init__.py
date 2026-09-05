@@ -39,6 +39,12 @@ PROMPT_DIR = Path(__file__).resolve().parent
 #: cannot arrive unversioned.
 PROMPT_VERSIONS: Mapping[str, str] = MappingProxyType(
     {
+        # 1.4.0 — rule 11: do not build a cart the buyer did not ask for. A
+        # live turn answered "earbuds with noise cancelling" by putting two
+        # pairs in the cart and asking for approval of ₹8,998 — safe (no order
+        # can follow without an approval the model cannot write) but wrong:
+        # showing a product and adding it are different acts, and only the
+        # buyer moves between them. Rules renumbered to 1–19.
         # 1.3.0 — rule 9: a stated requirement belongs in the search tool's
         # `attributes`, which eliminates, not in `search_query`, which only
         # ranks. Added after a live turn answered "find noise-cancelling
@@ -54,7 +60,7 @@ PROMPT_VERSIONS: Mapping[str, str] = MappingProxyType(
         # 1.1.0 — added the "Writing your reply" section (brief prose, no tables
         # or attribute dumps; recommended products render as cards in a separate
         # panel). See ADR-020.
-        "system_prompt": "1.3.0",
+        "system_prompt": "1.4.0",
         "intent_extraction": "1.0.0",
     }
 )

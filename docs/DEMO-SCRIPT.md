@@ -70,6 +70,82 @@ Open an MCP client (Claude Desktop, MCP Inspector, or a script) pointed at
 
 ---
 
+## A. Prompt bank — what to type, and what you will get
+
+Every line below was **run against the live agent and the live catalogue** on
+2026-09-05. The counts are what the ranking engine returns, so they are stable
+unless the merchant edits stock or prices. Nothing here needs the model to
+cooperate for the *numbers* to be right — the model chooses the tool arguments,
+the engine chooses the products.
+
+`RANKING_TOP_K=9`, so a category with more matches shows up to nine cards.
+
+### The reliable openers
+
+| Type this | You get | Good for showing |
+| --- | --- | --- |
+| **I need a case for my iPhone 16** | **5 cards** — AeroCase Pro Black ₹999 (Best overall), Blue ₹999, ShieldCase Premium ₹1,299, LeatherLine Folio Black / Brown ₹1,799 | The core loop. The Clear AeroCase is **out of stock and correctly absent**, and the iPhone **15** case never appears |
+| **a fast charger for my iPhone 16 under 1500** | **2 cards** — VoltEdge 20W ₹1,099, VoltEdge 30W ₹1,499 | A budget as a hard ceiling *and* device compatibility, together. The ₹2,799 MacBook charger is compatible but over budget, so it is excluded |
+| **earbuds with noise cancelling** | **2 cards** — SonicBuds Pro ANC Black and Ivory, ₹4,499 | The F-3 fix. The catalogue holds five earbuds; only these two have `anc: true`. The other three are **not** offered and **not** described as noise-cancelling |
+| **show me t-shirts** | **9 cards** — Everyday Cotton Crew Tee, ₹799 | Top-K at 9, and the catalogue's breadth beyond electronics |
+| **a case for my Pixel 9** | **0 cards**, and an honest "I couldn't find one" | The no-match path. Pixel 9 is a **resolvable** device with zero compatible products — the agent does not substitute, and names no product |
+
+### If you want more variety
+
+Verified as catalogue facts (in stock, compatible), so they will produce cards:
+
+| Prompt | Expected |
+| --- | --- |
+| a screen protector for my iPhone 16 | 3 cards, ₹299–₹649 |
+| a charger for my MacBook Air M3 | 3 cards, ₹2,799–₹3,999 |
+| a sleeve for my MacBook Air M3 | 2 cards, ₹1,199 |
+| a USB-C cable | 3 cards, ₹499–₹999 |
+| a power bank with USB-C | 4 cards, ₹1,299–₹3,299 |
+| show me shirts / dresses / jackets | 9 cards each (26 / 23 / 21 in stock) |
+
+### The two-turn narrowing (good on camera)
+
+1. **I need a charger** → the agent asks which device, because the answer changes
+   what you pay. It does **not** guess.
+2. **for my iPhone 16, under ₹1200** → one card, VoltEdge 20W ₹1,099.
+
+### What to avoid on camera
+
+- **Anything you have not tried on the day.** The model picks the tool arguments;
+  the catalogue decides the rest. A phrasing you have not run is the one that
+  asks a clarifying question in the middle of your take.
+- **Rapid-fire turns.** See the pacing note below.
+- **"Add both to my cart" in the same breath as a search.** Ask for products,
+  *then* add — the agent is instructed not to build a cart you did not ask for
+  (system prompt 1.4.0, rule 11).
+
+## B. Pacing, and the rate limit that will bite you
+
+The Groq account is on the free `on_demand` tier: **8,000 tokens per minute** and
+**200,000 tokens per day, per model**. One agent turn is two model calls totalling
+roughly **9,000 tokens** — more than the per-minute allowance, so:
+
+- **Every turn pauses ~13 seconds mid-way** while the client waits out the
+  per-minute bucket. That is the application obeying the provider's own
+  `retry-after`, not a hang. Expect 15–25 seconds per answer and plan the edit.
+- **You get about 22 turns per day, per model.** Rehearsing burns the same budget
+  as recording.
+- When the daily budget is gone, a turn **fails fast** with "I could not reach the
+  assistant just then" rather than hanging.
+
+Two levers when you run out:
+
+1. **Switch model.** The daily quota is *per model*, and `GROQ_MODEL` is
+   configuration. `openai/gpt-oss-20b` and `openai/gpt-oss-120b` each have their
+   own 200,000. Change `.env`, restart the backend. Both were verified against the
+   prompt bank above.
+2. **Rehearse without the agent.** The storefront, cart, approval, Razorpay
+   Checkout, order page and the whole merchant dashboard cost **no model tokens
+   at all**. Only `/api/chat` does. Block out the take on those, and spend the
+   agent turns on the recording.
+
+---
+
 ## 5. Close (15s)
 
 > "Bounded, gated, explainable, audited — for a human's assistant and for an
