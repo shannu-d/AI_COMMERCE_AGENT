@@ -159,6 +159,19 @@ class StubCatalog:
     def category_slugs(self, merchant_id: uuid.UUID) -> tuple[str, ...]:
         return self.categories
 
+    def attribute_vocabulary(self, merchant_id: uuid.UUID) -> dict[str, tuple[str, ...]]:
+        """The attribute names each category uses, as the real service reports them.
+
+        Small and fixed here; `test_catalog_service.py` checks the query that
+        produces it against a real catalog. What the agent tests need is only
+        that the runtime asks for it and sends it.
+        """
+        return {
+            "phone_case": ("color", "material", "protection"),
+            "charger": ("fast_charge", "port_type", "wattage"),
+            "earbuds": ("anc", "battery_hours"),
+        }
+
 
 @dataclass
 class StubCompatibility:

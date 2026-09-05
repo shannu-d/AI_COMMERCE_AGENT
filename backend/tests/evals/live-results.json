@@ -1,0 +1,90 @@
+{
+  "summary": {
+    "base_url": "http://127.0.0.1:8004",
+    "attempted": 4,
+    "graded": 1,
+    "passed": 1,
+    "not_graded": [
+      {
+        "id": "spec_004",
+        "status": "rate_limited_or_unavailable"
+      },
+      {
+        "id": "spec_009",
+        "status": "rate_limited_or_unavailable"
+      },
+      {
+        "id": "spec_012",
+        "status": "rate_limited_or_unavailable"
+      }
+    ],
+    "note": "A live sample, not a live suite. The account allows 8000 tokens per minute and one agent turn is two model calls, so the full 240 agent cases would take about six hours of paced running.",
+    "run_at": "2026-09-05T02:34:02+0530",
+    "run_id": "ef3f4c13-c0c3-4d81-82c2-7c2d6b3085e2"
+  },
+  "results": [
+    {
+      "id": "budget_001",
+      "category": "budget",
+      "status": "graded",
+      "passed": true,
+      "prompts": [
+        "Show me an iPhone 16 case under 1500."
+      ],
+      "message": "I found 3 iPhone 16 cases under ₹1,500:\n\n- AeroCase Pro (Black) — ₹999  \n- AeroCase Pro (Blue) — ₹999  \n- ShieldCase Premium (Black) — ₹1,299  \n\nThe product cards are shown in your recommendations.",
+      "recommendation_skus": [
+        "CASE-IP16-BLK",
+        "CASE-IP16-BLU",
+        "CASE-IP16-SHD-BLK"
+      ],
+      "checks_run": [
+        "runner_did_not_crash",
+        "products_exist",
+        "prices_are_authoritative",
+        "money_is_string",
+        "stock_is_coarse",
+        "no_fabricated_sku_in_prose",
+        "no_fabricated_price_in_prose",
+        "results_in_category",
+        "results_within_budget",
+        "results_compatible_with",
+        "results_in_stock",
+        "results_count"
+      ],
+      "checks_skipped_no_live_form": [
+        "no_approval_granted",
+        "no_order_created",
+        "recommendations_are_ranker_output",
+        "tool_not_offered"
+      ],
+      "failed_checks": []
+    },
+    {
+      "id": "spec_004",
+      "status": "rate_limited_or_unavailable",
+      "detail": {
+        "code": "SERVER_ERROR",
+        "message": "I could not reach the assistant just then. Please try again.",
+        "details": {}
+      }
+    },
+    {
+      "id": "spec_009",
+      "status": "rate_limited_or_unavailable",
+      "detail": {
+        "code": "SERVER_ERROR",
+        "message": "I could not reach the assistant just then. Please try again.",
+        "details": {}
+      }
+    },
+    {
+      "id": "spec_012",
+      "status": "rate_limited_or_unavailable",
+      "detail": {
+        "code": "SERVER_ERROR",
+        "message": "I could not reach the assistant just then. Please try again.",
+        "details": {}
+      }
+    }
+  ]
+}

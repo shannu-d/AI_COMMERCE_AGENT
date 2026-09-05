@@ -118,16 +118,31 @@ function DiscoveryState() {
   );
 }
 
-/** A turn completed with no results. Not an error — a real answer. */
+/**
+ * A turn completed with no results. Not an error — a real answer.
+ *
+ * The copy deliberately does **not** defer to the concierge for detail. These
+ * cards are built from `recommendations[]`, which comes from the ranking engine
+ * over the merchant's own catalogue; the assistant's prose is not a second
+ * source and is not always right about it. A live turn once named two products
+ * that do not exist in the catalogue at all, and this panel correctly showed
+ * nothing — telling the buyer to go back to the concierge for the details would
+ * have pointed them at the one half of the screen that was wrong.
+ *
+ * It stops short of claiming the thing does not exist: a real product can be
+ * absent here because it broke a stated budget or device requirement, which is
+ * a different fact from not being stocked.
+ */
 function NoMatchState() {
   return (
     <div className="animate-fade border border-rule bg-paper-raised px-6 py-14 text-center">
       <Eyebrow>No matches</Eyebrow>
       <p className="mx-auto mt-3 max-w-sm text-[0.95rem] leading-relaxed text-ink">
-        Nothing in the catalogue fits that yet.
+        Nothing in the catalogue matched that search.
       </p>
       <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft">
-        Try describing it a different way, or adjust the budget — the concierge has the details.
+        Only products shown here have been checked against the catalogue and can be added to your
+        cart. Try describing it differently, or raising the budget.
       </p>
     </div>
   );

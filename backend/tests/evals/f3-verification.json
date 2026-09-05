@@ -1,0 +1,132 @@
+{
+  "_readme": [
+    "Verification of finding F-3 (docs/EVALUATION-REPORT.md §20a).",
+    "The tool arguments are what the live Groq model produced for the spec_004",
+    "prompt - 'Find noise-cancelling earbuds.' - before and after the 1.3.0 fix.",
+    "The results and checks below are produced by executing those arguments",
+    "against the real services and the real catalogue at the time this file was",
+    "written; they are not transcribed from the probe."
+  ],
+  "prompt": "Find noise-cancelling earbuds.",
+  "model": "openai/gpt-oss-120b (Groq)",
+  "system_prompt_version": "1.3.0",
+  "before_fix": {
+    "arguments": {
+      "category": "earbuds",
+      "search_query": "noise cancelling"
+    },
+    "outcome": "EXACT_MATCH",
+    "results": [
+      {
+        "sku": "BUDS-LITE",
+        "name": "SonicBuds Lite",
+        "price": "1499.00",
+        "anc": null
+      },
+      {
+        "sku": "BUDS-AIR-BLK",
+        "name": "SonicBuds Air",
+        "price": "2499.00",
+        "anc": null
+      },
+      {
+        "sku": "BUDS-AIR-WHT",
+        "name": "SonicBuds Air",
+        "price": "2499.00",
+        "anc": null
+      }
+    ],
+    "checks": [
+      {
+        "check": "results_have_attributes",
+        "passed": false,
+        "reason": "results failing {'anc': True}: [\"BUDS-AIR-BLK{'anc': False, 'bluetooth': '5.3', 'driver_mm': 10, 'port_type': 'usb_c', 'battery_hours': 24, 'color': 'black'}\", \"BUDS-AIR-WHT{'anc': False, 'bluetooth': '5.3', 'driver_mm': 10, 'port_type': 'usb_c', 'battery_hours': 24, 'color': 'white'}\", \"BUDS-LITE{'anc': False, 'bluetooth': '5.2', 'driver_mm': 8, 'port_type': 'usb_c', 'battery_hours': 18, 'color': 'black'}\"]"
+      },
+      {
+        "check": "results_in_category",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "results_in_stock",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "products_exist",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "prices_are_authoritative",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "results_count",
+        "passed": true,
+        "reason": null
+      }
+    ],
+    "passed": false
+  },
+  "after_fix": {
+    "arguments": {
+      "attributes": {
+        "anc": true
+      },
+      "category": "earbuds",
+      "currency": null,
+      "max_price": null,
+      "search_query": null
+    },
+    "outcome": "EXACT_MATCH",
+    "results": [
+      {
+        "sku": "BUDS-PRO-BLK",
+        "name": "SonicBuds Pro ANC",
+        "price": "4499.00",
+        "anc": null
+      },
+      {
+        "sku": "BUDS-PRO-IVY",
+        "name": "SonicBuds Pro ANC",
+        "price": "4499.00",
+        "anc": null
+      }
+    ],
+    "checks": [
+      {
+        "check": "results_have_attributes",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "results_in_category",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "results_in_stock",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "products_exist",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "prices_are_authoritative",
+        "passed": true,
+        "reason": null
+      },
+      {
+        "check": "results_count",
+        "passed": true,
+        "reason": null
+      }
+    ],
+    "passed": true
+  }
+}
