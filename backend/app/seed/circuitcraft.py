@@ -86,7 +86,12 @@ def seed_catalog(session: Session, catalog: CatalogSeed, merchant_id: uuid.UUID)
             )
         )
         counts["categories"] += 1
-    session.flush()
+        # Flushed per row, not once at the end. `_categories_parents_first`
+        # guarantees the order, but the unit of work is free to emit an UPDATE
+        # to an existing child before the INSERT of its new parent — which is
+        # exactly what happens when a category is re-parented into a branch that
+        # does not exist yet, and `fk_categories_parent_id_categories` rejects it.
+        session.flush()
 
     for target in catalog.compatibility_targets:
         session.merge(
@@ -186,6 +191,126 @@ def seed_catalog(session: Session, catalog: CatalogSeed, merchant_id: uuid.UUID)
     return counts
 
 
+def prune_catalog(session: Session, catalog: CatalogSeed, merchant_id: uuid.UUID) -> dict[str, int]:
+    """Remove merchant rows the seed file no longer contains.
+
+    Seeding is an upsert and never deletes, which is right for a loader: a
+    merchant may legitimately add products through the dashboard, and a loader
+    that silently removed them would be a data-loss bug. So pruning is a
+    separate, explicit request — it is how a *category* is retired, and it is
+    the only way to take a product out of the catalogue wholesale.
+
+    **Order history is never destroyed.** A variant somebody has bought or has
+    in a cart is deactivated and zeroed rather than deleted: `order_items` and
+    `cart_items` reference it, and an order that cannot name what was sold is
+    worse than a catalogue with a hidden row in it. Everything unreferenced is
+    deleted outright, and a category is deleted once nothing points at it —
+    `categories` has no `is_active`, so for a category there is no third option.
+    """
+    from sqlalchemy import delete, exists, or_, update
+
+    from app.db.models import CartItem, OrderItem
+
+    counts = {
+        "products_deleted": 0,
+        "products_deactivated": 0,
+        "variants_deleted": 0,
+        "variants_deactivated": 0,
+        "categories_deleted": 0,
+        "relationships_deleted": 0,
+        "compatibility_rules_deleted": 0,
+    }
+
+    keep_products = {seed_id("product", product.slug) for product in catalog.products}
+    keep_categories = {seed_id("category", category.slug) for category in catalog.categories}
+
+    stale_products = (
+        session.execute(
+            select(Product).where(
+                Product.merchant_id == merchant_id, Product.id.not_in(keep_products)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    stale_ids = [product.id for product in stale_products]
+
+    if stale_ids:
+        counts["relationships_deleted"] = session.execute(
+            delete(ProductRelationship).where(
+                or_(
+                    ProductRelationship.source_product_id.in_(stale_ids),
+                    ProductRelationship.target_product_id.in_(stale_ids),
+                )
+            )
+        ).rowcount
+        counts["compatibility_rules_deleted"] = session.execute(
+            delete(CompatibilityRule).where(CompatibilityRule.product_id.in_(stale_ids))
+        ).rowcount
+
+        for product in stale_products:
+            variants = (
+                session.execute(
+                    select(ProductVariant).where(ProductVariant.product_id == product.id)
+                )
+                .scalars()
+                .all()
+            )
+            kept_any = False
+            for variant in variants:
+                referenced = session.execute(
+                    select(
+                        exists().where(OrderItem.variant_id == variant.id)
+                        | exists().where(CartItem.variant_id == variant.id)
+                    )
+                ).scalar_one()
+                if referenced:
+                    variant.is_active = False
+                    session.execute(
+                        update(Inventory)
+                        .where(Inventory.variant_id == variant.id)
+                        .values(quantity=0, reserved_quantity=0)
+                    )
+                    counts["variants_deactivated"] += 1
+                    kept_any = True
+                else:
+                    session.execute(delete(Inventory).where(Inventory.variant_id == variant.id))
+                    session.delete(variant)
+                    counts["variants_deleted"] += 1
+            session.flush()
+            if kept_any:
+                product.is_active = False
+                counts["products_deactivated"] += 1
+            else:
+                session.delete(product)
+                counts["products_deleted"] += 1
+        session.flush()
+
+    # Categories last: a category can only go once nothing points at it, and
+    # children before parents for the same reason.
+    for _ in range(len(catalog.categories) + 1):
+        removable = (
+            session.execute(
+                select(Category).where(
+                    Category.merchant_id == merchant_id,
+                    Category.id.not_in(keep_categories),
+                    ~exists().where(Product.category_id == Category.id),
+                    ~exists().where(Category.id == Category.__table__.c.parent_id),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not removable:
+            break
+        for category in removable:
+            session.delete(category)
+            counts["categories_deleted"] += 1
+        session.flush()
+
+    return counts
+
+
 def _categories_parents_first(catalog: CatalogSeed) -> list:
     """Order categories so every parent precedes its children."""
     by_slug = {category.slug: category for category in catalog.categories}
@@ -238,6 +363,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="validate the seed file and exit; touches no database",
     )
     parser.add_argument(
+        "--prune",
+        action="store_true",
+        help=(
+            "after loading, remove merchant rows the seed file no longer contains. "
+            "Rows an order or a cart references are deactivated instead of deleted."
+        ),
+    )
+    parser.add_argument(
         "--summary",
         action="store_true",
         help="print catalog row counts from the database and exit",
@@ -275,7 +408,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     with session_factory() as session, session.begin():
         counts = seed_catalog(session, catalog, settings.default_merchant_id)
+        pruned = (
+            prune_catalog(session, catalog, settings.default_merchant_id) if args.prune else None
+        )
     _report("Seeded (idempotent - re-running updates the same rows):", counts)
+    if pruned is not None:
+        _report("Pruned (rows the seed file no longer contains):", pruned)
 
     logger.info("catalog seeded", extra={"merchant_id": str(settings.default_merchant_id)})
     return 0

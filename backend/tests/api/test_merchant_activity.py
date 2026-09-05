@@ -52,7 +52,7 @@ def test_creating_a_product_is_recorded_with_its_variants(api: TestClient) -> No
         "/api/merchant/products",
         json={
             "name": "Activity Test Tee",
-            "category": "t_shirt",
+            "category": "smartphone",
             "variants": [
                 {"sku": "ACT-TEE-1", "name": "S", "price": "499.00", "quantity": 3},
             ],
@@ -118,11 +118,11 @@ def test_archive_and_restore_are_separate_actions(api: TestClient) -> None:
 
 
 def test_a_category_creation_is_recorded(api: TestClient) -> None:
-    api.post("/api/merchant/categories", json={"name": "Belts", "parent": "clothing"})
+    api.post("/api/merchant/categories", json={"name": "Projectors", "parent": "electronics"})
     entry = _log(api)[0]
     assert entry["action"] == "CATEGORY_CREATED"
     assert entry["entity_type"] == "CATEGORY"
-    assert entry["subject"] == "belts"
+    assert entry["subject"] == "projectors"
 
 
 # -- the actor is the token, never the request ------------------------
@@ -191,7 +191,7 @@ def test_the_log_can_be_filtered_by_action(api: TestClient) -> None:
         "/api/merchant/products",
         json={
             "name": "Filter Probe",
-            "category": "t_shirt",
+            "category": "smartphone",
             "variants": [{"sku": "ACT-FILT-1", "name": "S", "price": "100.00", "quantity": 1}],
         },
     )

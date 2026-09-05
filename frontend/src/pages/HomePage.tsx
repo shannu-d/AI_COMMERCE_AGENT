@@ -28,6 +28,9 @@ export function HomePage() {
   const [draft, setDraft] = useState("");
 
   const featured = useProducts({ sort: "price_asc", limit: 8 });
+  // `total` is how many variants matched, which with no filters is the
+  // catalogue's size - the server's number, never one counted here.
+  const skuCount = featured.data?.total ?? null;
   const { data: categories } = useCategories();
 
   const browsable = (categories ?? []).filter((c) =>
@@ -50,7 +53,14 @@ export function HomePage() {
       <section className="border-b border-rule">
         <div className="mx-auto grid max-w-shell gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-7">
-            <Eyebrow className="animate-rise">EASY BUY · 32 SKUs · shipped from India</Eyebrow>
+            {/* The SKU count is read from the catalogue, not typed here. It
+                said "32 SKUs" long after the catalogue passed three hundred,
+                which is the storefront making a claim about stock it had not
+                checked - the one thing the rest of this application refuses to
+                do. Rendered only once the count has actually arrived. */}
+            <Eyebrow className="animate-rise">
+              EASY BUY{skuCount === null ? "" : ` · ${skuCount} SKUs`} · shipped from India
+            </Eyebrow>
 
             {/* The asymmetric, oversized headline is the page's anchor. It is
                 type doing structural work rather than an image doing it, which

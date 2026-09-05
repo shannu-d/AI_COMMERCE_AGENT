@@ -23,6 +23,14 @@ file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.
 > move money, and none touched the Policy Engine, the ranking engine, the schema or any validation
 > rule. Detail: [`docs/notes/bugs-found-during-development.md`](docs/notes/bugs-found-during-development.md) §A2.
 
+> **2026-09-05 (latest):** the catalogue is now **electronics only and much larger** —
+> **200 products / 360 SKUs / 40 leaf categories**, ₹299 to ₹2,19,999. Phones, laptops,
+> tablets, watches, headphones, speakers, monitors, peripherals, storage, gaming,
+> networking, smart home, power, cameras, drones and streaming, plus the original
+> accessory range expanded. Clothing and furniture are removed (deviation **D13**), and
+> every original electronics row is preserved byte-for-byte so the specification's worked
+> examples still hold.
+
 > 🔒 **LLM provider: Groq, locked (ADR-018).** Model `openai/gpt-oss-120b` — open weights,
 > **served by Groq**, no request reaches OpenAI. Never propose migrating to Anthropic, Claude,
 > OpenAI or Gemini. **Implemented and live-verified** (M4-R).
@@ -48,12 +56,12 @@ file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.
 | M13 | Audit log (durable transaction history) | ✅ Complete |
 | M14 | Frontend | ✅ **F0–F8 done; F6 live-verified** (real Checkout). F9 polish partial |
 | M15 | Integration scenarios + evaluation | ✅ Backend scenarios; money path live end to end; **270-case evaluation suite, 268 passing** |
-| M16 | Catalogue expansion (51 products / 216 SKUs seeded) + Merchant Dashboard | ✅ Complete (ADR-021, ADR-022) |
+| M16 | Catalogue (200 products / 360 SKUs, electronics only) + Merchant Dashboard | ✅ Complete (ADR-021, ADR-022, D13) |
 | ADR-023 | Authentication & authorization (customers + merchants) | ✅ Implemented |
 | ADR-024 | MCP surface — merchant sellable to an external AI buyer | ✅ Implemented and verified |
 
 **Test suite:** backend **1,711 passed, 2 xfailed, 0 skipped** against a real PostgreSQL (the two
-xfails are the recorded F-1 findings, kept strict so a fix cannot land silently); frontend **69
+xfails are the recorded F-1 findings, kept strict so a fix cannot land silently); frontend **71
 passed**, typecheck and lint clean. The Groq provider, CORS and the **entire money path**
 (cart → approval → order → Razorpay → signed webhook → audit) are additionally verified against
 live services by hand.

@@ -194,8 +194,9 @@ class AgentRuntime:
         # model can only name a category the merchant actually has (ADR-009,
         # closing B2). Only the registered names are offered: a tool without a
         # handler would be a capability the model plans around and cannot use.
+        slugs = self._context.catalog.category_slugs(self._context.merchant_id)
         tool_payload = build_tool_definitions(
-            category_slugs=self._context.catalog.category_slugs(self._context.merchant_id),
+            category_slugs=slugs,
             # The attribute names each category actually uses, for the same
             # reason the slugs are enumerated: a requirement the model cannot
             # name is a requirement it states as free text, and free text is a
@@ -207,15 +208,31 @@ class AgentRuntime:
             ),
             names=self._registry.names(),
         )
+        # The same tools **without** the attribute vocabulary, for every call
+        # after the first.
+        #
+        # Groq refuses any single request over 8,000 tokens. On a 200-product
+        # catalogue the vocabulary is ~1,800 of them, and the second leg of a
+        # turn - system prompt, tools, and the results of a nine-row search -
+        # crossed the ceiling and came back 413: the turn failed *after* the
+        # search had succeeded, which is the worst possible place to fail.
+        #
+        # The vocabulary earns its cost on the first call, where the model
+        # chooses its arguments and where F-3 happened. By the second call it
+        # has already searched; if it searches again without the vocabulary and
+        # guesses a name, the search returns nothing and prompt rule 19 forbids
+        # naming products when nothing came back. So the degraded case is a
+        # no-match, not a wrong match - and the alternative is no answer at all.
+        later_payload = build_tool_definitions(category_slugs=slugs, names=self._registry.names())
 
         # One more iteration than the call budget: the extra pass is what lets
         # the model turn the limit's refusal into a sentence for the buyer
         # rather than the turn ending on a bare error.
-        for _ in range(self._executor.max_calls_per_turn + 1):
+        for leg in range(self._executor.max_calls_per_turn + 1):
             response = self._client.complete(
                 system=system,
                 messages=conversation,
-                tools=tool_payload,
+                tools=tool_payload if leg == 0 else later_payload,
                 max_tokens=self._max_tokens,
                 temperature=0.0,
             )

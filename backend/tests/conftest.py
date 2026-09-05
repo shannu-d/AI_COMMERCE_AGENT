@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import BACKEND_DIR
 from app.identifiers import DEFAULT_MERCHANT_ID, seed_id
-from app.seed.circuitcraft import seed_catalog
+from app.seed.circuitcraft import prune_catalog, seed_catalog
 from app.seed.schema import CatalogSeed, load_catalog
 
 # Tests must never touch the development database or read a developer's .env.
@@ -155,6 +155,11 @@ def seeded_engine(db_engine: Engine, database_url: str, catalog_seed: CatalogSee
     factory = sessionmaker(bind=db_engine, expire_on_commit=False, future=True)
     with factory() as session, session.begin():
         seed_catalog(session, catalog_seed, DEFAULT_MERCHANT_ID)
+        # Pruned as well as seeded, because seeding is an upsert: a product the
+        # catalogue no longer contains would otherwise live on in a test
+        # database forever, and every count assertion would be measuring one
+        # machine's history rather than the seed file.
+        prune_catalog(session, catalog_seed, DEFAULT_MERCHANT_ID)
     return db_engine
 
 

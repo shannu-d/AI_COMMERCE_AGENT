@@ -52,6 +52,39 @@ walkthrough** of the buyer journey and the merchant dashboard — not by reading
 > Full findings, category scores and recommended fixes: **`docs/EVALUATION-REPORT.md`**.
 > Suite documentation: `backend/tests/evals/README.md`. Open question **F9 is closed**.
 >
+> ### 2026-09-05 (latest) — the catalogue is electronics only, and much larger
+>
+> At the owner's request the storefront is now a focused consumer-electronics store
+> (deviation **D13**). The clothing and furniture branches are gone; what remains grew
+> from 21 electronics products to **200 products / 360 SKUs across 40 leaf categories**,
+> ₹299 to ₹2,19,999.
+>
+> - **New:** smartphones, laptops, tablets, smartwatches, headphones, wired earphones,
+>   Bluetooth speakers, microphones, monitors, keyboards, mice, webcams, USB hubs and
+>   docks, storage, controllers, gaming headsets, capture cards, routers, range extenders,
+>   network adapters, smart lighting, plugs, speakers and displays, security cameras,
+>   wireless and car chargers, travel adapters, surge protectors, UPS, action cameras,
+>   camera accessories, drones and streaming devices. The six original accessory
+>   categories were expanded rather than left alone.
+> - **Preserved byte-for-byte:** every original electronics row, so R§10's worked example,
+>   D§34's ₹999 and the deliberately unstocked `pixel_9` no-match path are untouched.
+> - **Removed:** 32 products / 187 variants / 14 categories of clothing and furniture, via
+>   a new `--prune` mode on the seeder. Seeding is an upsert and never deletes; pruning
+>   deactivates rather than deletes anything an order or a cart references.
+> - **173 compatibility rules, 119 relationships, 17 devices, 326 in stock / 34 out.**
+>
+> Two changes were forced by the size, both recorded in D13: the model's copy of a search
+> result no longer repeats every attribute (the cards still carry them), and the advertised
+> attribute vocabulary is capped at six names per category, ordered so the names products
+> actually differ on survive. Groq refuses any single request over 8,000 tokens, and the
+> uncapped payload made a turn fail with a **413 after its search had already succeeded**.
+>
+> Nothing in the Policy Engine, the ranking engine, the payment path, the schema, the MCP
+> surface or any validation rule changed. **1,711 passed, 2 xfailed, 0 skipped**; frontend
+> 71 passed. Verified live against the model: `5G phone under 30000`, `256GB storage`,
+> `noise-cancelling earbuds under 5000`, `65W charger`, `20000mAh power bank`,
+> `144Hz gaming monitor`, `16GB RAM and 512GB SSD` all filter correctly.
+>
 > ### 2026-09-05 (later) — a browser walkthrough found three defects no test could
 >
 > The whole site was driven in Chrome as a buyer with an empty browser: storefront →

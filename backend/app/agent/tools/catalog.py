@@ -19,7 +19,7 @@ from typing import Any
 
 from app.agent.context import AgentContext, TurnMemory
 from app.agent.errors import ToolError, ToolErrorCode
-from app.agent.tools._serialize import serialize_product, serialize_ranked
+from app.agent.tools._serialize import serialize_product, serialize_ranked_for_model
 from app.domain.ranking import ProductRequirement, RecommendationOutcome
 from app.llm.tool_schemas import GetProductArgs, SearchCatalogArgs
 
@@ -76,14 +76,14 @@ def search_catalog(
 
     payload: dict[str, Any] = {
         "outcome": result.outcome.value,
-        "results": [serialize_ranked(candidate) for candidate in result.candidates],
+        "results": [serialize_ranked_for_model(candidate) for candidate in result.candidates],
     }
 
     # R§14: an alternative is never presented as a match. It travels in its own
     # field, with the constraint it failed named, so the agent can say what it
     # is rather than quietly offering it as an answer.
     if result.outcome is not RecommendationOutcome.EXACT_MATCH:
-        payload["alternatives"] = [serialize_ranked(c) for c in result.alternatives]
+        payload["alternatives"] = [serialize_ranked_for_model(c) for c in result.alternatives]
         payload["relaxed_constraints"] = [c.value for c in result.relaxed_constraints]
 
     return payload

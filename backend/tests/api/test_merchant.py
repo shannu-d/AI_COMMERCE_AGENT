@@ -80,11 +80,16 @@ def rival_variant(session: Session, rival_merchant: uuid.UUID) -> ProductVariant
 # -- overview ---------------------------------------------------------
 
 
-def test_overview_is_real_aggregates(api: TestClient) -> None:
+def test_overview_is_real_aggregates(api: TestClient, catalog_seed) -> None:
+    """Counted from the seed file, not from a number typed here.
+
+    The literals this test used to carry went stale the moment the catalogue
+    grew, and a stale literal fails the application for being correct.
+    """
     body = api.get("/api/merchant/overview").json()
-    assert body["total_products"] == 51
-    assert body["total_variants"] == 216
-    assert body["category_count"] == 24
+    assert body["total_products"] == len(catalog_seed.products)
+    assert body["total_variants"] == catalog_seed.variant_count
+    assert body["category_count"] == len(catalog_seed.categories)
     assert body["out_of_stock_variants"] >= 9
     assert Decimal(body["revenue"]) >= 0
     assert body["currency"] == "INR"
@@ -93,18 +98,18 @@ def test_overview_is_real_aggregates(api: TestClient) -> None:
 # -- products list --------------------------------------------------
 
 
-def test_products_list_paginates(api: TestClient) -> None:
+def test_products_list_paginates(api: TestClient, catalog_seed) -> None:
     first = api.get("/api/merchant/products", params={"limit": 10, "offset": 0}).json()
-    assert first["total"] == 216
+    assert first["total"] == catalog_seed.variant_count
     assert len(first["items"]) == 10
     second = api.get("/api/merchant/products", params={"limit": 10, "offset": 10}).json()
     assert {i["sku"] for i in first["items"]}.isdisjoint({i["sku"] for i in second["items"]})
 
 
 def test_products_list_filters_by_category_and_stock(api: TestClient) -> None:
-    tees = api.get("/api/merchant/products", params={"category": "t_shirt", "limit": 100}).json()
+    tees = api.get("/api/merchant/products", params={"category": "smartphone", "limit": 100}).json()
     assert tees["total"] > 0
-    assert {i["category"] for i in tees["items"]} == {"t_shirt"}
+    assert {i["category"] for i in tees["items"]} == {"smartphone"}
 
     oos = api.get(
         "/api/merchant/products", params={"stock_status": "OUT_OF_STOCK", "limit": 100}
@@ -119,7 +124,7 @@ def test_products_list_filters_by_category_and_stock(api: TestClient) -> None:
 def test_create_product_round_trips_to_the_storefront(api: TestClient) -> None:
     payload = {
         "name": "Merino Beanie Test",
-        "category": "hoodie",
+        "category": "headphone",
         "description": "warm",
         "attributes": {"material": "merino"},
         "tags": ["hat"],
@@ -141,7 +146,7 @@ def test_create_product_rejects_a_json_number_price_with_422(api: TestClient) ->
         "/api/merchant/products",
         json={
             "name": "X",
-            "category": "t_shirt",
+            "category": "smartphone",
             "variants": [{"sku": "X-NUM-1", "name": "X", "price": 10.5, "quantity": 1}],
         },
     )
@@ -151,7 +156,7 @@ def test_create_product_rejects_a_json_number_price_with_422(api: TestClient) ->
 def test_unknown_field_in_a_request_is_rejected(api: TestClient) -> None:
     r = api.post(
         "/api/merchant/products",
-        json={"name": "X", "category": "t_shirt", "surprise": True},
+        json={"name": "X", "category": "smartphone", "surprise": True},
     )
     assert r.status_code == 422
 
@@ -195,10 +200,10 @@ def test_archive_then_restore(api: TestClient) -> None:
 
 
 def test_create_category(api: TestClient) -> None:
-    r = api.post("/api/merchant/categories", json={"name": "Scarves", "parent": "clothing"})
+    r = api.post("/api/merchant/categories", json={"name": "Projectors", "parent": "electronics"})
     assert r.status_code == 201
-    assert r.json()["slug"] == "scarves"
-    assert any(c["slug"] == "scarves" for c in api.get("/api/merchant/categories").json())
+    assert r.json()["slug"] == "projectors"
+    assert any(c["slug"] == "projectors" for c in api.get("/api/merchant/categories").json())
 
 
 # -- MERCHANT ISOLATION -------------------------------------------
@@ -238,7 +243,7 @@ def test_the_merchant_api_has_no_field_for_a_merchant_id(api: TestClient) -> Non
     """A client cannot name a merchant, so it cannot name another one."""
     r = api.post(
         "/api/merchant/products",
-        json={"name": "X", "category": "t_shirt", "merchant_id": str(uuid.uuid4())},
+        json={"name": "X", "category": "smartphone", "merchant_id": str(uuid.uuid4())},
     )
     assert r.status_code == 422  # extra="forbid"
 

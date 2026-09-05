@@ -62,6 +62,17 @@ FORBIDDEN_TOOL_NAMES: frozenset[str] = frozenset({"create_order"})
 #: `NUMERIC(12,2)` and failing much further in.
 MAX_STATED_AMOUNT = Decimal("10000000.00")
 
+#: How many attribute names may be advertised per category (see
+#: `_inject_attribute_vocabulary`).
+#:
+#: Six, and the number is a budget rather than a preference. Groq refuses any
+#: single request over 8,000 tokens, and on a 200-product catalogue the system
+#: prompt and the eight tool schemas already spend most of it. The repository
+#: orders each category's names so that the six most filter-like survive - the
+#: ones products actually differ on, cheapest to state first - and
+#: `get_product` still returns any one product's attributes in full.
+MAX_ATTRIBUTE_NAMES_PER_CATEGORY = 6
+
 
 class RiskTier(StrEnum):
     """A§23's grading. Drives what the executor checks before running a tool."""
@@ -406,13 +417,25 @@ def _inject_attribute_vocabulary(
     are not enumerable. The schema still validates the *shape*; this only makes
     the choice informed.
 
-    Kept to one line per category and to names alone: this is sent on every
-    turn, and L§27 warns against paying for context nobody uses.
+    Kept to one line per category, to names alone, and to
+    `MAX_ATTRIBUTE_NAMES_PER_CATEGORY` of them: this is sent on every turn, and
+    L§27 warns against paying for context nobody uses. The cap is not a nicety.
+    Groq refuses a request over 8,000 tokens outright, and on a 200-product
+    catalogue the uncapped vocabulary ran to 484 names — enough, with the system
+    prompt and the tool payload, to make the second leg of a turn fail with a
+    413 after the search had already succeeded. The repository orders the names
+    by how many products in the category carry them, so what survives the cut is
+    what a buyer is most likely to ask to filter on; a name only one product
+    records is a fact about that product rather than a filter.
     """
     prop = (schema.get("properties") or {}).get("attributes")
     if prop is None:
         return
-    lines = "; ".join(f"{slug}: {', '.join(names)}" for slug, names in vocabulary.items() if names)
+    lines = "; ".join(
+        f"{slug}: {', '.join(names[:MAX_ATTRIBUTE_NAMES_PER_CATEGORY])}"
+        for slug, names in vocabulary.items()
+        if names
+    )
     if not lines:
         return
     existing = prop.get("description", "")

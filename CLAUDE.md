@@ -76,7 +76,8 @@ never inspect, import, copy or depend on it.
 
 ## What this is
 
-A conversational commerce agent for a merchant catalog (CircuitCraft, 32 SKUs), built on one
+A conversational commerce agent for a merchant catalog (EASY BUY — electronics only, 200
+products / 360 SKUs since 2026-09-05; see `docs/notes/deviations.md` D13), built on one
 invariant that every part of the specification restates:
 
 > **LLM proposes → application validates → user authorizes → Razorpay executes → system audits.**
@@ -426,8 +427,8 @@ database can be built from the migrations is the point of that module — so any
 afterwards must re-ensure the schema. A session- or package-wide cache ensures it once, before that
 teardown, and every later module then queries a database with no tables.
 
-**The seed's category slugs are `phone_case`, `charger`, `usb_cable`, `earbuds` — not**
-**`phone-cases`.** `search_catalog` and `get_compatible_products` validate the slug against the
+**The seed's category slugs are `phone_case`, `charger`, `usb_cable`, `earbuds`, `smartphone`,**
+**`laptop`, `monitor`, … — not `phone-cases`.** `search_catalog` and `get_compatible_products` validate the slug against the
 merchant's real categories and answer `CATEGORY_NOT_FOUND` for anything else, so a wrong slug in a
 test looks like a broken tool.
 
@@ -461,6 +462,11 @@ too.
 **Seeded rows have deterministic UUIDv5 identifiers** (`app/identifiers.py`), which is what makes
 seeding idempotent and lets tests name a row without querying for it. `DEFAULT_MERCHANT_ID` is
 derived the same way, so merchant scoping is configuration rather than discovery.
+
+**The seed is electronics only and is pruned, not just upserted.** `--prune` on the loader removes
+merchant rows the seed file no longer contains, deactivating rather than deleting anything an order
+or a cart references (deviation D13). Seeding alone never deletes, which is why a removed category
+survived every re-seed until this existed.
 
 **Seed data is authored under a claims rule**: fictional CircuitCraft own-brand items described only
 by structural attributes (material, colour, wattage, port type, length, capacity, battery hours,

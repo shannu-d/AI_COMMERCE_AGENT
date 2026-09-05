@@ -702,15 +702,15 @@
       "id": "discovery_008",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "What t-shirts do you have?",
-      "expected_intent": "product type = t_shirt, no other stated constraint",
+      "prompt": "What smartphones do you have?",
+      "expected_intent": "product type = smartphone, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in t_shirt and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in smartphone and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -758,7 +758,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "t_shirt"
+          "category": "smartphone"
         },
         {
           "check": "results_in_stock"
@@ -774,14 +774,14 @@
       ],
       "turns": [
         {
-          "user": "What t-shirts do you have?",
+          "user": "What smartphones do you have?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt"
+                    "category": "smartphone"
                   }
                 }
               ]
@@ -797,15 +797,15 @@
       "id": "discovery_009",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "Show me some jeans.",
-      "expected_intent": "product type = jeans, no other stated constraint",
+      "prompt": "Show me some laptops.",
+      "expected_intent": "product type = laptop, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in jeans and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in laptop and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -853,7 +853,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jeans"
+          "category": "laptop"
         },
         {
           "check": "results_in_stock"
@@ -869,14 +869,14 @@
       ],
       "turns": [
         {
-          "user": "Show me some jeans.",
+          "user": "Show me some laptops.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans"
+                    "category": "laptop"
                   }
                 }
               ]
@@ -892,15 +892,15 @@
       "id": "discovery_010",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "I'm looking for a jacket.",
-      "expected_intent": "product type = jacket, no other stated constraint",
+      "prompt": "I'm looking for a tablet.",
+      "expected_intent": "product type = tablet, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in jacket and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in tablet and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -948,7 +948,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jacket"
+          "category": "tablet"
         },
         {
           "check": "results_in_stock"
@@ -964,14 +964,14 @@
       ],
       "turns": [
         {
-          "user": "I'm looking for a jacket.",
+          "user": "I'm looking for a tablet.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket"
+                    "category": "tablet"
                   }
                 }
               ]
@@ -987,15 +987,15 @@
       "id": "discovery_011",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "Do you have office chairs?",
-      "expected_intent": "product type = chair, no other stated constraint",
+      "prompt": "Do you have gaming monitors?",
+      "expected_intent": "product type = monitor, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in chair and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in monitor and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -1043,7 +1043,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "chair"
+          "category": "monitor"
         },
         {
           "check": "results_in_stock"
@@ -1059,15 +1059,15 @@
       ],
       "turns": [
         {
-          "user": "Do you have office chairs?",
+          "user": "Do you have gaming monitors?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair",
-                    "search_query": "office chair"
+                    "category": "monitor",
+                    "search_query": "gaming monitor"
                   }
                 }
               ]
@@ -1083,15 +1083,15 @@
       "id": "discovery_012",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "I need a desk.",
-      "expected_intent": "product type = desk, no other stated constraint",
+      "prompt": "I need a router.",
+      "expected_intent": "product type = router, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in desk and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in router and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -1139,7 +1139,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "desk"
+          "category": "router"
         },
         {
           "check": "results_in_stock"
@@ -1155,14 +1155,14 @@
       ],
       "turns": [
         {
-          "user": "I need a desk.",
+          "user": "I need a router.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk"
+                    "category": "router"
                   }
                 }
               ]
@@ -1178,15 +1178,15 @@
       "id": "discovery_013",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "Show me your sofas.",
-      "expected_intent": "product type = sofa, no other stated constraint",
+      "prompt": "Show me your smartwatches.",
+      "expected_intent": "product type = smartwatch, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in sofa and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in smartwatch and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -1234,7 +1234,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "sofa"
+          "category": "smartwatch"
         },
         {
           "check": "results_in_stock"
@@ -1250,14 +1250,14 @@
       ],
       "turns": [
         {
-          "user": "Show me your sofas.",
+          "user": "Show me your smartwatches.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "sofa"
+                    "category": "smartwatch"
                   }
                 }
               ]
@@ -1273,15 +1273,15 @@
       "id": "discovery_014",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "I want a bookshelf.",
-      "expected_intent": "product type = shelving, no other stated constraint",
+      "prompt": "I want a webcam.",
+      "expected_intent": "product type = webcam, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in shelving and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in webcam and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -1329,7 +1329,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "shelving"
+          "category": "webcam"
         },
         {
           "check": "results_in_stock"
@@ -1345,15 +1345,15 @@
       ],
       "turns": [
         {
-          "user": "I want a bookshelf.",
+          "user": "I want a webcam.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "shelving",
-                    "search_query": "bookshelf"
+                    "category": "webcam",
+                    "search_query": "webcam"
                   }
                 }
               ]
@@ -1369,15 +1369,15 @@
       "id": "discovery_015",
       "category": "discovery",
       "mode": "agent",
-      "prompt": "Show me hoodies.",
-      "expected_intent": "product type = hoodie, no other stated constraint",
+      "prompt": "Show me headphones.",
+      "expected_intent": "product type = headphone, no other stated constraint",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY",
         "AUTHORITATIVE_PRICE"
       ],
-      "expected_behavior": "Search the catalogue in hoodie and answer with real, purchasable variants at the catalogue's own prices.",
+      "expected_behavior": "Search the catalogue in headphone and answer with real, purchasable variants at the catalogue's own prices.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -1425,7 +1425,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "hoodie"
+          "category": "headphone"
         },
         {
           "check": "results_in_stock"
@@ -1441,14 +1441,14 @@
       ],
       "turns": [
         {
-          "user": "Show me hoodies.",
+          "user": "Show me headphones.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "hoodie"
+                    "category": "headphone"
                   }
                 }
               ]
@@ -2004,14 +2004,14 @@
       "id": "category_007",
       "category": "category_understanding",
       "mode": "agent",
-      "prompt": "Something warm for winter.",
-      "expected_intent": "the phrase maps to the category jacket",
+      "prompt": "Somewhere to keep a backup of my photos.",
+      "expected_intent": "the phrase maps to the category storage",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY"
       ],
-      "expected_behavior": "Map the phrase to the real slug 'jacket' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
+      "expected_behavior": "Map the phrase to the real slug 'storage' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
       "forbidden_behavior": [
         "invent_category",
         "invent_product",
@@ -2058,7 +2058,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jacket"
+          "category": "storage"
         },
         {
           "check": "results_in_stock"
@@ -2070,15 +2070,15 @@
       ],
       "turns": [
         {
-          "user": "Something warm for winter.",
+          "user": "Somewhere to keep a backup of my photos.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket",
-                    "search_query": "insulated jacket"
+                    "category": "storage",
+                    "search_query": "external drive"
                   }
                 }
               ]
@@ -2094,14 +2094,14 @@
       "id": "category_008",
       "category": "category_understanding",
       "mode": "agent",
-      "prompt": "Somewhere to sit while I work.",
-      "expected_intent": "the phrase maps to the category chair",
+      "prompt": "Something to type on.",
+      "expected_intent": "the phrase maps to the category keyboard",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY"
       ],
-      "expected_behavior": "Map the phrase to the real slug 'chair' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
+      "expected_behavior": "Map the phrase to the real slug 'keyboard' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
       "forbidden_behavior": [
         "invent_category",
         "invent_product",
@@ -2148,7 +2148,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "chair"
+          "category": "keyboard"
         },
         {
           "check": "results_in_stock"
@@ -2160,15 +2160,15 @@
       ],
       "turns": [
         {
-          "user": "Somewhere to sit while I work.",
+          "user": "Something to type on.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair",
-                    "search_query": "office chair"
+                    "category": "keyboard",
+                    "search_query": "keyboard"
                   }
                 }
               ]
@@ -2184,14 +2184,14 @@
       "id": "category_009",
       "category": "category_understanding",
       "mode": "agent",
-      "prompt": "Something to sleep on.",
-      "expected_intent": "the phrase maps to the category bed",
+      "prompt": "Something to watch films on the television.",
+      "expected_intent": "the phrase maps to the category streaming_device",
       "expected_constraints": [
         "CATEGORY",
         "PRODUCT_EXISTENCE",
         "INVENTORY"
       ],
-      "expected_behavior": "Map the phrase to the real slug 'bed' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
+      "expected_behavior": "Map the phrase to the real slug 'streaming_device' and search it. The slug is validated against the merchant's categories, so a wrong mapping is an error rather than an empty answer.",
       "forbidden_behavior": [
         "invent_category",
         "invent_product",
@@ -2238,7 +2238,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "bed"
+          "category": "streaming_device"
         },
         {
           "check": "results_in_stock"
@@ -2250,15 +2250,15 @@
       ],
       "turns": [
         {
-          "user": "Something to sleep on.",
+          "user": "Something to watch films on the television.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "bed",
-                    "search_query": "bed frame"
+                    "category": "streaming_device",
+                    "search_query": "streaming stick"
                   }
                 }
               ]
@@ -3122,8 +3122,8 @@
       "id": "budget_009",
       "category": "budget",
       "mode": "agent",
-      "prompt": "Jeans under 2600.",
-      "expected_intent": "jeans with a hard maximum of 2600.00",
+      "prompt": "Earbuds under 2600.",
+      "expected_intent": "earbuds with a hard maximum of 2600.00",
       "expected_constraints": [
         "CATEGORY",
         "BUDGET",
@@ -3176,7 +3176,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jeans"
+          "category": "earbuds"
         },
         {
           "check": "results_within_budget",
@@ -3192,14 +3192,14 @@
       ],
       "turns": [
         {
-          "user": "Jeans under 2600.",
+          "user": "Earbuds under 2600.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans",
+                    "category": "earbuds",
                     "max_price": "2600.00"
                   }
                 }
@@ -3216,8 +3216,8 @@
       "id": "budget_010",
       "category": "budget",
       "mode": "agent",
-      "prompt": "I have 4000 to spend on a jacket.",
-      "expected_intent": "jacket with a hard maximum of 4000.00",
+      "prompt": "I have 4000 to spend on a keyboard.",
+      "expected_intent": "keyboard with a hard maximum of 4000.00",
       "expected_constraints": [
         "CATEGORY",
         "BUDGET",
@@ -3270,7 +3270,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jacket"
+          "category": "keyboard"
         },
         {
           "check": "results_within_budget",
@@ -3286,14 +3286,14 @@
       ],
       "turns": [
         {
-          "user": "I have 4000 to spend on a jacket.",
+          "user": "I have 4000 to spend on a keyboard.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket",
+                    "category": "keyboard",
                     "max_price": "4000.00"
                   }
                 }
@@ -3310,8 +3310,8 @@
       "id": "budget_011",
       "category": "budget",
       "mode": "agent",
-      "prompt": "A desk for no more than 12000.",
-      "expected_intent": "desk with a hard maximum of 12000.00",
+      "prompt": "A monitor for no more than 12000.",
+      "expected_intent": "monitor with a hard maximum of 12000.00",
       "expected_constraints": [
         "CATEGORY",
         "BUDGET",
@@ -3364,7 +3364,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "desk"
+          "category": "monitor"
         },
         {
           "check": "results_within_budget",
@@ -3380,14 +3380,14 @@
       ],
       "turns": [
         {
-          "user": "A desk for no more than 12000.",
+          "user": "A monitor for no more than 12000.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk",
+                    "category": "monitor",
                     "max_price": "12000.00"
                   }
                 }
@@ -3404,8 +3404,8 @@
       "id": "budget_012",
       "category": "budget",
       "mode": "agent",
-      "prompt": "Show me chairs below 9000.",
-      "expected_intent": "chair with a hard maximum of 9000.00",
+      "prompt": "Show me routers below 9000.",
+      "expected_intent": "router with a hard maximum of 9000.00",
       "expected_constraints": [
         "CATEGORY",
         "BUDGET",
@@ -3458,7 +3458,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "chair"
+          "category": "router"
         },
         {
           "check": "results_within_budget",
@@ -3474,14 +3474,14 @@
       ],
       "turns": [
         {
-          "user": "Show me chairs below 9000.",
+          "user": "Show me routers below 9000.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair",
+                    "category": "router",
                     "max_price": "9000.00"
                   }
                 }
@@ -3498,13 +3498,13 @@
       "id": "budget_013",
       "category": "budget",
       "mode": "agent",
-      "prompt": "I want a sofa but my budget is 500.",
-      "expected_intent": "sofa with a hard maximum of 500.00, which nothing in the catalogue meets",
+      "prompt": "I want a laptop but my budget is 500.",
+      "expected_intent": "laptop with a hard maximum of 500.00, which nothing in the catalogue meets",
       "expected_constraints": [
         "CATEGORY",
         "BUDGET"
       ],
-      "expected_behavior": "No match. The cheapest sofa is far above the ceiling, so `results` is empty and anything shown travels as an alternative with BUDGET named.",
+      "expected_behavior": "No match. The cheapest laptop is far above the ceiling, so `results` is empty and anything shown travels as an alternative with BUDGET named.",
       "forbidden_behavior": [
         "exceed_budget",
         "present_alternative_as_match",
@@ -3561,14 +3561,14 @@
       ],
       "turns": [
         {
-          "user": "I want a sofa but my budget is 500.",
+          "user": "I want a laptop but my budget is 500.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "sofa",
+                    "category": "laptop",
                     "max_price": "500.00"
                   }
                 }
@@ -4307,8 +4307,8 @@
       "id": "boundary_007",
       "category": "exact_price",
       "mode": "agent",
-      "prompt": "A t-shirt for 799.00 or less.",
-      "expected_intent": "t_shirt with an inclusive ceiling at the cheapest tee's price",
+      "prompt": "Wired earphones for 599.00 or less.",
+      "expected_intent": "earphone with an inclusive ceiling at the cheapest pair's price",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY",
@@ -4360,11 +4360,11 @@
         },
         {
           "check": "results_within_budget",
-          "max_price": "799.00"
+          "max_price": "599.00"
         },
         {
           "check": "results_in_category",
-          "category": "t_shirt"
+          "category": "earphone"
         },
         {
           "check": "results_in_stock"
@@ -4376,15 +4376,15 @@
       ],
       "turns": [
         {
-          "user": "A t-shirt for 799.00 or less.",
+          "user": "Wired earphones for 599.00 or less.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt",
-                    "max_price": "799.00"
+                    "category": "earphone",
+                    "max_price": "599.00"
                   }
                 }
               ]
@@ -7017,14 +7017,14 @@
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "TSHIRT-CREW-WHT-XL",
+                    "sku": "PH-NOVA-X5-256-BLU",
                     "quantity": 1
                   }
                 }
               ]
             },
             {
-              "say": "Not in that size right now."
+              "say": "Not in that finish right now."
             }
           ]
         }
@@ -7034,8 +7034,8 @@
       "id": "inventory_009",
       "category": "inventory",
       "mode": "agent",
-      "prompt": "Do you have the small pink oxford shirt?",
-      "expected_intent": "an availability question about another empty clothing variant",
+      "prompt": "Do you have the white 165Hz gaming keyboard?",
+      "expected_intent": "an availability question about another empty variant",
       "expected_constraints": [
         "INVENTORY",
         "PRODUCT_EXISTENCE"
@@ -7093,14 +7093,14 @@
       ],
       "turns": [
         {
-          "user": "Do you have the small pink oxford shirt?",
+          "user": "Do you have the white 165Hz gaming keyboard?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "SHIRT-OXFD-PNK-S",
+                    "sku": "KB-NX-S75-WHT",
                     "quantity": 1
                   }
                 }
@@ -7117,7 +7117,7 @@
       "id": "inventory_010",
       "category": "inventory",
       "mode": "agent",
-      "prompt": "I need 3 of the olive extra-large puffer jacket.",
+      "prompt": "I need 3 of the white wireless gaming mouse.",
       "expected_intent": "three units of a SKU with a single unit left",
       "expected_constraints": [
         "INVENTORY",
@@ -7173,14 +7173,14 @@
       ],
       "turns": [
         {
-          "user": "I need 3 of the olive extra-large puffer jacket.",
+          "user": "I need 3 of the white wireless gaming mouse.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "JKT-PUFF-OLV-XL",
+                    "sku": "MS-NX-PRW-WHT",
                     "quantity": 3
                   }
                 }
@@ -7197,13 +7197,13 @@
       "id": "inventory_011",
       "category": "inventory",
       "mode": "agent",
-      "prompt": "Show me sofas I can order now.",
-      "expected_intent": "sofa, restricted to purchasable stock",
+      "prompt": "Show me monitors I can order now.",
+      "expected_intent": "monitor, restricted to purchasable stock",
       "expected_constraints": [
         "INVENTORY",
         "CATEGORY"
       ],
-      "expected_behavior": "The beige three-seater has no stock and must not be a match.",
+      "expected_behavior": "The sold-out ultrawide has no stock and must not be a match.",
       "forbidden_behavior": [
         "offer_out_of_stock"
       ],
@@ -7251,7 +7251,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "sofa"
+          "category": "monitor"
         },
         {
           "check": "results_count",
@@ -7260,14 +7260,14 @@
       ],
       "turns": [
         {
-          "user": "Show me sofas I can order now.",
+          "user": "Show me monitors I can order now.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "sofa"
+                    "category": "monitor"
                   }
                 }
               ]
@@ -7283,8 +7283,8 @@
       "id": "inventory_012",
       "category": "inventory",
       "mode": "agent",
-      "prompt": "Is the black ashwood dining chair in stock?",
-      "expected_intent": "an availability question about an empty furniture finish",
+      "prompt": "Is the silver titanium rugged watch in stock?",
+      "expected_intent": "an availability question about an empty finish",
       "expected_constraints": [
         "INVENTORY",
         "PRODUCT_EXISTENCE"
@@ -7339,14 +7339,14 @@
       ],
       "turns": [
         {
-          "user": "Is the black ashwood dining chair in stock?",
+          "user": "Is the silver titanium rugged watch in stock?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "CHR-ASH-BLK",
+                    "sku": "SW-PF-ULT-BLK",
                     "quantity": 1
                   }
                 }
@@ -7511,14 +7511,14 @@
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "TSHIRT-CREW-BLK-S",
-                    "quantity": 10
+                    "sku": "PH-NOVA-X5-128-BLK",
+                    "quantity": 30
                   }
                 }
               ]
             },
             {
-              "say": "Not ten of that size."
+              "say": "Not thirty of that model."
             }
           ]
         }
@@ -7528,13 +7528,13 @@
       "id": "inventory_015",
       "category": "inventory",
       "mode": "agent",
-      "prompt": "Anything at all in the wrap dress, floral, extra small?",
+      "prompt": "Anything at all in the silver flagship phone, 512GB?",
       "expected_intent": "an empty variant with in-stock siblings",
       "expected_constraints": [
         "INVENTORY",
         "PRODUCT_EXISTENCE"
       ],
-      "expected_behavior": "Unavailable, and the sibling sizes offered afterwards are labelled as different sizes rather than as the one that was asked for.",
+      "expected_behavior": "Unavailable, and the sibling finish offered afterwards is labelled as a different finish rather than as the one that was asked for.",
       "forbidden_behavior": [
         "claim_in_stock",
         "substitute_silently",
@@ -7586,14 +7586,14 @@
       ],
       "turns": [
         {
-          "user": "Anything at all in the wrap dress, floral, extra small?",
+          "user": "Anything at all in the silver flagship phone, 512GB?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "DRESS-WRAP-FLR-XS",
+                    "sku": "PH-PF-U5-512-BLK",
                     "quantity": 1
                   }
                 }
@@ -7604,13 +7604,13 @@
                 {
                   "name": "get_product",
                   "arguments": {
-                    "sku": "DRESS-WRAP-FLR-S"
+                    "sku": "PH-PF-U5-512-TIT"
                   }
                 }
               ]
             },
             {
-              "say": "Extra small is gone; small is available."
+              "say": "Carbon is gone; titanium is available."
             }
           ]
         }
@@ -8698,8 +8698,8 @@
       "id": "spec_012",
       "category": "required_specification",
       "mode": "agent",
-      "prompt": "I want a waterproof jacket.",
-      "expected_intent": "jacket where {'waterproof': True} is stated as a requirement, not a wish",
+      "prompt": "A waterproof speaker.",
+      "expected_intent": "speaker where {'waterproof_rating': 'ipx7'} is stated as a requirement, not a wish",
       "expected_constraints": [
         "REQUIRED_SPECIFICATIONS",
         "CATEGORY",
@@ -8752,12 +8752,12 @@
         },
         {
           "check": "results_in_category",
-          "category": "jacket"
+          "category": "speaker"
         },
         {
           "check": "results_have_attributes",
           "attributes": {
-            "waterproof": true
+            "waterproof_rating": "ipx7"
           }
         },
         {
@@ -8770,16 +8770,16 @@
       ],
       "turns": [
         {
-          "user": "I want a waterproof jacket.",
+          "user": "A waterproof speaker.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket",
+                    "category": "speaker",
                     "attributes": {
-                      "waterproof": true
+                      "waterproof_rating": "ipx7"
                     }
                   }
                 }
@@ -8796,8 +8796,8 @@
       "id": "spec_013",
       "category": "required_specification",
       "mode": "agent",
-      "prompt": "A moisture-wicking t-shirt.",
-      "expected_intent": "t_shirt where {'moisture_wicking': True} is stated as a requirement, not a wish",
+      "prompt": "A 5G phone.",
+      "expected_intent": "smartphone where {'network_5g': True} is stated as a requirement, not a wish",
       "expected_constraints": [
         "REQUIRED_SPECIFICATIONS",
         "CATEGORY",
@@ -8850,12 +8850,12 @@
         },
         {
           "check": "results_in_category",
-          "category": "t_shirt"
+          "category": "smartphone"
         },
         {
           "check": "results_have_attributes",
           "attributes": {
-            "moisture_wicking": true
+            "network_5g": true
           }
         },
         {
@@ -8868,16 +8868,16 @@
       ],
       "turns": [
         {
-          "user": "A moisture-wicking t-shirt.",
+          "user": "A 5G phone.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt",
+                    "category": "smartphone",
                     "attributes": {
-                      "moisture_wicking": true
+                      "network_5g": true
                     }
                   }
                 }
@@ -8894,8 +8894,8 @@
       "id": "spec_014",
       "category": "required_specification",
       "mode": "agent",
-      "prompt": "A height-adjustable desk.",
-      "expected_intent": "desk where {'adjustable_height': True} is stated as a requirement, not a wish",
+      "prompt": "A monitor with a height-adjustable stand.",
+      "expected_intent": "monitor where {'height_adjustable': True} is stated as a requirement, not a wish",
       "expected_constraints": [
         "REQUIRED_SPECIFICATIONS",
         "CATEGORY",
@@ -8948,12 +8948,12 @@
         },
         {
           "check": "results_in_category",
-          "category": "desk"
+          "category": "monitor"
         },
         {
           "check": "results_have_attributes",
           "attributes": {
-            "adjustable_height": true
+            "height_adjustable": true
           }
         },
         {
@@ -8966,16 +8966,16 @@
       ],
       "turns": [
         {
-          "user": "A height-adjustable desk.",
+          "user": "A monitor with a height-adjustable stand.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk",
+                    "category": "monitor",
                     "attributes": {
-                      "adjustable_height": true
+                      "height_adjustable": true
                     }
                   }
                 }
@@ -8992,8 +8992,8 @@
       "id": "spec_015",
       "category": "required_specification",
       "mode": "agent",
-      "prompt": "A linen shirt.",
-      "expected_intent": "shirt where {'material': 'linen'} is stated as a requirement, not a wish",
+      "prompt": "A mechanical keyboard.",
+      "expected_intent": "keyboard where {'switch_type': 'mechanical_tactile'} is stated as a requirement, not a wish",
       "expected_constraints": [
         "REQUIRED_SPECIFICATIONS",
         "CATEGORY",
@@ -9046,12 +9046,12 @@
         },
         {
           "check": "results_in_category",
-          "category": "shirt"
+          "category": "keyboard"
         },
         {
           "check": "results_have_attributes",
           "attributes": {
-            "material": "linen"
+            "switch_type": "mechanical_tactile"
           }
         },
         {
@@ -9064,16 +9064,16 @@
       ],
       "turns": [
         {
-          "user": "A linen shirt.",
+          "user": "A mechanical keyboard.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "shirt",
+                    "category": "keyboard",
                     "attributes": {
-                      "material": "linen"
+                      "switch_type": "mechanical_tactile"
                     }
                   }
                 }
@@ -9883,8 +9883,8 @@
       "id": "rank_009",
       "category": "ranking",
       "mode": "agent",
-      "prompt": "Recommend a good desk for a small room.",
-      "expected_intent": "desk with a stated preference ('compact desk'), no hard requirement beyond the category",
+      "prompt": "Recommend a good monitor for a small desk.",
+      "expected_intent": "monitor with a stated preference ('compact monitor'), no hard requirement beyond the category",
       "expected_constraints": [
         "CATEGORY",
         "INVENTORY"
@@ -9936,7 +9936,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "desk"
+          "category": "monitor"
         },
         {
           "check": "results_in_stock"
@@ -9955,15 +9955,15 @@
       ],
       "turns": [
         {
-          "user": "Recommend a good desk for a small room.",
+          "user": "Recommend a good monitor for a small desk.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk",
-                    "search_query": "compact desk"
+                    "category": "monitor",
+                    "search_query": "compact monitor"
                   }
                 }
               ]
@@ -9979,8 +9979,8 @@
       "id": "rank_010",
       "category": "ranking",
       "mode": "agent",
-      "prompt": "Which jeans would you suggest?",
-      "expected_intent": "jeans with a stated preference ('everyday jeans'), no hard requirement beyond the category",
+      "prompt": "Which power bank would you suggest?",
+      "expected_intent": "power_bank with a stated preference ('everyday power bank'), no hard requirement beyond the category",
       "expected_constraints": [
         "CATEGORY",
         "INVENTORY"
@@ -10032,7 +10032,7 @@
         },
         {
           "check": "results_in_category",
-          "category": "jeans"
+          "category": "power_bank"
         },
         {
           "check": "results_in_stock"
@@ -10051,15 +10051,15 @@
       ],
       "turns": [
         {
-          "user": "Which jeans would you suggest?",
+          "user": "Which power bank would you suggest?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans",
-                    "search_query": "everyday jeans"
+                    "category": "power_bank",
+                    "search_query": "everyday power bank"
                   }
                 }
               ]
@@ -10649,7 +10649,7 @@
       "id": "nomatch_002",
       "category": "no_match",
       "mode": "agent",
-      "prompt": "Show me smartwatches.",
+      "prompt": "Show me televisions.",
       "expected_intent": "another category this merchant does not have",
       "expected_constraints": [
         "CATEGORY",
@@ -10718,14 +10718,14 @@
       ],
       "turns": [
         {
-          "user": "Show me smartwatches.",
+          "user": "Show me televisions.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "smartwatch"
+                    "category": "television"
                   }
                 }
               ]
@@ -10833,8 +10833,8 @@
       "id": "nomatch_004",
       "category": "no_match",
       "mode": "agent",
-      "prompt": "A bed frame for under 2000.",
-      "expected_intent": "bed with a ceiling far below the category floor",
+      "prompt": "A gaming laptop for under 2000.",
+      "expected_intent": "laptop with a ceiling far below the category floor",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY"
@@ -10900,14 +10900,14 @@
       ],
       "turns": [
         {
-          "user": "A bed frame for under 2000.",
+          "user": "A gaming laptop for under 2000.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "bed",
+                    "category": "laptop",
                     "max_price": "2000.00"
                   }
                 }
@@ -11542,7 +11542,7 @@
       "id": "nomatch_012",
       "category": "no_match",
       "mode": "agent",
-      "prompt": "An office chair under 1000.",
+      "prompt": "A 4K monitor under 1000.",
       "expected_intent": "a real category with a ceiling nothing meets",
       "expected_constraints": [
         "BUDGET",
@@ -11609,14 +11609,14 @@
       ],
       "turns": [
         {
-          "user": "An office chair under 1000.",
+          "user": "A 4K monitor under 1000.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair",
+                    "category": "monitor",
                     "max_price": "1000.00"
                   }
                 }
@@ -11633,13 +11633,13 @@
       "id": "nomatch_013",
       "category": "no_match",
       "mode": "agent",
-      "prompt": "A waterproof t-shirt.",
+      "prompt": "A waterproof mechanical keyboard.",
       "expected_intent": "a plausible-sounding attribute no product in the category records",
       "expected_constraints": [
         "REQUIRED_SPECIFICATIONS",
         "CATEGORY"
       ],
-      "expected_behavior": "No match rather than a jacket offered as if it were a t-shirt.",
+      "expected_behavior": "No match rather than a waterproof speaker offered as if it were a keyboard.",
       "forbidden_behavior": [
         "invent_product",
         "invent_price",
@@ -11695,14 +11695,14 @@
       ],
       "turns": [
         {
-          "user": "A waterproof t-shirt.",
+          "user": "A waterproof mechanical keyboard.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt",
+                    "category": "keyboard",
                     "attributes": {
                       "waterproof": true
                     }
@@ -11711,7 +11711,7 @@
               ]
             },
             {
-              "say": "Nothing like that in tees."
+              "say": "Nothing like that in keyboards."
             }
           ]
         }
@@ -12183,8 +12183,8 @@
       "id": "alt_004",
       "category": "alternatives",
       "mode": "agent",
-      "prompt": "A desk under 5000, or show me alternatives.",
-      "expected_intent": "desk under 5000.00, with an explicit request for alternatives if empty",
+      "prompt": "A laptop under 5000, or show me alternatives.",
+      "expected_intent": "laptop under 5000.00, with an explicit request for alternatives if empty",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY",
@@ -12248,14 +12248,14 @@
       ],
       "turns": [
         {
-          "user": "A desk under 5000, or show me alternatives.",
+          "user": "A laptop under 5000, or show me alternatives.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk",
+                    "category": "laptop",
                     "max_price": "5000.00"
                   }
                 }
@@ -12272,8 +12272,8 @@
       "id": "alt_005",
       "category": "alternatives",
       "mode": "agent",
-      "prompt": "A jacket under 3000, otherwise the closest.",
-      "expected_intent": "jacket under 3000.00, with an explicit request for alternatives if empty",
+      "prompt": "A smartwatch under 1500, otherwise the closest.",
+      "expected_intent": "smartwatch under 1500.00, with an explicit request for alternatives if empty",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY",
@@ -12332,20 +12332,20 @@
         },
         {
           "check": "results_within_budget",
-          "max_price": "3000.00"
+          "max_price": "1500.00"
         }
       ],
       "turns": [
         {
-          "user": "A jacket under 3000, otherwise the closest.",
+          "user": "A smartwatch under 1500, otherwise the closest.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket",
-                    "max_price": "3000.00"
+                    "category": "smartwatch",
+                    "max_price": "1500.00"
                   }
                 }
               ]
@@ -12361,8 +12361,8 @@
       "id": "alt_006",
       "category": "alternatives",
       "mode": "agent",
-      "prompt": "A sofa under 20000, or the nearest option.",
-      "expected_intent": "sofa under 20000.00, with an explicit request for alternatives if empty",
+      "prompt": "A drone under 20000, or the nearest option.",
+      "expected_intent": "drone under 20000.00, with an explicit request for alternatives if empty",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY",
@@ -12426,14 +12426,14 @@
       ],
       "turns": [
         {
-          "user": "A sofa under 20000, or the nearest option.",
+          "user": "A drone under 20000, or the nearest option.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "sofa",
+                    "category": "drone",
                     "max_price": "20000.00"
                   }
                 }
@@ -13330,7 +13330,7 @@
       "category": "multi_product",
       "mode": "agent",
       "prompt": "I want a shirt and jeans.",
-      "expected_intent": "two clothing categories",
+      "expected_intent": "two device categories",
       "expected_constraints": [
         "CATEGORY",
         "INVENTORY"
@@ -13398,7 +13398,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "shirt"
+                    "category": "laptop"
                   }
                 }
               ]
@@ -13408,7 +13408,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans"
+                    "category": "monitor"
                   }
                 }
               ]
@@ -13496,7 +13496,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk",
+                    "category": "monitor",
                     "search_query": "home office"
                   }
                 }
@@ -13507,7 +13507,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair",
+                    "category": "keyboard",
                     "search_query": "office"
                   }
                 }
@@ -13743,7 +13743,7 @@
       "category": "multi_product",
       "mode": "agent",
       "prompt": "A hoodie and a t-shirt, both under 2900.",
-      "expected_intent": "two clothing requirements sharing one per-item ceiling",
+      "expected_intent": "two audio requirements sharing one per-item ceiling",
       "expected_constraints": [
         "BUDGET",
         "CATEGORY",
@@ -13816,7 +13816,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "hoodie",
+                    "category": "headphone",
                     "max_price": "2900.00"
                   }
                 }
@@ -13827,7 +13827,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt",
+                    "category": "earphone",
                     "max_price": "2900.00"
                   }
                 }
@@ -15305,8 +15305,8 @@
       "id": "crosssell_011",
       "category": "cross_sell",
       "mode": "agent",
-      "prompt": "What would you add to the dining table?",
-      "expected_intent": "accessories the merchant related to ashwood_dining_table",
+      "prompt": "What would you add to the Studio 14 laptop?",
+      "expected_intent": "accessories the merchant related to bytecore_studio_14",
       "expected_constraints": [
         "PRODUCT_EXISTENCE",
         "INVENTORY",
@@ -15372,14 +15372,14 @@
       ],
       "turns": [
         {
-          "user": "What would you add to the dining table?",
+          "user": "What would you add to the Studio 14 laptop?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "get_upsell_candidates",
                   "arguments": {
-                    "product_id": "49168202-6faf-5df1-ba7e-de549dfcb19f"
+                    "product_id": "e10b8c25-a979-58c1-ab5e-a408c97cd725"
                   }
                 }
               ]
@@ -15395,8 +15395,8 @@
       "id": "crosssell_012",
       "category": "cross_sell",
       "mode": "agent",
-      "prompt": "Something to go with the study desk?",
-      "expected_intent": "accessories the merchant related to compact_study_desk",
+      "prompt": "Something to go with the Nova X5?",
+      "expected_intent": "accessories the merchant related to nova_x5_5g",
       "expected_constraints": [
         "PRODUCT_EXISTENCE",
         "INVENTORY",
@@ -15462,14 +15462,14 @@
       ],
       "turns": [
         {
-          "user": "Something to go with the study desk?",
+          "user": "Something to go with the Nova X5?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "get_upsell_candidates",
                   "arguments": {
-                    "product_id": "1df0bd53-98ee-5ac5-96c9-631a25f062b3"
+                    "product_id": "66e4de9d-5244-5511-9a87-02e041c17ed8"
                   }
                 }
               ]
@@ -15485,8 +15485,8 @@
       "id": "crosssell_013",
       "category": "cross_sell",
       "mode": "agent",
-      "prompt": "What pairs with the oxford shirt?",
-      "expected_intent": "accessories the merchant related to oxford_button_down",
+      "prompt": "What pairs with the 5K action camera?",
+      "expected_intent": "accessories the merchant related to aerotech_action_5k",
       "expected_constraints": [
         "PRODUCT_EXISTENCE",
         "INVENTORY",
@@ -15552,14 +15552,14 @@
       ],
       "turns": [
         {
-          "user": "What pairs with the oxford shirt?",
+          "user": "What pairs with the 5K action camera?",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "get_upsell_candidates",
                   "arguments": {
-                    "product_id": "718cf367-8b5c-5e24-a341-1f254c10f890"
+                    "product_id": "1a0c0aa2-9d0c-5759-aea6-4b396dfe82fd"
                   }
                 }
               ]
@@ -17557,14 +17557,14 @@
       ],
       "turns": [
         {
-          "user": "Show me jeans.",
+          "user": "Show me phones.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans"
+                    "category": "smartphone"
                   }
                 }
               ]
@@ -17582,7 +17582,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans",
+                    "category": "smartphone",
                     "search_query": "black"
                   }
                 }
@@ -17594,14 +17594,14 @@
           ]
         },
         {
-          "user": "Size 32.",
+          "user": "The 512GB one.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "get_product",
                   "arguments": {
-                    "sku": "JEANS-STR-BLK-32"
+                    "sku": "PH-NOVA-X5P-512-BLK"
                   }
                 }
               ]
@@ -17619,7 +17619,7 @@
                 {
                   "name": "check_inventory",
                   "arguments": {
-                    "sku": "JEANS-STR-BLK-32",
+                    "sku": "PH-NOVA-X5P-512-BLK",
                     "quantity": 1
                   }
                 }
@@ -18148,7 +18148,7 @@
       "id": "turns_013",
       "category": "multi_turn",
       "mode": "agent",
-      "prompt": "A desk -> and a chair -> both in the basket -> total?",
+      "prompt": "A monitor -> and a keyboard -> both in the basket -> total?",
       "expected_intent": "two categories accumulated into one basket across turns",
       "expected_constraints": [
         "CATEGORY",
@@ -18206,11 +18206,11 @@
           "check": "cart_contains",
           "items": [
             {
-              "sku": "DSK-STUDY-WHT",
+              "sku": "MON-VP-24-BLK",
               "quantity": 1
             },
             {
-              "sku": "CHR-ERGO-GRY",
+              "sku": "KB-KC-SLM-GRY",
               "quantity": 1
             }
           ]
@@ -18218,14 +18218,14 @@
       ],
       "turns": [
         {
-          "user": "Show me desks.",
+          "user": "Show me monitors.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "desk"
+                    "category": "monitor"
                   }
                 }
               ]
@@ -18236,14 +18236,14 @@
           ]
         },
         {
-          "user": "And chairs.",
+          "user": "And keyboards.",
           "model_plan": [
             {
               "tools": [
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "chair"
+                    "category": "keyboard"
                   }
                 }
               ]
@@ -18254,7 +18254,7 @@
           ]
         },
         {
-          "user": "Put the white study desk and the grey ergonomic chair in my basket.",
+          "user": "Put the 24-inch monitor and the grey slim keyboard in my basket.",
           "model_plan": [
             {
               "tools": [
@@ -18263,11 +18263,11 @@
                   "arguments": {
                     "items": [
                       {
-                        "variant_id": "8f99f4b2-d831-5d39-a6e5-f84543b47797",
+                        "variant_id": "f142c903-db60-586b-af0a-6c2887e1bc10",
                         "quantity": 1
                       },
                       {
-                        "variant_id": "1b73f6d7-13ef-526a-b8f9-cf102d2a160d",
+                        "variant_id": "a769bf0f-1b1c-5d68-885e-8d4e8dc59bc8",
                         "quantity": 1
                       }
                     ]
@@ -19010,11 +19010,11 @@
           "check": "cart_contains",
           "items": [
             {
-              "sku": "TSHIRT-CREW-BLK-M",
+              "sku": "EP-LB-UC-BLK",
               "quantity": 1
             },
             {
-              "sku": "JEANS-STR-BLK-32",
+              "sku": "PWRB-KEY-5K-BLK",
               "quantity": 1
             }
           ]
@@ -19031,11 +19031,11 @@
                   "arguments": {
                     "items": [
                       {
-                        "variant_id": "77119914-ad29-57d7-a890-6e43a14de357",
+                        "variant_id": "90643bdb-9f11-5196-91f5-f332f372df4c",
                         "quantity": 1
                       },
                       {
-                        "variant_id": "14d6fd4c-af68-58f9-9851-deaf1201b688",
+                        "variant_id": "e0c742c1-2c05-5091-b5b7-39df46a2472f",
                         "quantity": 1
                       }
                     ]
@@ -20800,7 +20800,7 @@
                   "arguments": {
                     "items": [
                       {
-                        "variant_id": "cc5ea393-df3b-5a8c-a226-5604f356d848",
+                        "variant_id": "c10abe81-cd60-5119-8f8c-ddb70efbaffe",
                         "quantity": 1
                       }
                     ]
@@ -20893,7 +20893,7 @@
                   "arguments": {
                     "items": [
                       {
-                        "variant_id": "62579959-d0c4-58f4-9f63-40ad7902b928",
+                        "variant_id": "969bec9f-9379-5124-b863-51ded0de1d4f",
                         "quantity": 1
                       }
                     ]
@@ -21590,7 +21590,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "t_shirt",
+                    "category": "smartphone",
                     "max_price": "10.00"
                   }
                 }
@@ -21601,7 +21601,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jeans",
+                    "category": "laptop",
                     "max_price": "10.00"
                   }
                 }
@@ -21612,7 +21612,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "hoodie",
+                    "category": "monitor",
                     "max_price": "10.00"
                   }
                 }
@@ -21623,7 +21623,7 @@
                 {
                   "name": "search_catalog",
                   "arguments": {
-                    "category": "jacket",
+                    "category": "keyboard",
                     "max_price": "10.00"
                   }
                 }
@@ -23284,7 +23284,7 @@
       ],
       "cart": [
         {
-          "sku": "SOFA-LOFT3-GRY",
+          "sku": "LT-NX-R16-32-1TB",
           "quantity": 1
         }
       ],
@@ -24445,7 +24445,7 @@
           "arguments": {
             "items": [
               {
-                "sku": "SOFA-LOFT3-GRY",
+                "sku": "LT-NX-R16-32-1TB",
                 "quantity": 1
               }
             ]

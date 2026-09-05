@@ -35,6 +35,7 @@ __all__ = [
     "serialize_cross_sell",
     "serialize_product",
     "serialize_ranked",
+    "serialize_ranked_for_model",
     "serialize_variant",
 ]
 
@@ -128,6 +129,38 @@ def serialize_ranked(candidate: RankedCandidate) -> dict[str, Any]:
             component.name: str(component.score) for component in candidate.score.components
         },
     }
+    return payload
+
+
+def serialize_ranked_for_model(candidate: RankedCandidate) -> dict[str, Any]:
+    """The same candidate, trimmed to what the *model* has a use for.
+
+    `serialize_ranked` above is the card: the frontend renders every attribute
+    and can show the score breakdown. The model needs neither, and sending them
+    is not free.
+
+    * **Attributes are dropped.** System prompt rules 14 and 15 forbid the model
+      from restating colours, dimensions or attribute values in prose — that
+      detail belongs on the card — so every byte of it is paid for and then
+      required to go unused. A genuine detail question has its own tool,
+      `get_product`, which returns one product in full.
+    The score breakdown **stays**. It was the larger of the two savings, and it
+    was still the wrong one to take: it is the evidence that the deterministic
+    engine did the ordering, the evaluation suite reads it out of exactly this
+    payload to prove so, and a claim about ranking that nothing can check is not
+    worth 300 tokens.
+
+    Identity, price, stock, rank, reason and score all remain, because those are
+    what the model needs to describe the results and to call another tool on one
+    of them - and what a grader needs to hold the ordering to account.
+
+    This is not only a cost saving. Nine candidates of a richly-attributed
+    product exceeded Groq's hard 8,000-token *per request* ceiling, and the turn
+    failed with a 413 — the model could not answer at all about the catalogue it
+    had just successfully searched.
+    """
+    payload = serialize_ranked(candidate)
+    payload.pop("attributes", None)
     return payload
 
 

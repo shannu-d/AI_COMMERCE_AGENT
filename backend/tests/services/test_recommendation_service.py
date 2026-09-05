@@ -131,13 +131,23 @@ def test_the_out_of_stock_clear_case_is_excluded(
     assert HardConstraint.INVENTORY in rejected["CASE-IP16-CLR"]
 
 
-def test_top_k_caps_the_result_at_three(
+def test_top_k_caps_the_result_at_the_configured_number(
     recommendations: RecommendationService, merchant_id: uuid.UUID, iphone_16: ResolvedTarget
 ) -> None:
-    """RULE 11: a small number of strong candidates, not the catalog."""
+    """RULE 11: a small number of strong candidates, not the catalog.
+
+    The cap is `Settings.ranking_top_k` (deviation D12 raised it from 3 to 9),
+    so this asserts against the configured value and, separately, that the cap
+    is doing something - a category holding fewer products than the cap would
+    make the first assertion pass no matter how broken the slice was.
+    """
+    from app.config import get_settings
+
+    cap = get_settings().ranking_top_k
     result = recommendations.recommend(merchant_id, case_under_1500(iphone_16))
 
-    assert len(result.candidates) <= 3
+    assert len(result.candidates) <= cap
+    assert result.candidates, "the worked-example category returned nothing at all"
 
 
 def test_prices_come_back_as_decimal_from_the_database(

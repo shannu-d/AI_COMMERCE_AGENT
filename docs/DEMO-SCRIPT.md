@@ -80,14 +80,23 @@ the engine chooses the products.
 
 `RANKING_TOP_K=9`, so a category with more matches shows up to nine cards.
 
+> **Refreshed 2026-09-05 for the electronics-only catalogue** (200 products / 360 SKUs).
+> Every row below was run live against it on the day.
+
 ### The reliable openers
 
 | Type this | You get | Good for showing |
 | --- | --- | --- |
+| **Show me a 5G phone under 30000** | **9 cards** — CoreWave Go 5G ₹12,999 up to Nova X5 Pro ₹27,999 | A boolean attribute *and* a budget as hard filters. The 4G Nova Lite is excluded even though it is cheaper |
+| **I need a phone with 256GB storage** | **8 cards**, every one a 256GB variant | A variant-level attribute eliminating rather than ranking |
+| **I need a laptop with 16GB RAM and 512GB SSD** | **5 cards** — CoreWave Office 14 ₹46,999 to ByteCore Studio 14 ₹89,999 | Two required attributes at once |
+| **I need a 20000mAh power bank** | **4 cards** — PowerCell 20000 PD and Solar 20000 | A numeric attribute as a stated requirement |
+| **Show me a 144Hz gaming monitor** | **2 cards** — Nexa View 27 (165Hz) and 25 Pro (240Hz) | A minimum, not an equality: faster panels still qualify |
+| **I need a 65W charger** | **2 cards** — VoltEdge 65W GaN, black and white | The wattage filter on the original accessory range |
 | **I need a case for my iPhone 16** | **5 cards** — AeroCase Pro Black ₹999 (Best overall), Blue ₹999, ShieldCase Premium ₹1,299, LeatherLine Folio Black / Brown ₹1,799 | The core loop. The Clear AeroCase is **out of stock and correctly absent**, and the iPhone **15** case never appears |
 | **a fast charger for my iPhone 16 under 1500** | **2 cards** — VoltEdge 20W ₹1,099, VoltEdge 30W ₹1,499 | A budget as a hard ceiling *and* device compatibility, together. The ₹2,799 MacBook charger is compatible but over budget, so it is excluded |
 | **earbuds with noise cancelling** | **2 cards** — SonicBuds Pro ANC Black and Ivory, ₹4,499 | The F-3 fix. The catalogue holds five earbuds; only these two have `anc: true`. The other three are **not** offered and **not** described as noise-cancelling |
-| **show me t-shirts** | **9 cards** — Everyday Cotton Crew Tee, ₹799 | Top-K at 9, and the catalogue's breadth beyond electronics |
+| **Show me headphones** | up to **9 cards** — SoundSeal Lite ₹2,499 to SoundSeal Max ANC ₹24,999 | Top-K at 9, and the price ladder inside one category |
 | **a case for my Pixel 9** | **0 cards**, and an honest "I couldn't find one" | The no-match path. Pixel 9 is a **resolvable** device with zero compatible products — the agent does not substitute, and names no product |
 
 ### If you want more variety
@@ -96,18 +105,32 @@ Verified as catalogue facts (in stock, compatible), so they will produce cards:
 
 | Prompt | Expected |
 | --- | --- |
+| Find a Wi-Fi 6 router | routers, cheapest first — see the caveat below |
+| Show me a mechanical keyboard | KeyCraft Mech TKL, Compact 60, Nexa Strike 75 |
+| Find an SSD for my laptop | ByteCore Portable and Rugged SSD, 500GB–4TB |
+| Show me smartwatches under 7000 | Pulse Band Lite ₹1,999, Pulse Fit 2 ₹2,999, Pulse Active GPS ₹6,999 |
+| I need a USB-C hub for my laptop | HyperLink Hub 7, Hub Mini, Dock Dual |
 | a screen protector for my iPhone 16 | 3 cards, ₹299–₹649 |
 | a charger for my MacBook Air M3 | 3 cards, ₹2,799–₹3,999 |
 | a sleeve for my MacBook Air M3 | 2 cards, ₹1,199 |
 | a USB-C cable | 3 cards, ₹499–₹999 |
 | a power bank with USB-C | 4 cards, ₹1,299–₹3,299 |
-| show me shirts / dresses / jackets | 9 cards each (26 / 23 / 21 in stock) |
+| show me speakers / keyboards / storage | up to 9 cards each |
 
 ### The two-turn narrowing (good on camera)
 
 1. **I need a charger** → the agent asks which device, because the answer changes
    what you pay. It does **not** guess.
 2. **for my iPhone 16, under ₹1200** → one card, VoltEdge 20W ₹1,099.
+
+### One caveat worth knowing
+
+**"Wi-Fi 6 router" returns every router, cheapest first, not only the Wi-Fi 6 ones.** The tool
+payload advertises six attribute names per category — Groq refuses any single request over 8,000
+tokens and the full list does not fit — and `wifi_standard` falls outside the six for routers, so
+the agent states it as free text, which ranks rather than eliminates (R§9). Under-filtering is the
+intended failure direction (prompt rule 9), and nothing false is claimed, but you will see Wi-Fi 5
+routers in the list. Prefer the openers above on camera.
 
 ### What to avoid on camera
 

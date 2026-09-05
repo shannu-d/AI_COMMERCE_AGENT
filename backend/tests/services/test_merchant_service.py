@@ -77,7 +77,7 @@ def test_create_product_with_variants_is_real_and_scoped(session: Session, merch
     detail = svc.create_product(
         merchant_id,
         name="Test Merino Beanie",
-        category_slug="t_shirt",
+        category_slug="smartphone",
         description="A warm hat.",
         attributes={"material": "merino_wool"},
         tags=["hat", "winter"],
@@ -103,7 +103,7 @@ def test_create_product_rejects_a_json_number_price(session: Session, merchant_i
         svc.create_product(
             merchant_id,
             name="Bad",
-            category_slug="t_shirt",
+            category_slug="smartphone",
             variants=[{"sku": "BAD-1", "name": "X", "price": 899.0, "quantity": 1}],
         )
     assert exc.value.code == "VALIDATION_ERROR"
@@ -134,7 +134,7 @@ def test_more_than_two_decimal_places_is_rejected(session: Session, merchant_id)
         svc.create_product(
             merchant_id,
             name="X",
-            category_slug="t_shirt",
+            category_slug="smartphone",
             variants=[{"sku": "X-1", "name": "X", "price": "10.001", "quantity": 1}],
         )
 
@@ -156,12 +156,12 @@ def test_archive_hides_the_product_from_the_storefront(
     session: Session, merchant_id, product_id
 ) -> None:
     svc = MerchantCatalogService(session)
-    pid = product_id("everyday_cotton_crew")
+    pid = product_id("nova_x5_5g")
     svc.set_product_active(merchant_id, pid, active=False)
     # The read service (storefront) no longer sees it...
     assert CatalogService(session).get_product(merchant_id, pid) is None
     # ...but the dashboard still can, and can restore it.
-    assert svc.get_product(merchant_id, pid).product.slug == "everyday_cotton_crew"
+    assert svc.get_product(merchant_id, pid).product.slug == "nova_x5_5g"
     svc.set_product_active(merchant_id, pid, active=True)
     assert CatalogService(session).get_product(merchant_id, pid) is not None
 
@@ -190,10 +190,10 @@ def test_set_stock_rejects_a_negative_quantity(session: Session, merchant_id, va
 
 def test_create_category_slugifies_and_nests(session: Session, merchant_id) -> None:
     svc = MerchantCatalogService(session)
-    cat = svc.create_category(merchant_id, name="Winter Hats", parent_slug="clothing")
-    assert cat.slug == "winter_hats"
+    cat = svc.create_category(merchant_id, name="Projector Screens", parent_slug="electronics")
+    assert cat.slug == "projector_screens"
     slugs = {c.slug for c in CatalogService(session).list_categories(merchant_id)}
-    assert "winter_hats" in slugs
+    assert "projector_screens" in slugs
 
 
 # -- MERCHANT ISOLATION ---------------------------------------------
@@ -249,12 +249,16 @@ def test_list_products_never_shows_another_merchants_rows(
 # -- analytics --------------------------------------------------------
 
 
-def test_overview_counts_are_real(session: Session, merchant_id, other_merchant) -> None:
+def test_overview_counts_are_real(
+    session: Session, merchant_id, other_merchant, catalog_seed
+) -> None:
     ov = MerchantAnalyticsService(session).overview(merchant_id)
-    # The seed: 51 products, 216 variants. The rival's product is not counted.
-    assert ov.total_products == 51
-    assert ov.total_variants == 216
-    assert ov.category_count == 24
+    # The seed, whatever size it currently is. The rival's product is not counted.
+    # Counted from the seed file: a literal here goes stale the moment the
+    # catalogue changes, and then fails the application for being correct.
+    assert ov.total_products == len(catalog_seed.products)
+    assert ov.total_variants == catalog_seed.variant_count
+    assert ov.category_count == len(catalog_seed.categories)
     assert ov.total_inventory_units > 0
     assert ov.out_of_stock_variants >= 9  # the seed's deliberate OOS variants
     # No orders were placed in this rolled-back test, so revenue is exactly zero.

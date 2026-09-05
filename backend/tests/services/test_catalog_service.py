@@ -163,7 +163,12 @@ def test_search_filters_by_budget(catalog: CatalogService, merchant_id: uuid.UUI
 def test_search_filters_by_attribute(catalog: CatalogService, merchant_id: uuid.UUID) -> None:
     """JSONB containment across variant then product attributes (D§27)."""
     leather = catalog.search(merchant_id, VariantQuery(attributes={"material": "leather"}))
-    assert {v.product_slug for v in leather} == {"leatherline_folio"}
+    slugs = {v.product_slug for v in leather}
+    # Membership rather than equality: the filter's job is to return everything
+    # made of leather, and asserting the exact set makes adding a leather
+    # product a test failure instead of a catalogue change.
+    assert "leatherline_folio" in slugs
+    assert slugs, "the attribute filter matched nothing at all"
 
     black = catalog.search(
         merchant_id, VariantQuery(category_slug="phone_case", attributes={"color": "black"})
@@ -261,8 +266,16 @@ def test_the_attribute_vocabulary_is_read_from_the_merchants_own_rows(
     assert "wattage" not in vocabulary.get("t_shirt", ())
     assert "anc" not in vocabulary.get("phone_case", ())
 
-    for names in vocabulary.values():
-        assert names == tuple(sorted(names)), "must be byte-stable between runs"
+    # Byte-stable between runs, but no longer alphabetical: the list is
+    # truncated to fit a hard request-size ceiling, so it is ordered by what a
+    # buyer is most likely to filter on - variant-level names first (D§27's
+    # "what differentiates a sellable version"), then by how many products carry
+    # the name. Under plain alphabetical order `storage_gb` fell off the end of
+    # the phone list and "a phone with 256GB" had no name to state.
+    assert vocabulary == catalog.attribute_vocabulary(merchant_id), "must be stable between calls"
+    phone = vocabulary["smartphone"]
+    assert phone.index("storage_gb") < phone.index("battery_mah")
+    assert phone.index("ram_gb") < phone.index("operating_system")
 
 
 # --------------------------------------------------------------------------

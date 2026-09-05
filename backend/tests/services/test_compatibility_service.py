@@ -108,7 +108,7 @@ def test_an_unsupported_target_kind_fails_loudly(
 
 @pytest.mark.parametrize(
     "phrase",
-    ["Galaxy S25", "Nokia 3310", "my new phone", "the blue one", "iphone 17"],
+    ["Xperia 5", "Nokia 3310", "my new phone", "the blue one", "iphone 17"],
 )
 def test_an_unknown_device_is_unresolved_rather_than_approximated(
     compatibility: CompatibilityService, phrase: str
@@ -184,8 +184,13 @@ def test_the_known_vocabulary_can_be_listed_for_clarification(
     compatibility: CompatibilityService,
 ) -> None:
     phones = compatibility.list_targets(target_type="phone_model")
+    identifiers = {t.canonical_identifier for t in phones}
 
-    assert {t.canonical_identifier for t in phones} == {"iphone_16", "iphone_15", "pixel_9"}
+    # A superset, not an equality: the vocabulary grows with the catalogue, and
+    # a literal list here would fail the application for stocking more phones.
+    # The three that must always be present are the ones the specification's
+    # worked examples and the no-match path depend on.
+    assert {"iphone_16", "iphone_15", "pixel_9"} <= identifiers
     assert all(t.display_name for t in phones)
 
 

@@ -26,7 +26,7 @@ from typing import Any
 
 from app.agent.context import AgentContext, TurnMemory
 from app.agent.errors import ToolError, ToolErrorCode
-from app.agent.tools._serialize import serialize_ranked
+from app.agent.tools._serialize import serialize_ranked_for_model
 from app.domain.compatibility import ResolutionFailure, ResolvedTarget
 from app.domain.ranking import ProductRequirement, RecommendationOutcome
 from app.llm.tool_schemas import GetCompatibleProductsArgs
@@ -116,9 +116,9 @@ def get_compatible_products(
             "display_name": target.display_name,
         },
         "outcome": result.outcome.value,
-        "results": [serialize_ranked(candidate) for candidate in result.candidates],
+        "results": [serialize_ranked_for_model(candidate) for candidate in result.candidates],
     }
     if result.outcome is not RecommendationOutcome.EXACT_MATCH:
-        payload["alternatives"] = [serialize_ranked(c) for c in result.alternatives]
+        payload["alternatives"] = [serialize_ranked_for_model(c) for c in result.alternatives]
         payload["relaxed_constraints"] = [c.value for c in result.relaxed_constraints]
     return payload

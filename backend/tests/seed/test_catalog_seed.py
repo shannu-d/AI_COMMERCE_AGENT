@@ -51,16 +51,30 @@ def test_the_shipped_catalog_validates(catalog: CatalogSeed) -> None:
     assert catalog.merchant.currency == "INR"
 
 
-def test_the_catalog_is_the_expanded_multi_category_storefront(
-    catalog: CatalogSeed,
-) -> None:
-    """ADR-021: the catalog was grown past R§18's 30-36 SKU prototype scope,
-    at the project owner's explicit request, into electronics + clothing +
-    furniture. The original electronics rows are preserved unchanged (see
-    ``test_the_original_electronics_prototype_is_preserved`` below)."""
-    assert catalog.variant_count >= 150
-    families = {c.slug for c in catalog.categories}
-    assert {"electronics", "clothing", "furniture"} <= families
+def test_the_catalog_is_an_electronics_only_storefront(catalog: CatalogSeed) -> None:
+    """ADR-021, as narrowed on 2026-09-05 at the owner's request (deviation D13).
+
+    The catalogue was grown past R§18's 30-36 SKU prototype scope into
+    electronics *plus clothing and furniture*; it has since been narrowed back
+    to a focused consumer-electronics store and grown much larger within that
+    scope. The original electronics rows are preserved unchanged - see
+    ``test_the_original_electronics_prototype_is_preserved`` below.
+
+    The assertion that matters is the **negative** one: every category descends
+    from ``electronics``. A catalogue that quietly regained a clothing branch
+    would still pass every count.
+    """
+    assert catalog.variant_count >= 300
+    by_slug = {c.slug: c for c in catalog.categories}
+
+    def root(slug: str) -> str:
+        while by_slug[slug].parent:
+            slug = by_slug[slug].parent
+        return slug
+
+    roots = {root(c.slug) for c in catalog.categories}
+    assert roots == {"electronics"}, f"non-electronics families present: {roots - {'electronics'}}"
+    assert {"smartphone", "laptop", "phone_case", "earbuds"} <= set(by_slug)
 
 
 def test_the_original_electronics_prototype_is_preserved(catalog: CatalogSeed) -> None:

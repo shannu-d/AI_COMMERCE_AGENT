@@ -183,14 +183,18 @@ function Header() {
           },
         ];
 
-  // The seed has ten categories including structural parents; the bar shows the
-  // ones a shopper actually browses rather than every row in the table. The API
-  // already returns them slug-sorted, which is the reference's order.
-  const primary = (categories ?? []).filter((c) =>
-    ["phone_case", "charger", "usb_cable", "earbuds", "power_bank", "screen_protector"].includes(
-      c.slug,
-    ),
-  );
+  // The bar shows the categories a shopper actually browses - the **leaves** of
+  // the tree - rather than every row in the table, because a parent such as
+  // "Audio" holds no products of its own and `/api/products?category=` filters
+  // on an exact slug.
+  //
+  // Derived, not listed. This was a hard-coded array of six slugs, which meant
+  // that when the catalogue grew to forty categories the storefront still
+  // offered the original six and nothing else was reachable by browsing. A
+  // catalogue fact belongs in the catalogue (the bar scrolls horizontally, so
+  // the count is the merchant's business rather than this component's).
+  const parents = new Set((categories ?? []).map((c) => c.parent_slug).filter(Boolean));
+  const primary = (categories ?? []).filter((c) => !parents.has(c.slug));
 
   function runAction(action: NavAction) {
     if (action === "services") scrollToServices();

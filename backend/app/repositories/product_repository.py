@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import Counter
 from collections.abc import Sequence
 
 from sqlalchemy import Select, select
@@ -114,13 +115,53 @@ class ProductRepository:
             )
         ).all()
 
-        keys: dict[str, set[str]] = {}
+        counts: dict[str, Counter[str]] = {}
+        on_variants: dict[str, set[str]] = {}
+        values: dict[str, dict[str, set[str]]] = {}
         for slug, product_attributes, variant_attributes in rows:
-            bucket = keys.setdefault(slug, set())
-            bucket.update(product_attributes or {})
-            bucket.update(variant_attributes or {})
-        # Sorted, so the payload sent to the model is byte-stable between runs.
-        return {slug: tuple(sorted(names)) for slug, names in sorted(keys.items())}
+            bucket = counts.setdefault(slug, Counter())
+            variant_keys = set(variant_attributes or {})
+            bucket.update(set(product_attributes or {}) | variant_keys)
+            on_variants.setdefault(slug, set()).update(variant_keys)
+            seen = values.setdefault(slug, {})
+            for name, value in {**(product_attributes or {}), **(variant_attributes or {})}.items():
+                seen.setdefault(name, set()).add(repr(value))
+
+        # **Variant-level names first**, then by how many distinct values the
+        # name takes in the category, then by how many rows carry it, then
+        # alphabetically. Not cosmetic, and not arbitrary: the caller has a
+        # hard request-size ceiling and truncates this list, so the order decides
+        # what a buyer can still filter on. D§27 makes variant attributes the
+        # ones that differentiate sellable versions - storage, memory, capacity,
+        # colour - which is exactly what a buyer states as a requirement. Under
+        # plain frequency they lost ties alphabetically and `storage_gb` fell off
+        # the end of the phone list, so "a phone with 256GB" had no name to use.
+        #
+        # Distinct values come next, in two steps. A name every product answers
+        # the same way is last, because it can never narrow anything: every
+        # phone records `operating_system` and they all say the same thing.
+        # Among the names that *do* vary, **fewer** distinct values ranks
+        # higher - a buyer filters on `network_5g` or `anc`, which are yes or
+        # no, far more often than on `battery_mah`, which is a different number
+        # on every row and is read rather than searched.
+        def order(slug: str) -> list[str]:
+            variants = on_variants.get(slug, set())
+            distinct = values.get(slug, {})
+            return [
+                name
+                for name, _ in sorted(
+                    counts[slug].items(),
+                    key=lambda kv: (
+                        kv[0] not in variants,
+                        len(distinct.get(kv[0], ())) <= 1,
+                        len(distinct.get(kv[0], ())),
+                        -kv[1],
+                        kv[0],
+                    ),
+                )
+            ]
+
+        return {slug: tuple(order(slug)) for slug in sorted(counts)}
 
     def get_category_by_slug(self, merchant_id: uuid.UUID, slug: str) -> Category | None:
         return self._session.execute(
