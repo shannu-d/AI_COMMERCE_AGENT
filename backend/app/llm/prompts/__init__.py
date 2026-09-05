@@ -39,10 +39,22 @@ PROMPT_DIR = Path(__file__).resolve().parent
 #: cannot arrive unversioned.
 PROMPT_VERSIONS: Mapping[str, str] = MappingProxyType(
     {
+        # 1.3.0 — rule 9: a stated requirement belongs in the search tool's
+        # `attributes`, which eliminates, not in `search_query`, which only
+        # ranks. Added after a live turn answered "find noise-cancelling
+        # earbuds" with three products that have no ANC, having put the
+        # requirement in the free-text field. Rule 5 gained the other half:
+        # never describe a product as having a property the tool did not
+        # report. The rules were renumbered to close a gap at 12 left by 1.1.0;
+        # the numbers cited in these notes are the current ones.
+        # 1.2.0 — hardened the no-match case: rule 18 forbids naming any
+        # product or price when the tools returned none, after a live turn
+        # fabricated two earbud names and prices for a request nothing in the
+        # catalogue satisfied. Rule 6 gained the same point in one line.
         # 1.1.0 — added the "Writing your reply" section (brief prose, no tables
         # or attribute dumps; recommended products render as cards in a separate
         # panel). See ADR-020.
-        "system_prompt": "1.1.0",
+        "system_prompt": "1.3.0",
         "intent_extraction": "1.0.0",
     }
 )

@@ -102,6 +102,20 @@ def test_the_editorial_comment_is_not_sent_to_the_model(name: str) -> None:
         ("brief prose", "Be brief"),
         ("no tables in prose", "Never put a table, a SKU list, or a dump of product attributes"),
         ("products render as cards", "own card"),
+        # Added at prompt 1.2.0, after a live turn invented two products for a
+        # request the catalogue could not satisfy. Asserted here so the rule
+        # cannot be dropped silently; this says the *instruction* exists, never
+        # that the model obeys it (see the module docstring).
+        ("no products means no names", "If the tools returned no products, name no products"),
+        # Added at prompt 1.3.0, after a live turn answered "find
+        # noise-cancelling earbuds" with three products that have none. The
+        # structural half of that fix is in the tool schema, not here — see
+        # `test_the_search_schema_distinguishes_a_requirement_from_a_wish`.
+        ("requirement is a filter", "State a requirement as a filter, not as free text"),
+        (
+            "no unreported property",
+            "Never describe a product as having a property the tool did not",
+        ),
     ],
 )
 def test_the_system_prompt_states_each_behavioural_rule(subject: str, phrase: str) -> None:

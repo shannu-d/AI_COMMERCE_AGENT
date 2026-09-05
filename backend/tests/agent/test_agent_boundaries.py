@@ -207,3 +207,26 @@ def test_the_tool_payload_carries_real_category_slugs() -> None:
     category = payload[0]["input_schema"]["properties"]["category"]
 
     assert set(category["enum"]) == {"phone_case", "charger", None}
+
+
+def test_the_runtime_sends_the_merchants_attribute_vocabulary(context) -> None:
+    """A requirement the model cannot name is one it states as free text.
+
+    Free text is a relevance signal and eliminates nothing (R§9), which is how a
+    live turn answered "find noise-cancelling earbuds" with three products that
+    have no ANC. The vocabulary is read per turn from the merchant's rows, so it
+    cannot drift from the catalog — and it is asserted on the *payload*, because
+    a vocabulary the runtime never sends is a vocabulary the model never has.
+    """
+    from app.agent.registry import build_registry
+    from app.agent.runtime import AgentRuntime
+    from tests.agent.conftest import SESSION_ID, FakeClient, text_reply
+
+    client = FakeClient(text_reply("Here they are."))
+    AgentRuntime(client, build_registry(), context).run_turn(SESSION_ID, "noise cancelling earbuds")
+
+    search = next(tool for tool in client.last["tools"] if tool["name"] == "search_catalog")
+    description = search["input_schema"]["properties"]["attributes"]["description"]
+
+    assert "Attribute names by category" in description
+    assert "earbuds: anc" in description

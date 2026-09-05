@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.db.models import Category, Product, ProductRelationship
+from app.db.models import Category, Product, ProductRelationship, ProductVariant
 
 
 class ProductRepository:
@@ -82,6 +82,45 @@ class ProductRepository:
             .scalars()
             .all()
         )
+
+    def attribute_keys_by_category(self, merchant_id: uuid.UUID) -> dict[str, tuple[str, ...]]:
+        """The attribute names this merchant actually uses, per category slug.
+
+        The same argument as `list_categories` (ADR-009, open question B2), one
+        level down. The model is told which categories exist so it cannot name
+        one that does not; without this it is told nothing at all about the
+        `attributes` field, and a requirement it wants to state as a filter has
+        to be guessed at - "noise_cancelling" when the catalogue records `anc`.
+        A guessed key does not fail loudly: a missing attribute always fails
+        (`app.attributes`), so the search silently returns nothing.
+
+        Read from the rows rather than from a hand-kept list, because the
+        merchant dashboard can add an attribute at any time and a list would go
+        stale in exactly the direction that hides products.
+
+        Keys are unioned across the product and its variants, because that is
+        the view the ranking engine eliminates on (`VariantView.merged_attributes`).
+        """
+        rows = self._session.execute(
+            select(Category.slug, Product.attributes, ProductVariant.attributes)
+            .select_from(Category)
+            .join(Product, Product.category_id == Category.id)
+            .join(ProductVariant, ProductVariant.product_id == Product.id)
+            .where(
+                Category.merchant_id == merchant_id,
+                Product.merchant_id == merchant_id,
+                Product.is_active.is_(True),
+                ProductVariant.is_active.is_(True),
+            )
+        ).all()
+
+        keys: dict[str, set[str]] = {}
+        for slug, product_attributes, variant_attributes in rows:
+            bucket = keys.setdefault(slug, set())
+            bucket.update(product_attributes or {})
+            bucket.update(variant_attributes or {})
+        # Sorted, so the payload sent to the model is byte-stable between runs.
+        return {slug: tuple(sorted(names)) for slug, names in sorted(keys.items())}
 
     def get_category_by_slug(self, merchant_id: uuid.UUID, slug: str) -> Category | None:
         return self._session.execute(

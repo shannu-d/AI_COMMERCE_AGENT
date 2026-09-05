@@ -236,6 +236,35 @@ def test_list_categories_is_the_vocabulary_the_search_tool_is_limited_to(
     assert not catalog.category_exists(merchant_id, "hoverboards")
 
 
+def test_the_attribute_vocabulary_is_read_from_the_merchants_own_rows(
+    catalog: CatalogService, merchant_id: uuid.UUID
+) -> None:
+    """The same argument as the category enum, one level down.
+
+    The model is told which attribute names each category uses so a stated
+    requirement can be a filter rather than a guess. A guess is worse than a
+    refusal here: a missing attribute always fails (`app.attributes`), so
+    `noise_cancelling` where the catalogue records `anc` eliminates every
+    product and returns nothing at all.
+    """
+    vocabulary = catalog.attribute_vocabulary(merchant_id)
+
+    # Product-level and variant-level names are unioned, because that is the
+    # view the ranking engine eliminates on.
+    assert "anc" in vocabulary["earbuds"], "a product attribute"
+    assert "color" in vocabulary["earbuds"], "a variant attribute"
+    assert "wattage" in vocabulary["charger"]
+    assert "material" in vocabulary["phone_case"]
+
+    # Scoped to the category, not pooled: a charger's `wattage` must not become
+    # a name the model offers for a t-shirt.
+    assert "wattage" not in vocabulary.get("t_shirt", ())
+    assert "anc" not in vocabulary.get("phone_case", ())
+
+    for names in vocabulary.values():
+        assert names == tuple(sorted(names)), "must be byte-stable between runs"
+
+
 # --------------------------------------------------------------------------
 # 4. SKU retrieval  /  5. Authoritative price
 # --------------------------------------------------------------------------

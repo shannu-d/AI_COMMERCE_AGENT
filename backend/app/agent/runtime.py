@@ -192,6 +192,15 @@ class AgentRuntime:
         # handler would be a capability the model plans around and cannot use.
         tool_payload = build_tool_definitions(
             category_slugs=self._context.catalog.category_slugs(self._context.merchant_id),
+            # The attribute names each category actually uses, for the same
+            # reason the slugs are enumerated: a requirement the model cannot
+            # name is a requirement it states as free text, and free text is a
+            # relevance signal that eliminates nothing (R§9). A guessed name is
+            # worse still - a missing attribute always fails, so it removes
+            # every product silently.
+            attribute_vocabulary=self._context.catalog.attribute_vocabulary(
+                self._context.merchant_id
+            ),
             names=self._registry.names(),
         )
 

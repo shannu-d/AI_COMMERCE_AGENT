@@ -142,6 +142,16 @@ class CatalogService:
         """
         return tuple(c.slug for c in self._products.list_categories(merchant_id))
 
+    def attribute_vocabulary(self, merchant_id: uuid.UUID) -> dict[str, tuple[str, ...]]:
+        """Category slug to the attribute names that category actually uses.
+
+        Injected into the search tool's `attributes` parameter so the model can
+        state a requirement as a filter rather than as free text. Not cached:
+        the merchant dashboard can add an attribute between two turns, and a
+        stale vocabulary would hide the product that has it.
+        """
+        return self._products.attribute_keys_by_category(merchant_id)
+
     def category_exists(self, merchant_id: uuid.UUID, slug: str) -> bool:
         return self._products.get_category_by_slug(merchant_id, slug) is not None
 

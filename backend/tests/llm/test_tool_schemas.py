@@ -166,6 +166,96 @@ def test_a_tool_without_a_category_is_untouched_by_the_injection() -> None:
     assert "category" not in payload[0]["input_schema"]["properties"]
 
 
+def test_the_search_schema_distinguishes_a_requirement_from_a_wish() -> None:
+    """The structural half of the 1.3.0 fix.
+
+    A live turn answered "find noise-cancelling earbuds" with three products
+    that have no ANC, because the requirement went into `search_query`. It went
+    there because `attributes` reached the model as a bare object titled
+    "Attributes", with nothing saying it is the field that eliminates. Both
+    descriptions now say which is which, and this asserts they do — the prompt
+    carries the same rule, but the prompt is not a control (L§29, ADR-009).
+    """
+    properties = build_tool_definitions(names=["search_catalog"])[0]["input_schema"]["properties"]
+
+    attributes = properties["attributes"]["description"]
+    assert "REQUIREMENT" in attributes
+    assert "eliminate" in attributes
+    # The three predicate forms `app.attributes` implements, and no others.
+    assert "minimum_<name>" in attributes
+    assert "maximum_<name>" in attributes
+
+    query = properties["search_query"]["description"]
+    assert "RELEVANCE" in query
+    assert "never" in query and "removes" in query
+
+
+def test_attribute_names_are_enumerated_from_the_merchants_own_rows() -> None:
+    """The same argument as the category enum (ADR-009, B2), one level down.
+
+    A guessed attribute name does not fail loudly: a missing attribute always
+    fails, so `noise_cancelling` where the catalogue records `anc` eliminates
+    every product and returns nothing. Listing the real names is what makes the
+    model's choice informed rather than lucky.
+    """
+    vocabulary = {"earbuds": ("anc", "battery_hours"), "charger": ("wattage",)}
+    payload = build_tool_definitions(
+        category_slugs=CATEGORY_SLUGS,
+        attribute_vocabulary=vocabulary,
+        names=["search_catalog"],
+    )
+    description = payload[0]["input_schema"]["properties"]["attributes"]["description"]
+
+    assert "earbuds: anc, battery_hours" in description
+    assert "charger: wattage" in description
+
+
+def test_without_a_vocabulary_the_attributes_description_still_stands_alone() -> None:
+    """The instruction is not conditional on the injection.
+
+    A merchant with no attributes recorded anywhere would otherwise leave the
+    field undocumented again, which is the exact state that caused the failure.
+    """
+    payload = build_tool_definitions(names=["search_catalog"])
+    description = payload[0]["input_schema"]["properties"]["attributes"]["description"]
+
+    assert "REQUIREMENT" in description
+    assert "Attribute names by category" not in description
+
+
+def test_the_currency_is_enumerated_rather_than_left_open() -> None:
+    """Found by the same live probe as the 1.3.0 fix, one field over.
+
+    `currency` reached the model as a bare optional string, and the model filled
+    it in unasked: a live call to `search_catalog` carried `"USD"`, which
+    `_supported` then refused — failing an otherwise correct search on a value
+    the buyer never mentioned. ADR-008 is explicit that a currency mismatch is
+    an error rather than something to convert, so the right fix is to make the
+    wrong value unavailable, not merely rejected.
+
+    Unconditional, unlike the category enum: this is an application constant,
+    not merchant data. The enum informs the model; the validator still decides,
+    which `test_an_unsupported_currency_is_refused` asserts separately — a
+    schema constraint the provider chose not to honour must not become the only
+    thing between a wrong currency and a query.
+    """
+    from app.llm.schemas import SUPPORTED_CURRENCIES
+
+    for name in ("search_catalog", "get_compatible_products"):
+        currency = build_tool_definitions(names=[name])[0]["input_schema"]["properties"]["currency"]
+
+        assert currency["enum"] == [*sorted(SUPPORTED_CURRENCIES), None]
+        assert "anyOf" not in currency
+
+
+def test_a_tool_without_attributes_is_untouched_by_the_vocabulary() -> None:
+    payload = build_tool_definitions(
+        attribute_vocabulary={"earbuds": ("anc",)}, names=["check_inventory"]
+    )
+
+    assert "attributes" not in payload[0]["input_schema"]["properties"]
+
+
 def test_the_payload_is_stable_between_runs() -> None:
     """A byte-stable payload is a cacheable one, and a diffable one."""
     first = build_tool_definitions(category_slugs=CATEGORY_SLUGS)

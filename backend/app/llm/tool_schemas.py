@@ -31,7 +31,7 @@ constraint the buyer stated, never a claim about what something costs.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
@@ -109,7 +109,16 @@ class _ToolArgs(BaseModel):
 
 
 class _CurrencyMixin(_ToolArgs):
-    currency: str | None = None
+    #: Enumerated in the schema as well as validated, for the same reason the
+    #: category is (ADR-009, B2). Left as a bare `str | None`, a model fills it
+    #: in from its own assumptions — a live turn volunteered `"USD"` — and the
+    #: validator then refuses the whole call, so a correct search fails on a
+    #: field the buyer never mentioned. The enum makes the wrong value
+    #: unavailable rather than merely rejected.
+    currency: str | None = Field(
+        default=None,
+        description="Omit unless the buyer named a currency; the merchant prices in one only.",
+    )
 
     @field_validator("currency")
     @classmethod
@@ -129,16 +138,62 @@ class _CurrencyMixin(_ToolArgs):
 
 
 class SearchCatalogArgs(_CurrencyMixin):
-    """A§18's own input list: category, search_query, max_price, currency, attributes."""
+    """A§18's own input list: category, search_query, max_price, currency, attributes.
+
+    **`attributes` eliminates; `search_query` only ranks.** That is the whole
+    difference between "I need noise cancellation" and "ideally black", and it
+    is invisible unless the schema says so — which is why every field here now
+    carries a `description`. A property the model is shown as a bare `object`
+    titled "Attributes" is a property it will not use, and a live turn failed
+    exactly there: "find noise-cancelling earbuds" put the requirement in
+    `search_query`, which R§9 defines as a relevance signal and never a filter,
+    so nothing was eliminated and three products without ANC came back.
+    """
 
     #: Constrained to real slugs at build time (ADR-009, open question B2), so
     #: the model cannot name a category that does not exist.
-    category: str | None = None
-    search_query: str | None = Field(default=None, max_length=200)
-    max_price: Amount | None = None
+    category: str | None = Field(
+        default=None,
+        description=(
+            "The category to search, from the enumerated list. Omit it only "
+            "when the buyer has not indicated a product type."
+        ),
+    )
+    search_query: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Free text describing what the buyer is looking for. This is a "
+            "RELEVANCE signal only: it influences the ordering and never "
+            "removes a product. Put wishes here — 'ideally slim', 'something "
+            "smart'. A requirement placed here alone is silently ignored as a "
+            "filter; state requirements in `attributes`."
+        ),
+    )
+    max_price: Amount | None = Field(
+        default=None,
+        description=(
+            "A hard ceiling in major units, as a decimal string such as "
+            "'1500.00'. Products above it are eliminated, never merely ranked "
+            "lower."
+        ),
+    )
     #: Structural attributes only — "material": "leather". A§18: "attributes
-    #: have valid structure".
-    attributes: dict[str, str | int | bool] = Field(default_factory=dict)
+    #: have valid structure". The usable names are injected per category at
+    #: build time from the merchant's own rows (`_inject_attribute_vocabulary`).
+    attributes: dict[str, str | int | bool] = Field(
+        default_factory=dict,
+        description=(
+            "Attributes the buyer stated as REQUIREMENTS. These eliminate: a "
+            "product that does not satisfy every entry is removed before "
+            "ranking. 'I need noise cancellation' is {'anc': true}; 'at least "
+            "30W' is {'minimum_wattage': 30}. Three forms only: "
+            "'minimum_<name>' (>=), 'maximum_<name>' (<=), bare '<name>' "
+            "(equals). Use only the names listed for the category you are "
+            "searching — an unrecorded name matches nothing. For a mere "
+            "preference leave this empty and use search_query."
+        ),
+    )
 
     _coerce = field_validator("max_price", mode="before")(_money_from_model)
 
@@ -258,15 +313,28 @@ class ToolDefinition:
     #: decision, not this module's.
     milestone: str
 
-    def json_schema(self, *, category_slugs: Sequence[str] | None = None) -> dict[str, Any]:
-        """The JSON Schema sent to the model, with real category slugs injected."""
+    def json_schema(
+        self,
+        *,
+        category_slugs: Sequence[str] | None = None,
+        attribute_vocabulary: Mapping[str, Sequence[str]] | None = None,
+    ) -> dict[str, Any]:
+        """The JSON Schema sent to the model, with the merchant's own vocabulary in it."""
         schema = self.arguments.model_json_schema()
         schema.pop("title", None)
+        _constrain_currency(schema)
         if category_slugs:
             _inject_category_enum(schema, category_slugs)
+        if attribute_vocabulary:
+            _inject_attribute_vocabulary(schema, attribute_vocabulary)
         return schema
 
-    def to_tool_definition(self, *, category_slugs: Sequence[str] | None = None) -> dict[str, Any]:
+    def to_tool_definition(
+        self,
+        *,
+        category_slugs: Sequence[str] | None = None,
+        attribute_vocabulary: Mapping[str, Sequence[str]] | None = None,
+    ) -> dict[str, Any]:
         """The provider-neutral tool definition.
 
         Deliberately *not* the provider's wire shape. Translating to what Groq's
@@ -277,7 +345,10 @@ class ToolDefinition:
         return {
             "name": self.name,
             "description": self.description,
-            "input_schema": self.json_schema(category_slugs=category_slugs),
+            "input_schema": self.json_schema(
+                category_slugs=category_slugs,
+                attribute_vocabulary=attribute_vocabulary,
+            ),
         }
 
 
@@ -296,6 +367,56 @@ def _inject_category_enum(schema: dict[str, Any], slugs: Sequence[str]) -> None:
     prop.pop("anyOf", None)
     prop.pop("type", None)
     prop["enum"] = [*slugs, None]
+
+
+def _constrain_currency(schema: dict[str, Any]) -> None:
+    """Enumerate the currencies the application accepts.
+
+    Unconditional, because unlike the categories this is not merchant data —
+    `SUPPORTED_CURRENCIES` is an application constant, and ADR-008 is explicit
+    that a mismatch is an error rather than something to convert.
+
+    Without it the property reaches the model as a bare optional string, and a
+    model filling in a field it was never asked about is a model volunteering
+    `"USD"` — which `_supported` then refuses, failing an otherwise correct
+    search on a value the buyer never mentioned.
+    """
+    prop = (schema.get("properties") or {}).get("currency")
+    if prop is None:
+        return
+    prop.pop("anyOf", None)
+    prop.pop("type", None)
+    prop["enum"] = [*sorted(SUPPORTED_CURRENCIES), None]
+
+
+def _inject_attribute_vocabulary(
+    schema: dict[str, Any], vocabulary: Mapping[str, Sequence[str]]
+) -> None:
+    """List the merchant's real attribute names, per category, on `attributes`.
+
+    The same argument as `_inject_category_enum`, one level down. A category the
+    model names is checked against the merchant's slugs; an *attribute* it names
+    was, until this, checked against nothing it could see. And the failure is
+    silent in the worst direction: a missing attribute always fails
+    (`app.attributes`), so a plausible guess — `noise_cancelling` where the
+    catalogue records `anc` — eliminates every product rather than raising.
+
+    A description rather than an enum, because the values matter as much as the
+    keys and because the three predicate forms (`minimum_`, `maximum_`, bare)
+    are not enumerable. The schema still validates the *shape*; this only makes
+    the choice informed.
+
+    Kept to one line per category and to names alone: this is sent on every
+    turn, and L§27 warns against paying for context nobody uses.
+    """
+    prop = (schema.get("properties") or {}).get("attributes")
+    if prop is None:
+        return
+    lines = "; ".join(f"{slug}: {', '.join(names)}" for slug, names in vocabulary.items() if names)
+    if not lines:
+        return
+    existing = prop.get("description", "")
+    prop["description"] = f"{existing} Attribute names by category — {lines}.".strip()
 
 
 TOOL_SCHEMAS: dict[str, ToolDefinition] = {
@@ -413,21 +534,32 @@ READ_ONLY_TOOL_NAMES: tuple[str, ...] = (
 def build_tool_definitions(
     *,
     category_slugs: Sequence[str] = (),
+    attribute_vocabulary: Mapping[str, Sequence[str]] | None = None,
     names: Sequence[str] | None = None,
 ) -> list[dict[str, Any]]:
     """The tool payload for one conversation, in Anthropic's format.
 
     `category_slugs` come from the merchant's actual categories and are injected
-    into every `category` parameter as an enum. `names` selects a subset — which
-    is how M5 exposes the read-only tools before the cart exists — and is
-    validated, so a typo cannot silently offer nothing.
+    into every `category` parameter as an enum. `attribute_vocabulary` is the
+    same idea for `attributes`: the names each category actually uses, so a
+    requirement can be stated as a filter instead of guessed at. Both are read
+    from the database at call time, so neither can drift from the catalog the
+    way a hard-coded list would.
+
+    `names` selects a subset — which is how M5 exposes the read-only tools
+    before the cart exists — and is validated, so a typo cannot silently offer
+    nothing.
     """
     selected = EXPOSED_TOOL_NAMES if names is None else tuple(names)
     unknown = [name for name in selected if name not in TOOL_SCHEMAS]
     if unknown:
         raise KeyError(f"unknown tool(s): {sorted(unknown)}")
     return [
-        TOOL_SCHEMAS[name].to_tool_definition(category_slugs=category_slugs) for name in selected
+        TOOL_SCHEMAS[name].to_tool_definition(
+            category_slugs=category_slugs,
+            attribute_vocabulary=attribute_vocabulary,
+        )
+        for name in selected
     ]
 
 
