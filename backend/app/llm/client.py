@@ -218,7 +218,14 @@ class GroqClient:
                 return self._client.chat.completions.create(**payload)
             except Exception as exc:  # mapped immediately; never re-raised raw
                 error = _map_exception(exc)
-                if not error.is_transient or attempt >= self._max_retries:
+                # A wait longer than we are willing to wait is not a retry
+                # worth making. Groq states seconds for the per-minute bucket
+                # and *twenty minutes* when the daily token quota is gone; in
+                # the second case, sleeping the 45-second cap and asking again
+                # only turns one honest failure into a buyer staring at a dead
+                # screen for a minute and a half before getting it anyway.
+                hopeless = (getattr(error, "retry_after", None) or 0) > MAX_RETRY_AFTER_SECONDS
+                if not error.is_transient or hopeless or attempt >= self._max_retries:
                     logger.warning(
                         "llm call failed",
                         extra={
@@ -238,10 +245,10 @@ class GroqClient:
                 # sub-second backoff will ever clear a window that refills on
                 # the minute, so the hint is obeyed rather than guessed past.
                 hinted = getattr(error, "retry_after", None)
-                if hinted is not None:
+                if hinted is not None:  # never above the cap: `hopeless` returned already
                     # A shade over, so the retry lands after the refill and not
                     # on the same instant the provider was describing.
-                    delay = min(hinted + 0.25, MAX_RETRY_AFTER_SECONDS)
+                    delay = hinted + 0.25
                     logger.info(
                         "waiting out a rate limit",
                         extra={"retry_after": hinted, "sleeping": delay},

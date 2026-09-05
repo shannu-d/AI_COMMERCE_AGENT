@@ -99,7 +99,11 @@ class AgentRuntime:
         max_tokens: int = DEFAULT_MAX_TOKENS,
         history_turns: int = DEFAULT_HISTORY_TURNS,
         trace_enabled: bool = False,
-        top_k: int = 3,
+        # Mirrors `Settings.ranking_top_k`'s default, and is overridden by it at
+        # the only production construction site (`api/routes/chat.py`). Kept in
+        # step so a caller that omits it does not silently get a different answer
+        # from the running application.
+        top_k: int = 9,
     ) -> None:
         self._client = client
         self._registry = registry

@@ -28,7 +28,6 @@ import pytest
 from app.config import BACKEND_DIR
 from app.llm.client import (
     DEFAULT_MAX_TOKENS,
-    MAX_RETRY_AFTER_SECONDS,
     GroqClient,
     LLMClient,
     _to_groq_tool,
@@ -380,19 +379,28 @@ def test_a_rate_limit_hint_in_the_body_is_read_when_there_is_no_header() -> None
     assert slept == [pytest.approx(8.772)]
 
 
-def test_a_rate_limit_wait_is_still_bounded() -> None:
-    """L§46 either way: an hour-long hint is a failed turn, not an hour's wait."""
+def test_a_wait_longer_than_the_cap_fails_now_rather_than_later() -> None:
+    """L§46 either way: an hour-long hint is a failed turn, not an hour's wait.
+
+    And not a capped wait followed by the same refusal, either. Groq answers in
+    seconds while the per-minute bucket refills, and in *twenty minutes* once the
+    daily token quota is gone. Sleeping the cap and asking again cannot help in
+    the second case — it only makes the buyer wait 90 seconds for the failure
+    they were going to get anyway.
+    """
     slept: list[float] = []
-    client, _ = make_client(
+    client, sdk = make_client(
         _rate_limited(retry_after="3600"),
         _reply("ok"),
         max_retries=2,
         sleep=slept.append,
     )
 
-    client.complete(system="s", messages=HELLO)
+    with pytest.raises(LLMRateLimitError):
+        client.complete(system="s", messages=HELLO)
 
-    assert slept == [MAX_RETRY_AFTER_SECONDS]
+    assert slept == []
+    assert len(sdk.payloads) == 1
 
 
 def test_a_rate_limit_with_no_hint_falls_back_to_the_exponential_backoff() -> None:

@@ -79,8 +79,16 @@ class Settings(BaseSettings):
     # permanent business truths. The profiles themselves are data in
     # `app/ranking/weights.py`; this chooses which one runs by default.
     ranking_profile: str = DEFAULT_PROFILE_NAME
-    # RULE 11: "a small number of strong candidates, preferably Top 3".
-    ranking_top_k: int = Field(default=3, ge=1, le=20)
+    # How many ranked candidates a turn may return, per requested product type.
+    #
+    # RULE 11 says "a small number of strong candidates, preferably Top 3", and
+    # 3 was the default until the owner raised it to 9 on 2026-09-05
+    # (deviations.md D12). Nothing about the ranking changes: this slices an
+    # already-ordered list, so the first three are the same three they always
+    # were and the next six are the next six. It cannot manufacture results
+    # either — a category holding four compatible in-stock variants still
+    # answers with four.
+    ranking_top_k: int = Field(default=9, ge=1, le=20)
 
     # -- Merchant scoping (ADR-002) -----------------------------------------
     # Resolved server-side and injected into every service call. Never read from

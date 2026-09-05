@@ -322,9 +322,22 @@ def results_ranked_consistently(
 
 
 def results_count(obs: Observation, facts: CatalogFacts, params: dict[str, Any]) -> str | None:
+    """How many rows a turn returned, against a floor and a ceiling.
+
+    `"max": "configured_top_k"` resolves to `Settings.ranking_top_k` rather than
+    to a number in the case file. RULE 11's cap is a **deployment setting**, not
+    a business rule: the owner raised it from 3 to 9 on 2026-09-05, and a case
+    file carrying the literal 3 would have failed the application for obeying
+    its own configuration. What the case actually means is "no more than the
+    engine was told to return", and that is what it now says.
+    """
     rows = obs.results_of()
     low = params.get("min")
     high = params.get("max")
+    if high == "configured_top_k":
+        from app.config import get_settings
+
+        high = get_settings().ranking_top_k
     if low is not None and len(rows) < low:
         return _fail(f"expected at least {low} results, got {len(rows)}")
     if high is not None and len(rows) > high:

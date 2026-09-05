@@ -1241,7 +1241,11 @@ for _id, _prompt, _slug, _required in _SPECS:
 # ==========================================================================
 
 RANKED = {"check": "results_ranked_consistently"}
-TOP_K = {"check": "results_count", "max": 3}
+# Resolved against Settings.ranking_top_k when the case runs, not frozen here:
+# the cap is configuration (the owner raised it to 9 on 2026-09-05), and a
+# literal would make this suite fail the application for honouring its own
+# settings. See `results_count` in graders.py.
+TOP_K = {"check": "results_count", "max": "configured_top_k"}
 
 _PREFERENCES = [
     (
