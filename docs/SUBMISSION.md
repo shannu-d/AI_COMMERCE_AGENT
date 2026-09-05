@@ -57,6 +57,17 @@ transactable by an AI buyer, end to end". This project does the second, two ways
 5. `authorize_and_pay(quote_reference, authorized_amount="1.00")` → `{"status": "rejected", "code": "TOTAL_CHANGED"}` — the graceful failure, no charge.
 6. `get_order_status(order_id)` → `paid` becomes true only after the webhook.
 
+## 3a. Evidence in this repository
+
+`pitch-assets/` holds 23 screenshots of the running system, in demo order: the storefront, the
+agent answering and its grounded recommendations, the merchant dashboard, the approval step, the
+Razorpay test-mode checkout including OTP, the confirmed payment, and the Razorpay dashboard
+showing the same transaction from the provider's side.
+
+The two walkthrough recordings (`website-demo.mp4`, `razorpay-dashboard-logs.mp4`) are **not in
+this repository** — the first is 129 MB and GitHub refuses any file above 100 MB. They are supplied
+alongside the submission.
+
 ## 4. Architecture (where authority lives)
 
 ```
@@ -84,6 +95,16 @@ Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, Alembic. LLM: **Groq** (`opena
 
 - **"Growth" is conversion + upsell, not automation** — no campaign orchestrator, abandoned-cart recovery, or personalisation loop.
 - **The MCP server is unauthenticated and single-merchant** — money still can't move without the `authorize_and_pay` mandate + Policy Engine, but a real deployment needs per-buyer AP2 mandates.
+- **Stock is not decremented when an order is paid.** Inventory eliminates at search and is
+  re-read under `SELECT … FOR UPDATE` inside the order transaction, so nothing oversells against a
+  stale read — but no code reduces `inventory.quantity` after `PAYMENT_CONFIRMED`, and
+  `reserved_quantity` stays 0. ADR-005 defers the reservation lifecycle (open question C5).
+  Measured: `SPRO-IP16-1` has 3 units across confirmed orders and still shows its seeded 40.
+- **Buyer order history is thin.** `/account` lists a buyer's real orders (ownership derived from
+  `orders.session_id → sessions.user_id`), but the response schema it reuses carries no
+  `created_at` and no line items, so the page shows an order id, a status and a total — not the
+  date or what was bought. The data is in `orders`/`order_items`; the buyer-facing schema does not
+  expose it.
 - **Not deployed** — runs locally; the webhook needs a tunnel (ngrok, documented).
 - **Groq free tier ≈ 1 turn / 1–2 min** — a multi-turn live demo will rate-limit; the failure path is graceful but slow.
 - Full ACP / AP2 / x402 protocol support is scoped out; `authorize_and_pay` is the mandate shape those formalise.

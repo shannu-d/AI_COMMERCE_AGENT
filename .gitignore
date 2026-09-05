@@ -9,6 +9,15 @@
 *.key
 secrets/
 
+# ---------------------------------------------------------------------------
+# Demo media. The screenshots in pitch-assets/ are committed; the walkthrough
+# videos are not — website-demo.mp4 is 129 MB and GitHub rejects any file over
+# 100 MB outright, so a push carrying it fails and has to be undone by
+# rewriting history. The videos are shared out of band; see docs/SUBMISSION.md.
+# ---------------------------------------------------------------------------
+pitch-assets/*.mp4
+pitch-assets/*.mov
+
 # Database dumps. A dump of this database contains argon2 password digests and
 # live bearer tokens (`users`, `auth_tokens`), so it is a credential store even
 # though it is not a key file. Never commit one — see backups/README.md.
