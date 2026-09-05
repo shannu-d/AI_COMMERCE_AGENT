@@ -18,11 +18,15 @@ from __future__ import annotations
 
 import pathlib
 import re
+import uuid
+from decimal import Decimal
+from typing import Any
 
 import pytest
 
 from app.agent.errors import API_ERROR_CODES
 from app.config import REPO_ROOT
+from app.domain.cart import CartItemView, CartStatus, CartView
 
 SCHEMAS_TS = REPO_ROOT / "frontend" / "src" / "api" / "schemas.ts"
 
@@ -80,6 +84,64 @@ def _strip_comments(text: str) -> str:
             out.append(text[i])
             i += 1
     return "".join(out)
+
+
+def _cart_schema_fields() -> list[str]:
+    """The keys the frontend's `Cart` Zod object requires."""
+    source = SCHEMAS_TS.read_text(encoding="utf-8")
+    pattern = r"export const Cart = z\.object\(\{(.*?)\n\}\);"
+    match = re.search(pattern, source, re.DOTALL)
+    assert match is not None, "Cart object not found in schemas.ts"
+    return re.findall(r"^\s{2}(\w+):", match.group(1), re.MULTILINE)
+
+
+def test_a_serialized_cart_carries_every_field_the_frontend_requires() -> None:
+    """One cart reaches the browser two ways, and both must satisfy one schema.
+
+    `/api/cart` returns it and a chat turn embeds it. When `status` and an empty
+    `price_changes` were patched on by the REST response model rather than
+    emitted by `serialize_cart`, every chat turn made by a buyer who had
+    anything in their cart failed the browser's schema — a turn the backend had
+    completed, lost at the parse boundary with a `MALFORMED_RESPONSE`.
+
+    Zod is not lenient about a missing key, so this asserts presence on a cart
+    with **no** drift: the empty case is the one that was wrong.
+    """
+    from app.agent.tools.cart import serialize_cart
+
+    payload = serialize_cart(_a_cart_view())
+
+    missing = [field for field in _cart_schema_fields() if field not in payload]
+    assert not missing, f"serialize_cart omits {missing}, which the frontend requires"
+
+
+def _a_cart_view() -> Any:
+    """A minimal `CartView` with one line and no price drift."""
+    return CartView(
+        id=uuid.uuid4(),
+        session_id=uuid.uuid4(),
+        status=CartStatus.ACTIVE,
+        version=1,
+        currency="INR",
+        subtotal=Decimal("999.00"),
+        total=Decimal("999.00"),
+        items=(
+            CartItemView(
+                id=uuid.uuid4(),
+                variant_id=uuid.uuid4(),
+                product_id=uuid.uuid4(),
+                sku="CASE-IP16-BLK",
+                product_name="AeroCase Pro",
+                variant_name="Black",
+                quantity=1,
+                unit_price=Decimal("999.00"),
+                line_total=Decimal("999.00"),
+                currency="INR",
+                stock_status="IN_STOCK",
+                available=True,
+            ),
+        ),
+    )
 
 
 def test_no_secret_value_is_hardcoded_in_frontend_source() -> None:

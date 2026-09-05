@@ -53,10 +53,19 @@ def serialize_cart(cart: Any) -> dict[str, Any]:
     Money is a fixed-scale string throughout, and `cart_version` is present
     because it is what an approval binds to — a client that renders a total
     without it cannot tell a stale confirmation screen from a current one.
+
+    **Every field the frontend's `Cart` schema requires is emitted here, always,
+    including `price_changes` when there is no drift.** One cart reaches the
+    browser two ways — embedded in a chat turn and returned by `/api/cart` — and
+    the two must be the same object. When `status` and the empty `price_changes`
+    were added by the REST response model instead, a chat turn made by a buyer
+    who had anything in their cart failed the browser's schema outright, which
+    is a working turn lost to a shape.
     """
     payload: dict[str, Any] = {
         "cart_id": str(cart.id),
         "cart_version": cart.version,
+        "status": cart.status.value,
         "currency": cart.currency,
         "subtotal": money(cart.subtotal),
         "total": money(cart.total),
@@ -77,6 +86,10 @@ def serialize_cart(cart: Any) -> dict[str, Any]:
             }
             for item in cart.items
         ],
+        # Always present, empty in the normal case: an optional array is a
+        # field a client has to defend against, and this one is read on the
+        # recovery path where a defect is least welcome (ADR-014).
+        "price_changes": [],
     }
     if cart.drift:
         # ADR-014: drift is reported in the buyer's terms, both directions. A

@@ -119,12 +119,13 @@ class CartResponse(BaseModel):
         same function the agent's `propose_cart` returns and the chat response
         embeds, so a cart looks identical however the buyer reached it. Two
         renderings of one cart would eventually disagree about a total.
+
+        Nothing is added on top of that payload here. Fields patched in at this
+        one call site were exactly what the chat response then lacked.
         """
         from app.agent.tools.cart import serialize_cart
 
         payload: dict[str, Any] = serialize_cart(cart)
-        payload["status"] = cart.status.value
-        payload.setdefault("price_changes", [])
         return cls.model_validate(payload)
 
 
