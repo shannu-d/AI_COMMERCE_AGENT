@@ -65,6 +65,7 @@ Each file has exactly one job. Keep them from drifting into each other.
 | `docs/decisions/` | Architectural decisions and their rationale. |
 | `docs/notes/deviations.md` | Implementation deviations, ambiguities, and their resolutions. |
 | `docs/notes/open-questions-status.md` | Open questions and their current status. |
+| `docs/development-log/` | Reconstructed engineering journal, day by day. **A record of how the work happened, not a statement of current state** — read its `DEVELOPMENT-HISTORY-AUDIT.md` for what is evidence and what is inference. |
 | `PROGRESS.md` | High-level human-readable snapshot only. **Must not contradict `PROJECT_STATE.md`.** |
 | `architecture.md` | The specification. **Never edited.** |
 | `docs/frontend/` | Frontend analysis and specification material. **Not evidence that anything is built.** |
