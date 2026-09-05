@@ -28,7 +28,7 @@ order, and requires fresh approval with a fresh idempotency key.
 ## Current state
 
 **Canonical current state lives in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md)** — read that
-before this table if the two ever disagree. In summary, as of 2026-09-04:
+before this table if the two ever disagree. In summary, as of 2026-09-05:
 
 | Area | Status |
 | --- | --- |
@@ -39,10 +39,11 @@ before this table if the two ever disagree. In summary, as of 2026-09-04:
 | Frontend — chat, cart, checkout, order status, merchant dashboard (M14, M16) | ✅ Complete |
 | Authentication — customers + merchants (ADR-023) | ✅ Complete |
 | **MCP server for external AI buyers (ADR-024)** | ✅ Complete, live-verified |
-| Integration & evaluation (M15) | ✅ Backend scenarios pass |
+| Integration & evaluation (M15) | ✅ Backend scenarios **and a 270-case commerce evaluation suite** (`backend/tests/evals/`, 3,470 deterministic checks) — see [`docs/EVALUATION-REPORT.md`](docs/EVALUATION-REPORT.md) |
 
-Backend: **1422 tests passing, 0 skipped**, against a real PostgreSQL. Frontend: **69 tests
-passing**, typecheck/eslint/build clean.
+Backend: **1,711 passing + 2 xfailed, 0 skipped**, against a real PostgreSQL. The two xfails
+are finding F-1, recorded as strict expected failures so the defect stays visible and a fix
+cannot land silently. Frontend: **71 passing**, typecheck/eslint/build clean.
 
 > **LLM provider: Groq, locked (ADR-018).** `architecture.md` names Claude Sonnet; that is
 > superseded by direct owner decision and is documented in `docs/decisions/ADR-018-...md`.
@@ -68,7 +69,7 @@ docker compose up -d db                       # from the repository root
 cd backend
 pip install -e ".[dev]"
 alembic upgrade head
-python -m app.seed.circuitcraft               # 51 products / 216 SKUs, idempotent
+python -m app.seed.circuitcraft               # 200 products / 360 SKUs, idempotent
 python -m app.admin.provision_merchant --email owner@easybuy.test   # a merchant login
 
 # backend  (port 8000 may be taken by something else on your machine — use 8004)
@@ -95,7 +96,7 @@ against a different engine.
 ```bash
 cd backend
 TEST_DATABASE_URL="postgresql+psycopg://ai_commerce:ai_commerce@127.0.0.1:5432/ai_commerce_test" \
-  python -m pytest -q                          # 1422 passed, 0 skipped
+  python -m pytest -q                          # 1711 passed, 2 xfailed, 0 skipped
 python -m ruff check . && python -m ruff format --check .
 
 cd ../frontend
@@ -150,7 +151,7 @@ AI_COMMERCE/
 │   │   ├── payments/             Razorpay client + money conversion — the only provider door
 │   │   ├── mcp/                  the MCP server for external AI buyers (ADR-024)
 │   │   ├── admin/                operator commands (provisioning a merchant login)
-│   │   ├── seed/                 the EASY BUY catalog (216 SKUs) and loader
+│   │   ├── seed/                 the EASY BUY catalog (360 SKUs) and loader
 │   │   └── api/routes/           health, auth, account, catalog, chat, sessions, cart,
 │   │                              orders, webhooks, merchant
 │   └── tests/                    mirrors app/, plus integration/ and mcp/

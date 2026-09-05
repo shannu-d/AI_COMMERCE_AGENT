@@ -135,8 +135,9 @@ filesystem timestamps of 5 September 2026, 13:08–13:10, and are not in any com
 reference them because they are the detailed incident records the reader will want, but their
 provenance cannot be established from git.
 
-**4. Four test names cited in `docs/bugs/README.md` do not exist in the repository.** Checked
-directly:
+**4. Four test names cited in `docs/bugs/README.md` did not exist in the repository.** Found by
+checking each one directly; **corrected on 5 September 2026** in the same pass that committed those
+reports. The table below is the state as found:
 
 | Cited in the bug index | Present? |
 | --- | --- |
@@ -148,8 +149,9 @@ directly:
 | `test_every_orm_relationship_resolves` | Yes — `tests/db/test_catalog_schema.py` |
 | `test_the_razorpay_id_is_null_until_m11` | Yes — `tests/api/test_orders.py` |
 
-The daily logs cite only test names verified to exist. The bug reports are still referenced for
-their narrative, but their test citations should not be trusted without checking.
+The daily logs cite only test names verified to exist. The bug index has since been corrected:
+each wrong citation now names the real guard, or states plainly that the fix has no direct
+automated test. Every citation in it was re-checked with `grep -rl` after the correction.
 
 **5. Test counts before Day 06 were not re-executed.** They are quoted from the milestone records
 written at the time. Re-running them today would measure today's code, not that milestone's.

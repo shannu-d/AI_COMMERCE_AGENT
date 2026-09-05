@@ -8,7 +8,8 @@
 #   2. A run showing skips is an incomplete run, not a pass. `requires_db`
 #      tests skip with a visible reason when TEST_DATABASE_URL is unreachable,
 #      which would otherwise look like success. The backend job fails if a
-#      single test is skipped.
+#      single test is skipped. Expected failures (xfail) are not skips and do
+#      not fail the gate - see the step for why.
 #
 # CI needs no credentials at all, and a step asserts that: no test calls a live
 # model on any provider (ADR-015), and none calls Razorpay.
@@ -96,13 +97,27 @@ jobs:
         run: |
           python - <<'PY'
           import sys, xml.etree.ElementTree as ET
+
+          # `skipped` in the summary counts xfails too - pytest writes an
+          # expected failure as <skipped type="pytest.xfail">. The two strict
+          # xfails that record finding F-1 would therefore fail this gate, which
+          # is the opposite of what it is for: they are a *recorded* defect the
+          # suite is asserting still behaves as described, not an unrun test.
+          # So count only the skips that mean "this test did not run".
           root = ET.parse("junit.xml").getroot()
           suite = root if root.tag == "testsuite" else root.find("testsuite")
-          total, skipped = int(suite.get("tests", 0)), int(suite.get("skipped", 0))
-          print(f"{total} tests, {skipped} skipped")
-          if skipped:
+          total = int(suite.get("tests", 0))
+          reported = int(suite.get("skipped", 0))
+          xfailed = [
+              node
+              for node in suite.iter("skipped")
+              if node.get("type") == "pytest.xfail"
+          ]
+          not_run = reported - len(xfailed)
+          print(f"{total} tests, {not_run} skipped, {len(xfailed)} xfailed")
+          if not_run:
               sys.exit(
-                  f"::error::{skipped} test(s) skipped. A run showing skips is an incomplete "
+                  f"::error::{not_run} test(s) skipped. A run showing skips is an incomplete "
                   "run, not a pass - TEST_DATABASE_URL was most likely unreachable."
               )
           PY

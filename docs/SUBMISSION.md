@@ -78,7 +78,7 @@ Groq agent / MCP buyer → tool call → tool handler → service → repository
 
 Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, Alembic. LLM: **Groq** (`openai/gpt-oss-120b`), locked (ADR-018). Payments: Razorpay test mode. Agent surface: MCP (FastMCP). Frontend: Vite + React + TypeScript, Assistant-UI for the chat runtime. Auth: argon2id + opaque bearer tokens (ADR-023).
 
-**Tests:** backend 1400+ passing (0 skipped against a real PostgreSQL), frontend 69 passing, typecheck / lint / build clean. 23 architecture decision records. Safety properties enforced by AST-walking tests, not convention.
+**Tests:** backend **1,711 passing + 2 xfailed, 0 skipped** against a real PostgreSQL (the xfails are finding F-1, held strict so the defect stays visible); frontend **71 passing**; typecheck / lint / build clean. **25 architecture decision records** (ADR-000 template plus ADR-001 … ADR-024). Safety properties enforced by AST-walking tests, not convention.
 
 ## 6. Honest gaps
 
@@ -98,7 +98,7 @@ tunnel to `:8004` for Razorpay webhooks, with the dashboard webhook secret match
 
 ## 8. The story of the build
 
-Decisions are in [`docs/decisions/`](decisions/) (23 ADRs, append-only). Every
+Decisions are in [`docs/decisions/`](decisions/) (24 numbered ADRs plus a template, append-only). Every
 deviation from the spec is in [`docs/notes/deviations.md`](notes/deviations.md).
 The defects found and fixed along the way — including on the final integration day
 — are in [`docs/notes/bugs-found-during-development.md`](notes/bugs-found-during-development.md).

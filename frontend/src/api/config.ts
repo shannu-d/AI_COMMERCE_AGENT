@@ -9,5 +9,11 @@
  * ever reaches this code is the *public* Razorpay key id, and it arrives in a
  * response body at checkout time rather than from configuration.
  */
+//
+// The fallback is **:8004, the port the runbook starts the backend on** - not
+// :8000. Port 8000 is the FastAPI default and was the fallback here, which made
+// a checkout that skipped the `frontend/.env` step fail against whatever else
+// happened to be listening. `frontend/.env` is git-ignored, so the fallback is
+// what a fresh clone actually uses.
 export const API_BASE_URL: string =
-  import.meta.env["VITE_API_BASE_URL"] ?? "http://127.0.0.1:8000";
+  import.meta.env["VITE_API_BASE_URL"] ?? "http://127.0.0.1:8004";
