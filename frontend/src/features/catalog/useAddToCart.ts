@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { addCartItem } from "../../api/endpoints";
 import { useToast } from "../../components/toastContext";
+import { clearSessionId, isUnusableSession } from "../../session";
 import { ensureSessionId } from "../../session.ensure";
 import type { ProductCardData } from "./productCardData";
 
@@ -31,12 +32,22 @@ export function useAddToCart(
   return useMutation({
     mutationFn: async () => {
       const sessionId = sessionIdOverride ?? (await ensureSessionId());
-      const cart = await addCartItem({
-        session_id: sessionId,
-        variant_id: item.variantId,
-        quantity: 1,
-      });
-      return { cart, sessionId };
+      const add = (id: string) =>
+        addCartItem({ session_id: id, variant_id: item.variantId, quantity: 1 });
+      try {
+        return { cart: await add(sessionId), sessionId };
+      } catch (error) {
+        // The stored session stopped being ours — claimed by an account this
+        // browser is not signed into, or gone with a rebuilt database. The
+        // backend cannot say which (404, never 403), and the id is spent either
+        // way, so it is dropped and a fresh one minted. Once only: a second
+        // refusal is a real failure. An explicit override is never replaced —
+        // that id belongs to the caller, not to storage.
+        if (sessionIdOverride || !isUnusableSession(error)) throw error;
+        clearSessionId();
+        const fresh = await ensureSessionId();
+        return { cart: await add(fresh), sessionId: fresh };
+      }
     },
     onSuccess: ({ cart, sessionId }) => {
       queryClient.setQueryData(["cart", sessionId], cart);

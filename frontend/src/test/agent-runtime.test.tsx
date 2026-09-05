@@ -8,7 +8,7 @@ import { useAgentChat } from "../features/agent/useAgentChat";
 import { SmartAgentRecommendations } from "../features/agent/SmartAgentRecommendations";
 import { ChatWindow } from "../features/chat/ChatWindow";
 import type { ChatResponse } from "../api/schemas";
-import { clearSessionId } from "../session";
+import { clearSessionId, writeSessionId } from "../session";
 
 /**
  * The Assistant UI integration.
@@ -223,6 +223,51 @@ describe("the agent runtime talks to our backend", () => {
     await waitFor(() =>
       expect(screen.getByText(/status 500|something went wrong/i)).toBeInTheDocument(),
     );
+  });
+
+  it("starts a fresh session when the backend no longer accepts the stored one", async () => {
+    // A stored id can stop working with no action from the buyer: the database
+    // was rebuilt, or an account claimed the session and this browser is not
+    // signed into it. The backend answers 404 either way — never 403, so the
+    // money path cannot be used to confirm a session exists. Before this, the
+    // spent id stayed in storage and every turn failed identically with
+    // "Request failed with status 404": a dead concierge whose only cure was
+    // clearing site data.
+    writeSessionId("11111111-1111-1111-8111-111111111111");
+    let seen = 0;
+    stubFetch((url) => {
+      if (!url.includes("/api/chat")) return { status: 200, body: turn() };
+      seen += 1;
+      return seen === 1
+        ? { status: 404, body: { detail: { code: "VALIDATION_ERROR", message: "SESSION_NOT_FOUND" } } }
+        : { status: 200, body: turn() };
+    });
+    renderAgent();
+    await ask();
+
+    await waitFor(() => expect(screen.getByText("Here is what fits.")).toBeInTheDocument());
+
+    const sent = chatCalls();
+    expect(sent).toHaveLength(2);
+    expect(sent[0]?.body?.["session_id"]).toBe("11111111-1111-1111-8111-111111111111");
+    // The key is omitted entirely, which is how this client asks for a fresh
+    // session (`sendChat` drops a null rather than sending one). What matters
+    // is that the spent id is not sent again.
+    expect(sent[1]?.body).not.toHaveProperty("session_id");
+  });
+
+  it("reports a second refusal rather than retrying forever", async () => {
+    writeSessionId("11111111-1111-1111-8111-111111111111");
+    stubFetch((url) =>
+      url.includes("/api/chat")
+        ? { status: 404, body: { detail: { code: "VALIDATION_ERROR", message: "SESSION_NOT_FOUND" } } }
+        : { status: 200, body: turn() },
+    );
+    renderAgent();
+    await ask();
+
+    await waitFor(() => expect(screen.getByText(/status 404/i)).toBeInTheDocument());
+    expect(chatCalls()).toHaveLength(2);
   });
 
   it("never sends a price to the backend", async () => {

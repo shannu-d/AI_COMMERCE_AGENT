@@ -8,7 +8,7 @@ import {
 } from "@assistant-ui/react";
 import { ApiRequestError } from "../../api/client";
 import { sendChat } from "../../api/endpoints";
-import { readSessionId, writeSessionId } from "../../session";
+import { clearSessionId, isUnusableSession, readSessionId, writeSessionId } from "../../session";
 import { AgentTurnsContext, SessionIdContext, type AgentTurnData } from "./agentContext";
 
 /**
@@ -36,6 +36,35 @@ import { AgentTurnsContext, SessionIdContext, type AgentTurnData } from "./agent
  * (ADR-020); the assistant's prose is the only thing that becomes message
  * content. Nothing is ever parsed back out of that prose (F§9).
  */
+
+/**
+ * One turn, retried once on a session the backend will not accept.
+ *
+ * A stored session id can stop working without the buyer doing anything: the
+ * database was rebuilt, or an account claimed the session and this browser is
+ * not signed into it. The backend answers 404 either way (see
+ * `isUnusableSession`), and before this the id stayed in storage and every
+ * subsequent turn failed the same way — a dead concierge with no way out but
+ * clearing site data.
+ *
+ * So the spent id is dropped and the turn is sent again with `session_id: null`,
+ * which mints a fresh one. Exactly once: a second 404 is a real failure and is
+ * reported as one rather than looping. The old cart is not recovered, because
+ * it was never reachable — that is what the 404 said.
+ */
+async function sendWithSessionRecovery(
+  text: string,
+  setSessionId: (id: string | null) => void,
+): Promise<Awaited<ReturnType<typeof sendChat>>> {
+  try {
+    return await sendChat({ session_id: readSessionId(), message: text });
+  } catch (error) {
+    if (!isUnusableSession(error)) throw error;
+    clearSessionId();
+    setSessionId(null);
+    return sendChat({ session_id: null, message: text });
+  }
+}
 
 export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -75,7 +104,7 @@ export function AgentRuntimeProvider({ children }: { children: ReactNode }) {
         inFlight.current = true;
         const runSeq = (seq.current += 1);
         try {
-          const response = await sendChat({ session_id: readSessionId(), message: text });
+          const response = await sendWithSessionRecovery(text, setSessionId);
 
           // Server-minted on the first turn; echoed thereafter.
           if (response.session_id !== readSessionId()) {
