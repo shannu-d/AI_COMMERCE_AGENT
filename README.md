@@ -853,7 +853,6 @@ AI_COMMERCE_AGENT/
 ├── docs/
 │   ├── SUBMISSION.md
 │   ├── PROJECT_STATE.md
-│   ├── DEMO-SCRIPT.md
 │   ├── EVALUATION-REPORT.md
 │   ├── RUNBOOK.md
 │   ├── decisions/
