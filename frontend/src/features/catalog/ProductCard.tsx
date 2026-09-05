@@ -5,7 +5,6 @@ import { cx } from "../../components/cx";
 import { formatAttrValue } from "../../components/formatAttrValue";
 import { Button, Plate, SpecRow, StockBadge } from "../../components/primitives";
 import { SpecMark } from "../../design/SpecMark";
-import { readSessionId } from "../../session";
 import type { ProductCardData } from "./productCardData";
 import { useAddToCart } from "./useAddToCart";
 
@@ -42,7 +41,6 @@ export function ProductCard({
 }) {
   const outOfStock = item.stockStatus === "OUT_OF_STOCK";
   const add = useAddToCart(item, sessionIdOverride);
-  const sessionId = sessionIdOverride ?? readSessionId();
 
   const specs = Object.entries(item.attributes)
     .filter(([, value]) => value !== null && value !== "")
@@ -124,7 +122,7 @@ export function ProductCard({
 
         <Button
           onClick={() => add.mutate()}
-          disabled={outOfStock || add.isPending || !sessionId}
+          disabled={outOfStock || add.isPending}
           size="sm"
           /* `relative` lifts the button above the link's ::after overlay so the
              card can be a link and still contain a working button. */

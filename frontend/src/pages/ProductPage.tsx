@@ -9,7 +9,6 @@ import { SpecMark } from "../design/SpecMark";
 import { useAddToCart } from "../features/catalog/useAddToCart";
 import { useProduct } from "../features/catalog/useCatalog";
 import { useConcierge } from "../features/concierge/conciergeContext";
-import { readSessionId } from "../session";
 import { CatalogUnavailable } from "./HomePage";
 
 /**
@@ -214,7 +213,6 @@ function AddToCart({
   item: { variant_id: string; name: string; variant_name: string; stock_status: string };
 }) {
   const { ask } = useConcierge();
-  const sessionId = readSessionId();
   const add = useAddToCart({
     variantId: item.variant_id,
     name: item.name,
@@ -227,7 +225,7 @@ function AddToCart({
       <Button
         size="lg"
         onClick={() => add.mutate()}
-        disabled={gone || add.isPending || !sessionId}
+        disabled={gone || add.isPending}
         className="flex-1"
       >
         {add.isPending ? "Adding…" : gone ? "Out of stock" : "Add to cart"}
