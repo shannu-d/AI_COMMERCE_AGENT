@@ -64,6 +64,54 @@ def placed_order(api: TestClient, customer_headers: dict[str, str], variant_id) 
     return {"session_id": session_id, "order": created.json()}
 
 
+def test_an_order_placed_on_a_session_that_was_anonymous_still_reaches_the_account(
+    api: TestClient, customer_headers: dict[str, str], variant_id
+) -> None:
+    """Signing in *before* shopping must work as well as signing in after.
+
+    Ownership is derived from `orders.session_id -> sessions.user_id` and is
+    never written onto the order, so a session still anonymous when the order is
+    created produces an order belonging to nobody — and permanently, because the
+    buyer has already signed in and their next login has nothing left to claim.
+    The buyer who opened a second tab, or who signed in and then started
+    browsing, would simply never see what they bought.
+
+    `POST /api/orders` therefore claims the session for a signed-in customer, on
+    the same terms as login: an anonymous session only, never one already owned
+    by somebody else, and never for a merchant administrator.
+    """
+    session_id = api.post("/api/sessions").json()["session_id"]  # nobody's yet
+    cart = api.post(
+        "/api/cart/items",
+        json={
+            "session_id": session_id,
+            "variant_id": str(variant_id("CASE-IP16-BLK")),
+            "quantity": 1,
+        },
+        headers=customer_headers,
+    ).json()
+    approval = api.post(
+        "/api/cart/approve",
+        json={"session_id": session_id, "cart_version": cart["cart_version"]},
+        headers=customer_headers,
+    ).json()
+    created = api.post(
+        "/api/orders",
+        json={
+            "session_id": session_id,
+            "cart_id": cart["cart_id"],
+            "cart_version": approval["cart_version"],
+            "idempotency_key": approval["idempotency_key"],
+        },
+        headers=customer_headers,
+    )
+    assert created.status_code == 201, created.text
+
+    mine = api.get("/api/account/orders", headers=customer_headers).json()
+
+    assert created.json()["order_id"] in [row["order_id"] for row in mine["items"]]
+
+
 def test_the_buyer_sees_their_own_order(
     api: TestClient, customer_headers: dict[str, str], placed_order: dict
 ) -> None:

@@ -140,7 +140,13 @@ def login(
     service = AuthService(db)
     try:
         issued = service.login(email=body.email, password=body.password)
-        claimed = service.claim_session(issued.user.id, body.session_id)
+        # Only a customer claims a shopping session. `POST /api/sessions` has
+        # always said so; this said nothing, so a merchant administrator signing
+        # in from the same browser took ownership of whatever cart and orders the
+        # anonymous session held — and `/api/account/orders` then answered 403 to
+        # the only account that owned them. The dashboard is not a shopping
+        # surface, and an administrator-owned session is one no shopper can reach.
+        claimed = issued.user.is_customer and service.claim_session(issued.user.id, body.session_id)
     except AuthError as error:
         db.rollback()
         raise _fail(error) from error

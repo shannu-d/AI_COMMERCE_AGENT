@@ -312,6 +312,46 @@ def test_login_claims_the_anonymous_session_the_caller_was_holding(
     assert api.get("/api/cart", params={"session_id": session_id}).status_code == 404
 
 
+def test_a_merchant_sign_in_does_not_claim_a_shopping_session(
+    api: TestClient, session: Session, variant_id
+) -> None:
+    """The dashboard is not a shopping surface (ADR-023).
+
+    `POST /api/sessions` has always said so — it claims only for a customer —
+    but the login route claimed for any role. An administrator signing in from
+    the same browser therefore took ownership of the anonymous session, and with
+    it the cart and every order derived from it through
+    `orders.session_id -> sessions.user_id`. `/api/account/orders` answers 403 to
+    a merchant, so those orders became unreachable to everyone: the buyer no
+    longer owned them and the owner is not allowed to ask.
+    """
+    session_id = _new_session(api)
+    api.post(
+        "/api/cart/items",
+        json={
+            "session_id": session_id,
+            "variant_id": str(variant_id("CASE-IP16-BLK")),
+            "quantity": 1,
+        },
+    )
+
+    email = unique_email("owner")
+    AuthService(session).create_merchant_user(
+        email=email, password=PASSWORD, merchant_id=DEFAULT_MERCHANT_ID
+    )
+    session.commit()
+
+    body = api.post(
+        "/api/auth/login",
+        json={"email": email, "password": PASSWORD, "session_id": session_id},
+    ).json()
+
+    assert body["user"]["role"] == "MERCHANT"
+    assert body["session_claimed"] is False
+    # Still anonymous, so the buyer holding the id can carry on shopping.
+    assert api.get("/api/cart", params={"session_id": session_id}).status_code == 200
+
+
 def test_a_session_already_owned_is_not_re_pointed_by_a_second_login(
     api: TestClient, customer_headers: dict[str, str]
 ) -> None:

@@ -99,7 +99,20 @@ def create_order(
     A replay of a completed key returns `200` with the stored result rather than
     `201`, because nothing was created — the status code is the honest signal
     that this call did no work (P§15, P§34).
+
+    **A signed-in customer's order lands in their account.** Ownership is derived
+    from `orders.session_id` → `sessions.user_id` and never stored on the order,
+    so a session still anonymous at this moment produces an order belonging to
+    nobody — permanently, because the buyer has already signed in and their next
+    login has nothing left to claim. Claiming here closes that window: the buyer
+    who signed in and then shopped, or shopped in a second tab that minted its
+    own session, still sees what they bought. A session owned by *someone else*
+    is not re-pointed — `claim_session` refuses — and a merchant administrator
+    never claims one at all.
     """
+    if user is not None and user.is_customer:
+        AuthService(db).claim_session(user.id, request.session_id)
+
     try:
         result = _build(db, settings).create_order(
             merchant_id=settings.default_merchant_id,
