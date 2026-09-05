@@ -26,6 +26,24 @@ They were environment and process drift.
 | A5 | Two API tests began failing (`test_the_razorpay_id_is_null_until_m11`, `test_an_approved_cart_creates_an_order`) | Once real keys were in `.env`, `Settings` picked them up and `POST /api/orders` made a **live provider call mid-suite** — the suite was never hermetic at the payment boundary | `tests/conftest.py` now blanks `Settings.model_config["env_file"]`; a fake LLM client is injected into the auth tests the way the chat tests already do it |
 | A6 | Checkout failed with *"International cards are not supported"* | The test **card** (`4111 1111 1111 1111`) has an international BIN and the Razorpay test account accepts domestic only — **not a code bug**. Razorpay sent a correct `payment.failed` webhook, which the app processed correctly (order → `PAYMENT_FAILED`, cart intact) | No code change. Demo uses Netbanking → Success, UPI `success@razorpay`, or a domestic card. This became a genuine graceful-failure demo. |
 
+## A2. Browser walkthrough (2026-09-05) — four defects the test suite could not see
+
+Found by driving the running site in Chrome, end to end, as a buyer with an
+empty browser. All four passed 1,697 backend tests and 69 frontend tests
+beforehand, because each needs a state no test constructed.
+
+| # | What was wrong | Root cause | Fix |
+| --- | --- | --- | --- |
+| A2-1 | **Add to cart did nothing on a fresh browser** — the button rendered disabled on both the product page and every product card, with no explanation | `useAddToCart` read the session id from storage *at render time* and both call sites disabled the button when it was `null`. A buyer who arrived by browsing has never spoken to the agent, so nothing had minted one. `ensureSessionId()` existed for exactly this and its docstring says so — **nothing imported it.** Every test signed in or created a session first | The session is resolved **inside** the mutation, via `ensureSessionId()`; the `!sessionId` gate is gone from both buttons |
+| A2-2 | **Every agent turn failed** with "I could not reach the assistant just then" | Groq's binding limit is a **per-minute token bucket** (8,000 TPM), and one turn is two calls totalling ~9,200 tokens. Leg 1 succeeded, leg 2 got 429 — and the client's exponential backoff of 0.5s then 1.0s retried *inside the same minute*, three refusals in two seconds | `LLMRateLimitError` now carries the provider's own `retry-after` (header, else the "try again in 8.522s" sentence), and the retry loop waits it out, bounded by `MAX_RETRY_AFTER_SECONDS = 45`. Live: Groq asked for 13s, the turn completed |
+| A2-4 | **A buyer's order never reached their account.** Worse, a merchant sign-in from the same browser *took* it: the order landed under the administrator, whom `/api/account/orders` answers 403 — so it belonged to nobody who could ask for it | Two halves of one rule. `POST /api/sessions` claims only for a customer; `POST /api/auth/login` claimed for **any** role, merchant included. And ownership is derived from `orders.session_id -> sessions.user_id`, never written onto the order, so a session still anonymous at order time produced an order owned by nobody — permanently, since the buyer had already signed in and their next login had nothing left to claim | `login` claims only when the account is a customer; `create_order` claims an anonymous session for a signed-in customer, on the same terms. Two tests: a merchant sign-in leaves the session anonymous, and an order placed on a session that was anonymous still appears in `/api/account/orders` |
+| A2-3 | **A completed turn was thrown away by the browser** — `MALFORMED_RESPONSE`, but only for a buyer whose cart was not empty | `serialize_cart` omitted `status` and omitted `price_changes` when there was no drift. `CartResponse.of` patched both on afterwards, so `/api/cart` was right and the **chat-embedded cart was not** — two renderings of one cart, which that method's own docstring warns against | Both fields are emitted by `serialize_cart` itself; `CartResponse.of` adds nothing. A new contract test reads the `Cart` object out of `frontend/src/api/schemas.ts` and fails if a required key is missing |
+
+The shape of all four: a defect in the seam between two things that were each
+correct. Section D's observation still holds — the safety properties held
+throughout, and no defect here could move money — but these were found by using
+the site, which no amount of unit testing substitutes for.
+
 ## B. Caught by the readiness audit (2026-09-03)
 
 | # | What | Status |

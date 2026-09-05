@@ -4,9 +4,11 @@
 If any other document disagrees with this file about *current state*, this file wins — except for
 `architecture.md`, which is the specification and is never edited.
 
-**Last verified:** 2026-09-04 · **Against commit:** `a9c7506` (+ later doc commits)
-**Verified by:** full test suite (1422 passed, 0 skipped), lint, live money path, and a real
-Razorpay test-mode payment end to end — not by reading prior docs.
+**Last verified:** 2026-09-05 · **Against commit:** `c67186b` (+ uncommitted: the M15 evaluation
+suite, the F-3 fix and the four browser-walkthrough fixes)
+**Verified by:** full test suite (**1,711 passed + 2 xfailed, 0 skipped**), lint, the 270-case
+evaluation, the live money path, a real Razorpay test-mode payment end to end, and a **full browser
+walkthrough** of the buyer journey and the merchant dashboard — not by reading prior docs.
 
 > ### 2026-09-04 — the money path is live, and there is an MCP surface
 >
@@ -26,6 +28,105 @@ Razorpay test-mode payment end to end — not by reading prior docs.
 >   `docs/notes/bugs-found-during-development.md`.
 >
 > The rest of this file below predates 2026-09-04 in places; the block above wins on current state.
+
+> ### 2026-09-04 (later) — M15 is complete on the backend: a 270-case evaluation suite
+>
+> `backend/tests/evals/` evaluates the agent against the real catalogue, the real ranking engine,
+> the real cart, the real Policy Engine, the real order service and the real MCP server. Only the
+> model and the payment provider are faked, at the ADR-015 and ADR-011 seams. **3,470 deterministic
+> checks; 268 of 270 cases pass.** Hard-constraint and authorization pass rates are **100%**; no case
+> produced an order, an approval or a provider call it was not entitled to.
+>
+> Nothing in the application was changed. Three of the four initial failures were defects in the
+> *evaluator* and were fixed there; the rest are reported:
+>
+> - **F-1** — the assistant's prose is not validated against the catalogue (an invented SKU or price
+>   reaches `message`; nothing downstream carries it). Two cases, recorded as strict `xfail`s.
+> - **F-2** — R§13's `recommend_many` / `combine(total_budget=...)` are implemented and reachable
+>   from no tool or route, so a stated basket ceiling is unenforced until the spending limit.
+> - **F-3** (live only, the sharpest) — asked for "noise-cancelling earbuds" the real model returned
+>   three real, in-stock, **non-ANC** earbuds and called them noise-cancelling: it left `attributes`
+>   empty, so the requirement was a relevance signal rather than an eliminating constraint.
+>   **FIXED 2026-09-05** — see below.
+>
+> Full findings, category scores and recommended fixes: **`docs/EVALUATION-REPORT.md`**.
+> Suite documentation: `backend/tests/evals/README.md`. Open question **F9 is closed**.
+>
+> ### 2026-09-05 (later) — a browser walkthrough found three defects no test could
+>
+> The whole site was driven in Chrome as a buyer with an empty browser: storefront →
+> category → product → cart → approval → order → Razorpay Checkout, then the merchant
+> dashboard. Three defects surfaced, each in a seam between two correct things, and
+> each invisible to 1,697 backend and 69 frontend tests. Full detail in
+> `docs/notes/bugs-found-during-development.md` §A2.
+>
+> - **Add to cart was dead on a fresh browser.** `useAddToCart` read the session id at
+>   render time and both call sites disabled the button when it was `null`; a buyer who
+>   arrived by browsing has none. `ensureSessionId()` was written for exactly this and
+>   **nothing imported it**. The session is now resolved inside the mutation.
+> - **Every agent turn failed.** Groq's binding limit is a per-minute token bucket
+>   (8,000 TPM) and a two-leg turn is ~9,200 tokens: leg 1 succeeded, leg 2 got 429, and
+>   0.5s/1.0s of backoff retried inside the same minute. `LLMRateLimitError` now carries
+>   the provider's `retry-after` and the retry loop waits it out, capped at
+>   `MAX_RETRY_AFTER_SECONDS = 45`. Live: Groq asked 13s, the turn completed.
+> - **A completed turn was discarded by the browser** as `MALFORMED_RESPONSE`, but only
+>   when the cart was non-empty: `serialize_cart` omitted `status` and (with no drift)
+>   `price_changes`, which `CartResponse.of` patched on afterwards — so `/api/cart` was
+>   right and the chat-embedded cart was not. Both now come from `serialize_cart`, and a
+>   contract test reads the `Cart` schema out of the frontend and fails on a missing key.
+>
+> - **A buyer's order never reached their account**, and a merchant sign-in from the same
+>   browser *took* it — `/api/account/orders` answers a merchant 403, so the order belonged
+>   to nobody who could ask for it. `POST /api/sessions` claims only for a customer;
+>   `POST /api/auth/login` claimed for any role. And because ownership is derived from
+>   `orders.session_id → sessions.user_id` and never written onto the order, a session
+>   still anonymous at order time produced an order owned by nobody, permanently. Login
+>   now claims only for a customer, and `POST /api/orders` claims an anonymous session for
+>   a signed-in customer on the same terms.
+>
+> **Nothing in the Policy Engine, the ranking engine, the schema or any validation rule
+> changed.** Backend: **1,711 passed, 2 xfailed (the known F-1), 0 skipped**. Frontend:
+> 69 passed, typecheck and lint clean. Verified in the browser: an order placed while
+> signed in as `demo@easybuy.test` appears under **Account → Orders**. F-3 re-verified too: "earbuds with
+> noise cancelling" returns exactly the two SonicBuds Pro ANC variants, and the prose
+> names only those.
+>
+> ### 2026-09-05 — F-3 fixed: the search tool now describes its own parameters
+>
+> The cause was not the model. `search_catalog` reached it with **no description on any field**:
+> `attributes` was a bare object titled "Attributes", with nothing saying it is the field that
+> *eliminates* and no way to know this merchant records `anc` rather than `noise_cancelling`. The
+> same probe found a second defect beside it — the model volunteered `currency: "USD"`, which the
+> validator then refused, failing an otherwise correct search on a field the buyer never mentioned.
+>
+> - Every `search_catalog` field now carries a `description`; `attributes` states that it eliminates
+>   and `search_query` that it only ranks, with the three predicate forms `app.attributes` implements.
+> - The merchant's **real attribute names, per category**, are injected at build time — the same
+>   argument as the category enum (ADR-009, B2), one level down.
+>   `ProductRepository.attribute_keys_by_category` → `CatalogService.attribute_vocabulary` →
+>   `build_tool_definitions`. Read per turn, never cached: the merchant dashboard can add an
+>   attribute between two turns.
+> - `currency` is enumerated from `SUPPORTED_CURRENCIES` instead of being an open string.
+> - **Prompt 1.2.0 → 1.3.0**: rule 9 (a requirement goes in `attributes`; when unsure treat it as a
+>   wish) and rule 5's new clause (never describe a product as having a property the tool did not
+>   report). The rule numbering was closed up — a gap at 12 left by 1.1.0 — so the file runs 1–18.
+>
+> **No policy, ranking, payment, schema or validation rule changed.** Argument validation is
+> byte-for-byte what it was.
+>
+> Verified against the live model: the same prompt now produces
+> `search_catalog(category="earbuds", attributes={"anc": true})`, and executing that call through
+> the real services returns **SonicBuds Pro ANC** (`BUDS-PRO-BLK`, `BUDS-PRO-IVY`) — the only two
+> ANC products in the catalogue — as an `EXACT_MATCH`. Offline: still 268/270, same two F-1
+> failures.
+>
+> A correction the fix turned up: the live tier's binding limit is **not** 8,000 tokens/minute but
+> Groq's `on_demand` **200,000 tokens/day**. A full two-leg turn is ~9,200 tokens and does not fit
+> the per-minute cap *at any pace*, so `live_eval.py` gained `--tool-call-only` (one call per case,
+> ~4,400 tokens). The paced live re-run could not be completed: the day's quota was exhausted.
+>
+> Backend suite is now **1,697 tests**: 1,695 passed, 2 xfailed (the two recorded F-1 findings),
+> none skipped.
 
 ---
 
@@ -92,7 +193,7 @@ Status vocabulary is exactly: `NOT_STARTED` · `IN_PROGRESS` · `COMPLETE` · `B
 | **M12** | Webhook | `COMPLETE` | M11 | Raw-body capture, signature verify, event dedupe | ✅ | ✅ Bad signature rejected; duplicate → one transition | `app/api/routes/webhooks.py`, `app/services/webhook_service.py` | ADR-012 | Live signature check unperformed (§14) |
 | **M13** | Audit + trace | `COMPLETE` | M12 | Audit service, 12 named events, agent trace | ✅ | ✅ Transaction fully reconstructable | `app/services/audit_service.py` | ADR-010 | No HTTP read route (by design) |
 | **M14** | Frontend | `IN_PROGRESS` | M5, M7, M8, M11 | **F0–F5, F7, F8 COMPLETE**; F6 and F9 need Razorpay keys | ✅ 15 CORS + 5 contract + 35 frontend | 🟡 F§33 met except the 3 Razorpay items | `frontend/` | **ADR-017** | Port 8000 conflict (§11.4) |
-| **M15** | Integration & evaluation | `IN_PROGRESS` | M14 | ✅ Backend scenarios (12 tests) | ✅ 12 | ❌ Frontend half blocked on M14 | `tests/integration/` | ADR-014 | — |
+| **M15** | Integration & evaluation | `COMPLETE` (backend) | M14 | ✅ Backend scenarios (12 tests) **+ the 270-case commerce evaluation suite** (`tests/evals/`) | ✅ 12 + 274 | ✅ 268/270 cases pass; hard-constraint and authorization rates 100% — see `docs/EVALUATION-REPORT.md` | `tests/integration/`, `tests/evals/` | ADR-014, ADR-015 | 3 open findings (F-1, F-2, F-3), none of which moves money; 2 recorded as strict `xfail`s |
 | **M16** | Catalogue expansion + Merchant Dashboard | `COMPLETE` | M2, M10, M14 | **Catalogue → 51 products / 216 SKUs / 24 categories** across electronics + clothing + furniture, **no migration** (ADR-021). **Merchant Dashboard**: `merchant_service.py` (write + analytics), `OrderService.list_for_merchant`, `/api/merchant/*` (12 endpoints), `frontend/src/pages/merchant/` (7 pages) + `MerchantShell` (ADR-022) | ✅ +33 backend, +7 frontend | ✅ Cross-category agent, merchant create/restock/reprice round-trips, isolation rejected — all browser-verified | `app/services/merchant_service.py`, `app/api/routes/merchant.py`, `frontend/src/features/merchant/`, `app/seed/data/catalog.json` | **ADR-021**, **ADR-022** | No merchant auth (single-tenant); no merchant activity log; Razorpay still unconfigured so revenue reads ₹0 |
 
 ### Frontend F-phase status
@@ -286,7 +387,7 @@ payments 20 · integration 12.
 | **FE scope** | Phase 1 (F0–F9) only, or the full storefront (F10+)? | **Needs owner decision.** Proceeding on Phase 1 |
 | F4 | CI pipeline | **CLOSED** 2026-09-03 — `.github/workflows/ci.yml`. Never yet run on a runner (no remote configured), see §10 |
 | F5, F8, F10 | Deployment, perf targets, i18n | OPEN — out of MVP scope |
-| F9 | Evaluation harness format | OPEN — blocks M15's eval suite |
+| F9 | Evaluation harness format | **CLOSED** 2026-09-04 — a generated JSON dataset plus a check registry (`backend/tests/evals/`, README there) |
 | F11 / U2 | The external brief | OPEN — needs external input |
 
 ## 14. Missing credentials / configuration

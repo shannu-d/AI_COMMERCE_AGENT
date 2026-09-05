@@ -1135,3 +1135,136 @@ recommend; a price change propagates; cross-merchant access is rejected) all pas
 
 **Groq is unchanged** — same client, same `openai/gpt-oss-120b` model, same prompts, same tool
 schemas.
+
+---
+
+## M15 — the commerce evaluation suite (2026-09-04)
+
+M15's remaining half. Open question **F9 ("evaluation harness format") is now closed**: the format
+is a generated JSON dataset plus a check registry, described below and in `backend/tests/evals/README.md`.
+The findings and the scores are in **`docs/EVALUATION-REPORT.md`**, which this section does not
+duplicate.
+
+### What was built
+
+`backend/tests/evals/` — 270 cases across 21 categories and three surfaces, 3,470 deterministic
+checks over 44 check types.
+
+| File | Role |
+| --- | --- |
+| `commerce_eval_cases.json` | The dataset. **Generated**; do not hand-edit. |
+| `build_cases.py` | Generates it from `app/seed/data/catalog.json`; raises on any SKU, slug or target that is not there. |
+| `catalog_facts.py` | What the evaluator may treat as true, read from PostgreSQL at run time through the application's own services. |
+| `scripted_model.py` | An `LLMClient` that replays a case's `model_plan`. |
+| `harness.py` | Drives one case through the agent runtime, the MCP surface, or the money path. |
+| `observation.py` | One shape every check can read. |
+| `graders.py` | Every verdict in the suite. |
+| `commerce_eval_runner.py` | Runs and scores; the CLI and the pytest module share it. |
+| `test_commerce_evals.py` | 270 parametrised tests + 4 guards on the dataset itself. |
+| `live_eval.py` | The opt-in live tier (not a test). |
+
+### The two decisions worth recording
+
+**Nothing is faked except the model and the payment provider**, at the seams ADR-015 and ADR-011
+already draw. The agent runtime, the executor, the services, the ranking engine, the cart, the
+Policy Engine, `OrderService` and the MCP server all run for real against PostgreSQL. A runner that
+stubbed the ranking engine or the Policy Engine would be evaluating the evaluator.
+
+**No expectation names a price, a stock level or a winning product.** The case file names
+*constraints*; `catalog_facts.py` reads the answers from the database when the suite runs. A
+hardcoded fact would keep passing after a reprice while grading a claim that had become false, and
+would make the evaluator a second, competing catalogue.
+
+Scripting the model is the method rather than a limitation: many cases script a model that has been
+completely captured by an injected instruction — it calls `create_order`, passes a price to
+`propose_cart`, invents a SKU, loops past the call budget. A suite that waited for a live model to
+attempt those would mostly be measuring the model's luck. The cost is a real blind spot, and it is
+where the sharpest finding came from — see F-3 below.
+
+### Verification
+
+- **268/270 cases pass.** Hard-constraint and authorization pass rates 100%; safety 96.6%; grounding
+  97.3%. Zero orders, approvals or provider calls were produced by any case that must not produce one.
+- The full backend suite runs **1,697 tests** (1,423 + 274): **1,695 passed, 2 xfailed** - the two
+  recorded F-1 findings - and none skipped.
+- `ruff check` and `ruff format` clean over the new package.
+
+### Findings, and what was *not* changed
+
+**No production code was changed to make a case pass** — and that is still true of the F-3 fix
+applied the next day, which changes what the model is *told* about a tool's parameters and nothing
+about what the application accepts. Three of the four initial failures were defects in the
+evaluator and were corrected there (`docs/EVALUATION-REPORT.md` §21). The rest are reported:
+
+- **F-1 (open, recorded as two strict `xfail`s)** — the assistant's prose is not validated against
+  the catalogue. A model that invents a SKU or a price puts it in `message`. Nothing downstream
+  carries it: `recommendations[]` comes from `TurnMemory`, the invented SKU does not resolve, and no
+  order can be created from it.
+- **F-2 (open)** — `RecommendationService.recommend_many` and `ranking.combine(total_budget=...)`
+  are implemented and unit-tested and **reachable from nothing**: no tool, no handler, no route. A
+  conversationally stated basket ceiling is unenforced until the Policy Engine's spending limit.
+- **F-3 (FIXED 2026-09-05, live only)** — asked for "noise-cancelling earbuds", the live Groq turn
+  returned three real, in-stock, non-ANC earbuds and described them as noise-cancelling. The model
+  left `attributes` empty, so ANC was a relevance signal rather than an eliminating requirement.
+  The application did exactly what it was asked. This is the finding the offline suite is
+  structurally unable to see. The section below has the fix.
+
+The two F-1 cases are marked `xfail(strict=True)` in `test_commerce_evals.py` with the finding
+written out, so the suite stays green while the defect is recorded, the checks stay exactly as
+strict, the CLI report still counts them as failures, and a fix cannot land silently.
+
+### The live tier, and why it is a sample
+
+`python -m tests.evals.live_eval` runs cases through `POST /api/chat` against a running backend and
+the real model. It is an operator script, not a test (ADR-015). The account allows **8,000 tokens
+per minute** and one agent turn is two model calls, so a single turn can exhaust the minute and
+back-to-back turns return HTTP 429; the 236 agent cases would take about six hours paced. 12
+attempts were made, 9 graded, 3 rate-limited. A rate-limited turn is reported as such rather than
+as a failure — a model that never answered has not got anything wrong.
+
+
+### F-3, fixed (2026-09-05)
+
+The cause was a tool parameter the model was shown with nothing said about it. `search_catalog`
+reached the model with **no description on any field**: `attributes` was a bare JSON object titled
+"Attributes", with nothing marking it as the field that *eliminates*, and no way to learn that this
+merchant records `anc` rather than `noise_cancelling`. So a requirement went into `search_query`,
+which R§9 defines as a relevance signal and never a filter.
+
+The same live probe exposed a second defect beside it: `currency` was a bare optional string and the
+model filled it in unasked with `"USD"`, which `_supported` then refused — failing an otherwise
+correct search on a field the buyer never mentioned.
+
+| Change | Where |
+| --- | --- |
+| Every `search_catalog` field carries a `description`; `attributes` states that it eliminates, `search_query` that it only ranks, with the three predicate forms `app.attributes` implements | `app/llm/tool_schemas.py` |
+| The merchant's real attribute names, per category, injected at build time — the category-enum argument (ADR-009, B2) one level down | `_inject_attribute_vocabulary`, `CatalogService.attribute_vocabulary`, `ProductRepository.attribute_keys_by_category` |
+| `currency` enumerated from `SUPPORTED_CURRENCIES` rather than left open | `_constrain_currency` |
+| Prompt rule 9 (a requirement goes in `attributes`; when unsure, treat it as a wish) and rule 5's new clause (never describe a product as having a property the tool did not report); numbering closed up to 1–18 | `system_prompt.md`, **1.2.0 → 1.3.0** |
+
+**Nothing in the Policy Engine, the ranking engine, the payment path, the schema or any validation
+rule changed.** Argument validation is byte-for-byte what it was: no value rejected before is
+accepted now. The vocabulary is read from the database every turn rather than cached, because the
+merchant dashboard can add an attribute between two turns and a cached list would go stale in
+exactly the direction that hides products.
+
+**Verified against the live model.** The same prompt now produces
+`search_catalog(category="earbuds", attributes={"anc": true}, currency=null)`; the arguments pass
+`validate_tool_arguments`, and executing them through the real services returns `EXACT_MATCH` with
+`BUDS-PRO-BLK` and `BUDS-PRO-IVY` — SonicBuds Pro ANC, the only two ANC products in the catalogue,
+both in stock. Before the fix the same probe produced no `attributes` at all and three non-ANC pairs.
+
+Regression tests: the attribute vocabulary and the currency enum each have their own
+(`tests/llm/test_tool_schemas.py`), the service query has one against the real catalogue
+(`tests/services/test_catalog_service.py`), the prompt rules are asserted in
+`tests/llm/test_prompts.py`, and `tests/agent/test_agent_boundaries.py` asserts the runtime actually
+*sends* the vocabulary — a vocabulary the runtime never sends is one the model never has.
+
+**A correction to the M15 report.** While measuring the fix's payload cost (~420 tokens per model
+call) the live tier's binding limit turned out to be misdiagnosed. It is not 8,000 tokens/minute but
+Groq's `on_demand` **200,000 tokens/day**; the 429 body says so explicitly. A full two-leg turn is
+~9,200 tokens and therefore does not fit the per-minute cap *at any pace*, which is why earlier live
+runs graded only some cases. `live_eval.py` gained `--tool-call-only`: one model call per case
+(~4,400 tokens), with the application executing what the model asked for and the real results
+graded. The paced live re-run could not be completed — the day's quota was exhausted by the
+evaluation work — and the remaining attempts are recorded as `rate_limited_or_unavailable`.

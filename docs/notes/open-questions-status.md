@@ -121,7 +121,7 @@ Docker.
 | F6 | Frontend framework (React vs Next.js) | **CLOSED** — ADR-017. **Vite**, not Next.js. The deciding fact is that `RazorpayClient.checkout_config()` returns only the *public* key ID, amount, currency and provider order ID, so the frontend holds no secret and the server layer Next.js supplies would protect nothing; with no SEO or SSR requirement either, F§3's "keep the frontend small" settles it. Supersedes `PROGRESS.md`'s earlier Next.js recommendation, which was written before `checkout_config()` was read. |
 | F7 | Streaming responses | **CLOSED** — ADR-010 (no streaming; F§28 discourages it) |
 | F8 | Non-functional targets | **OPEN, out of scope.** None set; agent turns will take seconds. |
-| F9 | Evaluation harness format | **OPEN. Blocks M15's SHOULD-WORK evaluation suite.** |
+| F9 | Evaluation harness format | **CLOSED 2026-09-04.** A generated JSON dataset (`backend/tests/evals/commerce_eval_cases.json`) plus a check registry (`graders.py`). The dataset is generated from the seeded catalogue and names no price, stock level or winning product; the answers are read from the database at run time. See `backend/tests/evals/README.md` and `docs/EVALUATION-REPORT.md`. |
 | F10 | Accessibility / i18n | **OPEN, out of scope.** INR and English only. |
 | F11 | The external brief | **OPEN** — see U2 and [`external-brief-gap.md`](external-brief-gap.md) |
 | F12 | The CircuitCraft catalog data | **CLOSED by authoring** — ADR-002; 32 SKUs shipped in M1 under a no-fabricated-claims rule |
@@ -137,13 +137,12 @@ Docker.
 > `openai/gpt-oss-120b`, an open-weights model served by Groq.
 
 
-Six items remain open, and **none of them blocks M14.** F6 is closed by ADR-017, which also
-added the CORS middleware that was blocking every frontend of every scope. F9 is the only open
-item that blocks anything reached.
+Five items remain open, and **none of them blocks anything.** F6 is closed by ADR-017, which also
+added the CORS middleware that was blocking every frontend of every scope. F9 - the last item
+that blocked anything reached - was closed on 2026-09-04 by the M15 evaluation suite.
 
 | Open item | Blocks | Needed by |
 | --- | --- | --- |
-| F9 evaluation harness format | the SHOULD-WORK evaluation suite | before M15 |
 | F4 CI pipeline | nothing | whenever wanted |
 | U2 / F11 external brief | nothing | external input; see the gap note |
 | F5, F8, F10 | nothing | out of MVP scope |

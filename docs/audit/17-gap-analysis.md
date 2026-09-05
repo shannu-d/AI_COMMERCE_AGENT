@@ -1,5 +1,30 @@
 # 17 — Gap Analysis
 
+> **This is the gap analysis as written on 2026-09-03 and is not rewritten.** Where each gap stands
+> now is the table immediately below; the original assessment follows unaltered.
+
+## Status — 2026-09-05
+
+| Gap | Then | Now |
+| --- | --- | --- |
+| Payment SDK (**P0**) | Neither installed nor declared | ✅ **Closed.** Declared, and the money path ran live end to end on 2026-09-04 |
+| Checkout endpoint (**P0**) | `503 PAYMENT_PENDING` | ✅ **Closed.** Real provider orders; a signed `payment.captured` reached `PAYMENT_CONFIRMED` |
+| Evaluation harness (P2) | Absent | ✅ **Closed.** `backend/tests/evals/` — 270 cases, 268 passing |
+| Storefront pages (P3, deferred) | Chat-only product | ✅ **Built.** Home, category, product, cart, order, account and a seven-page merchant dashboard (M16, ADR-021/022/023) |
+| Markdown rendering (**P1**) | Raw markdown shown | ✅ **Closed by removal, not rendering (ADR-020).** The transcript is prose-only; products render as cards in their own panel and the prompt forbids tables outright |
+| Startup key validation (P1) | Silent, fails per turn | ⬜ **Still open** (audit R3) |
+| Config freshness (P1) | `@lru_cache` serves start-up values forever | ⬜ **Still open** (audit R8) |
+
+### One category this analysis did not have
+
+**C. Defects only a browser in a real state can see.** The audit's own browser pass was manual and
+therefore shallow; the 2026-09-05 walkthrough went through the whole buyer journey and found four
+defects — a permanently disabled *Add to cart*, every agent turn failing on a per-minute token
+bucket, a completed turn discarded by the browser's schema, and a buyer's order landing in no
+account at all. Each passed 1,697 backend and 69 frontend tests. See
+`docs/notes/bugs-found-during-development.md` §A2. This is what makes audit **R9** (automated E2E)
+the most valuable open item on that list, rather than the P2 it was filed as.
+
 ## A. Missing implementation
 
 | Area | Expected | Actual | Gap | Severity | Fix |

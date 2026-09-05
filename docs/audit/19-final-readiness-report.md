@@ -3,6 +3,45 @@
 **Date:** 2026-09-03 · **Repository:** `L:\AI_COMMERCE` · **HEAD:** `4081628`
 **Branch:** `m4r-groq-and-b14-frontend` (6 commits ahead of `main`, unmerged)
 
+> ## Addendum — 2026-09-05
+>
+> **This report is the 2026-09-03 assessment and is not rewritten.** Two things have changed
+> materially since, and a reader should have both before the executive summary below.
+>
+> **1. The P0 is closed and the money path is live.** `razorpay` is declared; a real test-mode
+> payment completed end to end on 2026-09-04 — order → Checkout → **signed webhook** →
+> `PAYMENT_CONFIRMED` → audit — and `payment.failed` was handled gracefully on a genuine
+> international-card decline. M11, M14/F6 and the M15 payment scenarios are closed. An MCP surface
+> (ADR-024) and authentication (ADR-023) landed alongside, and M15's evaluation suite exists: 270
+> cases, 3,470 deterministic checks, 268 passing, hard-constraint and authorization rates 100%.
+>
+> **2. This report's central judgement needs one qualification.** It says findings beyond the P0
+> are "documentation drift, one visible presentation defect, and verification gaps concentrated
+> entirely at the third-party payment boundary", and that **"no logic defects were found"**. That
+> was true of what it examined. A full browser walkthrough on 2026-09-05 — the whole buyer journey,
+> from an empty browser to Razorpay Checkout — found **five real defects**, four of them logic:
+>
+> | | Defect | Why no test saw it |
+> | --- | --- | --- |
+> | 1 | *Add to cart* was permanently disabled on a fresh browser | Every test signed in or minted a session first |
+> | 2 | Every agent turn failed — a two-leg turn exceeds Groq's per-minute token bucket and the backoff retried inside the same minute | No test calls a live model (ADR-015), by design |
+> | 3 | A completed turn was discarded by the browser as `MALFORMED_RESPONSE` whenever the cart was non-empty | The chat-embedded cart and `/api/cart` were serialized by two different code paths |
+> | 4 | A buyer's order reached no account — and a merchant sign-in from the same browser *took* it, into an account `/api/account/orders` answers 403 | Ownership is derived from a join; no test constructed the anonymous-at-order-time state |
+> | 5 | F-3, from the evaluation's live tier: a stated requirement went to the catalogue as a preference | 270 offline cases structurally cannot observe the model's choice of arguments |
+>
+> All five are fixed, with regression tests. None could move money, and none touched the Policy
+> Engine, the ranking engine, the schema or any validation rule — the invariant this report
+> verifies held throughout, which is the part of its judgement that stands unqualified. Detail:
+> `docs/notes/bugs-found-during-development.md` §A2 and `docs/PROJECT_STATE.md`.
+>
+> **The lesson for this report's own method:** it ran the application and drove a browser, and it
+> was right to. It did not drive the *whole journey from an empty browser*, and that is exactly the
+> band the defects lived in. Audit recommendation **R9** (automated E2E across the journey) is
+> therefore the highest-value open item, not the P2 it was filed as.
+>
+> **Suite as of 2026-09-05:** backend **1,711 passed, 2 xfailed** (the recorded F-1 findings),
+> **0 skipped**; frontend 69 passed, typecheck and lint clean.
+
 ---
 
 ## 1. Executive summary

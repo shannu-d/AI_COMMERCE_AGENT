@@ -127,6 +127,7 @@ implemented in a later milestone.
 | F6 | Multi-currency and conversion | INR only. A mismatch is an error, not something to convert. | ADR-008 |
 | F7 | The frontend | F§37 STEP 11 sequences the frontend after the APIs it consumes exist. Nothing is scaffolded at M0. | — |
 | F8 | GIN indexes on `products.tags` / `products.attributes` | D§24 says to add them when real query patterns justify them. M2/M3 will show whether they do. | — |
+| F9 | **R§13's multi-product combination is implemented and reachable from nothing.** `RecommendationService.recommend_many` and `ranking.combine(total_budget=...)` exist and are unit-tested; no tool schema, agent handler or API route calls them. A conversationally stated *basket* ceiling ("keep the whole purchase below ₹3,000") therefore has nothing enforcing it before the Policy Engine's per-transaction spending limit, which is a different and much higher number. Found by the M15 evaluation suite (finding F-2, `docs/EVALUATION-REPORT.md` §16). Per-item constraints are unaffected and the total shown is always the backend's, so nothing unsafe follows. | ADR-004, ADR-011 |
 
 ## 5. Still open
 

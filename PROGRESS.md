@@ -1,6 +1,6 @@
 # Progress Report
 
-**As of:** 2026-09-04 · **Last commit:** `a9c7506` (+ doc commits)
+**As of:** 2026-09-05 · **Last commit:** `c67186b` (+ uncommitted fixes, see *Working tree* below)
 **This file is a high-level human-readable snapshot only.** The canonical current state is
 **[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md)** — if this file ever disagrees with it, that
 file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.md`](docs/SUBMISSION.md)**.
@@ -8,7 +8,20 @@ file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.
 > **2026-09-04:** The money path is **live** — a real Razorpay test-mode payment completed end to
 > end (order → Checkout → signed webhook → `PAYMENT_CONFIRMED` → audit), and `payment.failed` was
 > handled gracefully too. Authentication (ADR-023) is in. An **MCP server** (ADR-024,
-> `python -m app.mcp`) makes the merchant sellable to an external AI buyer. Suite: 1422 passed.
+> `python -m app.mcp`) makes the merchant sellable to an external AI buyer.
+
+> **2026-09-04 (later):** **M15 is complete on the backend** — a 270-case commerce evaluation
+> suite (`backend/tests/evals/`) runs the agent, the MCP surface and the money path against the
+> real catalogue and the real Policy Engine. **268/270 pass**, 3,470 deterministic checks, and
+> the hard-constraint and authorization pass rates are **100%**. See
+> **[`docs/EVALUATION-REPORT.md`](docs/EVALUATION-REPORT.md)**.
+
+> **2026-09-05:** **F-3 fixed** — the search tool now describes its own parameters and carries the
+> merchant's real attribute names, so a stated requirement eliminates instead of merely ranking.
+> Then the whole site was **driven in a browser from an empty session**, which found **four more
+> defects that every test had passed over**. All five are fixed with regression tests; none could
+> move money, and none touched the Policy Engine, the ranking engine, the schema or any validation
+> rule. Detail: [`docs/notes/bugs-found-during-development.md`](docs/notes/bugs-found-during-development.md) §A2.
 
 > 🔒 **LLM provider: Groq, locked (ADR-018).** Model `openai/gpt-oss-120b` — open weights,
 > **served by Groq**, no request reaches OpenAI. Never propose migrating to Anthropic, Claude,
@@ -33,16 +46,17 @@ file wins. For the Razorpay Buildathon Track 1 write-up see **[`docs/SUBMISSION.
 | **M4-R** | **Groq provider reconciliation (ADR-018)** | ✅ **Complete and live-verified** |
 | M12 | Webhook handler (payment truth) | ✅ Complete — real Razorpay-signed webhooks verified (`payment.captured`, `payment.failed`, `order.paid`) |
 | M13 | Audit log (durable transaction history) | ✅ Complete |
-| M14 | Frontend | ✅ **F0-F8 done; F6 live-verified** (real Checkout). F9 polish partial |
-| M15 | Integration scenarios | ✅ Backend scenarios; the money path verified live end to end |
-| M16 | Catalogue expansion (216 SKUs) + Merchant Dashboard | ✅ Complete (ADR-021, ADR-022) |
+| M14 | Frontend | ✅ **F0–F8 done; F6 live-verified** (real Checkout). F9 polish partial |
+| M15 | Integration scenarios + evaluation | ✅ Backend scenarios; money path live end to end; **270-case evaluation suite, 268 passing** |
+| M16 | Catalogue expansion (51 products / 216 SKUs seeded) + Merchant Dashboard | ✅ Complete (ADR-021, ADR-022) |
 | ADR-023 | Authentication & authorization (customers + merchants) | ✅ Implemented |
 | ADR-024 | MCP surface — merchant sellable to an external AI buyer | ✅ Implemented and verified |
 
-**Test suite:** backend 1292 pass against a real PostgreSQL, 0 failures, 0 skips (909 need no
-database); frontend 35 pass, typecheck clean, production build OK. The Groq provider, CORS, and
-the **entire money path** (cart -> approval -> order -> idempotent replay) are additionally
-verified against live servers by hand.
+**Test suite:** backend **1,711 passed, 2 xfailed, 0 skipped** against a real PostgreSQL (the two
+xfails are the recorded F-1 findings, kept strict so a fix cannot land silently); frontend **69
+passed**, typecheck and lint clean. The Groq provider, CORS and the **entire money path**
+(cart → approval → order → Razorpay → signed webhook → audit) are additionally verified against
+live services by hand.
 
 ## The architectural spine, in one line
 
@@ -51,79 +65,80 @@ LLM proposes → application validates → user authorizes → Razorpay executes
 ```
 
 Every milestone above exists to make one link in that chain unbreakable by construction — not by
-prompt wording. Concretely, as of M13:
+prompt wording:
 
 - The model can never see a price, invent a SKU, or move money. `create_order` is not a registered
   tool anywhere in the codebase (checked four separate ways).
 - No order can exist without a human's explicit approval — enforced by a database `NOT NULL`
   constraint, not just application logic.
 - A price change between approval and checkout (in **either** direction) is caught and refused,
-  with the reason shown to the buyer. This was proven end-to-end in an integration test.
-- Every step of a transaction — cart created, user approved, policy passed/failed, order created,
-  payment confirmed — is written to an append-only audit log that can reconstruct the whole story
-  afterward.
+  with the reason shown to the buyer. Proven end to end in an integration test *and* live.
+- Every step — cart created, user approved, policy passed/failed, order created, payment confirmed
+  — is written to an append-only audit log that can reconstruct the whole story afterward.
+
+That spine has now survived a 270-case evaluation, a live money path, an external AI buyer over
+MCP, and a full browser walkthrough. **Every defect found in all of that was outside it.**
+
+## Running it
+
+Full instructions: **[`docs/RUNBOOK.md`](docs/RUNBOOK.md)**. In short — PostgreSQL on 5432, backend
+on **8004** (port 8000 is an unrelated local app), frontend on **5173**, MCP on 8005, and `ngrok`
+on 8004 if you want webhooks to arrive.
+
+A merchant administrator is provisioned by an operator, never by a route:
+`python -m app.admin.provision_merchant --email owner@easybuy.test`. Customers self-register at
+`/register`.
 
 ## What I need from you
 
-### 1. ~~A decision: React or Next.js~~ — decided: **Vite** (ADR-017)
+### 1. ~~React or Next.js~~ — decided: **Vite** (ADR-017) ✅
 
-You didn't pick, so I went with the recommendation and wrote it up as a reversible decision rather
-than leaving M14 stalled. **The recommendation changed on inspection**, and the earlier version of
-this file had it wrong.
+### 1b. ~~Phase 1 or Phase 2 frontend~~ — resolved: **Phase 2 is built** ✅
 
-I previously recommended Next.js, reasoning that an SSR framework keeps `RAZORPAY_KEY_SECRET`
-server-side. Then I read what the backend actually hands the browser:
-`RazorpayClient.checkout_config()` returns the **public** key ID, an amount, a currency and a
-provider order ID. That's all. The frontend never receives a secret, so Next.js's server layer would
-be protecting nothing — and with no SEO requirement and no server-rendering need either, it's a
-layer paid for and unused, against `architecture.md` F§3's explicit "keep the frontend small".
+The storefront, order history and merchant dashboard that this file once listed as a fork needing
+your decision all exist: home, category, product, cart, order and account pages, plus a seven-page
+merchant dashboard (M16), on a real identity model (ADR-023 — which reopened ADR-006's "no users
+table" deliberately, and recorded why).
 
-**So: React 18 + TypeScript on Vite, with React Router.** Reasoning in full in
-`docs/decisions/ADR-017-frontend-framework-and-browser-access.md`. Say the word if you want Next.js
-and I'll switch — nothing is scaffolded yet, so the cost of reversing is currently zero.
+### 2. ~~Real credentials~~ — all three are live ✅
 
-### 1b. A scope decision I still need from you
+Groq, `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` are all real, all in
+`.env`, and all verified against the live services. **The earlier version of this file claimed the
+Razorpay keys were still `REPLACE_ME`; that was false and is what audit recommendation R4 was
+about.**
 
-`docs/frontend/00-architecture-and-ux-specification.md` describes two possible frontends, and this
-one is a real fork rather than a default I should pick:
+One live constraint worth knowing for a demo: Groq's account limit is **8,000 tokens per minute**,
+and one agent turn is two model calls totalling about 9,200 — so a turn now waits out the provider's
+own `retry-after` (typically ~13s) and takes 15–25 seconds. That is the account's limit, not the
+code's.
 
-- **Phase 1 (F0–F9)** — chat, recommendations, cart, approval, Razorpay checkout, order status.
-  This is exactly the MVP `architecture.md` §3 specifies, and it needs **zero further backend work**.
-- **Phase 2 (F10+)** — a full storefront with browse/category/product pages, and beyond that order
-  history and a merchant dashboard. The browsing pages need three new backend routes (the services
-  already exist, only HTTP routing is missing). History and the dashboard need a buyer identity
-  model, which **ADR-006 deliberately closed** as "no users table" — reopening that is a backend
-  architecture decision, not a frontend one.
+### 3. Open items, none blocking
 
-I'm proceeding on **Phase 1** unless you say otherwise. It's a prefix of Phase 2, so nothing built
-under it is wasted if you later want the storefront.
+Four recommendations from the 2026-09-03 audit remain open, and one has been promoted:
 
-### 2. Real credentials (blocks three specific things — everything else works without them)
+- **R9 — automated browser E2E (Playwright).** Filed as P2; now the highest-value item on the list.
+  Four of the five defects fixed on 2026-09-05 were found by manually driving a browser and could
+  only have been found that way.
+- **R3** — validate `GROQ_API_KEY` at startup rather than per turn.
+- **R8** — log a non-secret configuration fingerprint at startup, so a stale process is identifiable.
+- **R6** — configure a git remote and let CI run. Needs your hosting decision.
 
-Three separate live checks are sitting undone because this machine doesn't have real API keys.
-None of them block further development — the code paths are built and tested against fakes/doubles
-— but the specification calls them out as things that must actually be verified once, by hand,
-against the real services:
+Two evaluation findings also remain open, neither of which can move money: **F-1** (the assistant's
+prose is not validated against the turn's own tool results — recorded as two strict `xfail`s) and
+**F-2** (`recommend_many` / `combine(total_budget=…)` are built and reachable from no tool or route).
 
-| What | Env var(s) | Currently | What it unblocks |
-| --- | --- | --- | --- |
-| ~~Groq~~ | `GROQ_API_KEY`, `GROQ_MODEL` | ✅ **Done.** Your key works; model `openai/gpt-oss-120b`; a full chat turn verified live. Note: the free tier is 8,000 tokens/min, about one agent turn per minute — a demo firing several turns quickly will see rate-limit messages. | — |
-| Razorpay | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Still placeholder `REPLACE_ME` in `.env` | Verifying a real test-mode Razorpay order gets created (M11's stated exit condition), and 3 of 16 frontend "definition of done" items in M14 (`Razorpay Test Checkout opens`, `payment can be tested`, `successful Policy PASS reaches Razorpay`) |
-| Razorpay webhook | `RAZORPAY_WEBHOOK_SECRET` | Still placeholder | Verifying real webhook signatures from Razorpay's dashboard, once you have a checkout to test against |
+## Working tree
 
-**These are all Razorpay *test mode* keys** — free to generate from a Razorpay dashboard, no real
-money involved. If you'd rather I proceed without them, that's fine: I'll keep building and keep
-these three items explicitly marked open in the status doc, exactly as I have been.
-
-### 3. Nothing else is blocking
-
-No other decision, credential, or input is needed to continue. The scope question in #1b is the only
-one where your answer changes what I build; I'm proceeding on Phase 1 meanwhile.
+The 2026-09-05 fixes are **not yet committed**: the F-3 fix, the four walkthrough fixes, their
+regression tests, and these documentation updates. `git status` shows them.
 
 ## Where the detail lives
 
-- `docs/implementation-status.md` — the full narrative, milestone by milestone, including every
-  test-scaffolding defect found and fixed along the way.
-- `docs/decisions/README.md` — index of all 17 ADRs (architectural decisions the spec left open).
-- `docs/notes/deviations.md` — every place implementation had to resolve an ambiguity, with reasoning.
-- `docs/notes/open-questions-status.md` — the original 45 analysis questions and their current status.
+- `docs/PROJECT_STATE.md` — canonical current state and next safe action.
+- `docs/implementation-status.md` — the full narrative, milestone by milestone.
+- `docs/notes/bugs-found-during-development.md` — every real defect found, and how.
+- `docs/EVALUATION-REPORT.md` — the 270-case evaluation, its findings and its blind spots.
+- `docs/audit/` — the 2026-09-03 engineering audit, with 2026-09-05 status addenda.
+- `docs/decisions/README.md` — index of all 25 ADRs (ADR-000 through ADR-024).
+- `docs/notes/deviations.md` — every place implementation resolved an ambiguity, with reasoning.
+- `docs/notes/open-questions-status.md` — the original 45 analysis questions and their status.
