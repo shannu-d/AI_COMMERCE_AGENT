@@ -60,7 +60,20 @@ class LLMTimeoutError(LLMTransportError):
 
 
 class LLMRateLimitError(LLMTransportError):
-    """The API rate limit was hit. Transient by definition."""
+    """The API rate limit was hit. Transient by definition.
+
+    `retry_after` is the provider's own hint, in seconds, when it gave one.
+    It matters because Groq's binding limit is a **per-minute token bucket**:
+    an exponential backoff measured in fractions of a second cannot outlast a
+    window that refills on the minute, so a turn whose two legs together exceed
+    the bucket fails every attempt within a couple of seconds. Waiting the
+    interval the provider named is the only retry that can succeed. `None`
+    means it named none, and the caller falls back to its own backoff.
+    """
+
+    def __init__(self, message: str, retry_after: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 class LLMAuthenticationError(LLMError):

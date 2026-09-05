@@ -41,6 +41,7 @@ provider error string is ever on a path to the buyer (F§25).
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Callable, Sequence
 from typing import Any, Protocol, runtime_checkable
@@ -63,6 +64,18 @@ from app.llm.schemas import loads_decimal
 logger = logging.getLogger(__name__)
 
 __all__ = ["GroqClient", "LLMClient", "build_client"]
+
+#: The longest this client will wait on a provider's own retry hint.
+#:
+#: Groq's per-minute token bucket refills within the minute, so a hint is
+#: normally seconds. The cap is what keeps L§46's "not indefinitely" true when
+#: a provider names an interval no buyer would wait through: past this, the
+#: honest answer is that the turn failed.
+MAX_RETRY_AFTER_SECONDS = 45.0
+
+#: Groq states the wait in the 429 body when the header is absent, as
+#: "Please try again in 8.522s". Parsed only as a fallback.
+_RETRY_AFTER_IN_MESSAGE = re.compile(r"try again in ([\d.]+)s", re.IGNORECASE)
 
 #: Groq's OpenAI-compatible finish reasons, mapped onto ours.
 #:
@@ -218,7 +231,22 @@ class GroqClient:
                 attempt += 1
                 # Exponential, from a small base: a chat turn has a buyer
                 # waiting on it, so the ceiling matters more than the curve.
-                self._sleep(0.5 * (2 ** (attempt - 1)))
+                delay = 0.5 * (2 ** (attempt - 1))
+                # A rate limit is the one transient failure whose duration the
+                # provider knows and we do not. Groq's binding limit is a
+                # per-minute token bucket, and a two-leg turn can exceed it: no
+                # sub-second backoff will ever clear a window that refills on
+                # the minute, so the hint is obeyed rather than guessed past.
+                hinted = getattr(error, "retry_after", None)
+                if hinted is not None:
+                    # A shade over, so the retry lands after the refill and not
+                    # on the same instant the provider was describing.
+                    delay = min(hinted + 0.25, MAX_RETRY_AFTER_SECONDS)
+                    logger.info(
+                        "waiting out a rate limit",
+                        extra={"retry_after": hinted, "sleeping": delay},
+                    )
+                self._sleep(delay)
 
     # -- L§45 ---------------------------------------------------------------
 
@@ -315,7 +343,7 @@ def _map_exception(exc: Exception) -> LLMError:
     if isinstance(exc, groq.APITimeoutError):
         return LLMTimeoutError("the model did not respond within the configured timeout")
     if isinstance(exc, groq.RateLimitError):
-        return LLMRateLimitError("the model API rate limit was reached")
+        return LLMRateLimitError("the model API rate limit was reached", _retry_after_seconds(exc))
     if isinstance(exc, groq.AuthenticationError | groq.PermissionDeniedError):
         return LLMAuthenticationError("the model API rejected the configured credentials")
     if isinstance(exc, groq.BadRequestError | groq.UnprocessableEntityError):
@@ -325,6 +353,33 @@ def _map_exception(exc: Exception) -> LLMError:
     if isinstance(exc, groq.APIConnectionError):
         return LLMTransportError("could not reach the model API")
     return LLMTransportError(f"unexpected failure calling the model API: {type(exc).__name__}")
+
+
+def _retry_after_seconds(exc: groq.RateLimitError) -> float | None:
+    """How long the provider asked us to wait, if it said.
+
+    The `retry-after` header first, then the sentence Groq puts in the 429 body.
+    Every step is defensive: a missing header, an unparseable value or an SDK
+    that shapes the response differently must degrade to `None` and the caller's
+    own backoff, never to an exception raised while handling an exception.
+    """
+    header = None
+    try:
+        header = exc.response.headers.get("retry-after")
+    except Exception:  # pragma: no cover - defensive: SDK response shape
+        header = None
+    if header is not None:
+        try:
+            return max(0.0, float(header))
+        except (TypeError, ValueError):
+            pass
+    found = _RETRY_AFTER_IN_MESSAGE.search(str(exc))
+    if found:
+        try:
+            return max(0.0, float(found.group(1)))
+        except ValueError:  # pragma: no cover - the regex only matches numbers
+            return None
+    return None
 
 
 def _tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:

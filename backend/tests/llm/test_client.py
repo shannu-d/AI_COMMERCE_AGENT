@@ -28,6 +28,7 @@ import pytest
 from app.config import BACKEND_DIR
 from app.llm.client import (
     DEFAULT_MAX_TOKENS,
+    MAX_RETRY_AFTER_SECONDS,
     GroqClient,
     LLMClient,
     _to_groq_tool,
@@ -120,6 +121,14 @@ def _status_error(status: int) -> groq.APIStatusError:
     request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
     response = httpx.Response(status, request=request)
     return _STATUS_CLASSES[status]("boom", response=response, body=None)
+
+
+def _rate_limited(*, retry_after: str | None = None, message: str = "boom") -> groq.RateLimitError:
+    """A real 429, optionally carrying the provider's own wait hint."""
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    headers = {"retry-after": retry_after} if retry_after is not None else {}
+    response = httpx.Response(429, request=request, headers=headers)
+    return groq.RateLimitError(message, response=response, body=None)
 
 
 def make_client(*outcomes: Any, **overrides: Any) -> tuple[GroqClient, _SDK]:
@@ -330,6 +339,74 @@ def test_the_backoff_is_exponential_and_actually_waited() -> None:
     client.complete(system="s", messages=HELLO)
 
     assert slept == [0.5, 1.0]
+
+
+def test_a_rate_limit_waits_the_interval_the_provider_named() -> None:
+    """Groq's binding limit is a per-minute token bucket, not a per-call one.
+
+    A two-leg turn can exceed 8,000 tokens in one minute, and then every 429
+    lands inside the same window: 0.5s and 1.0s of exponential backoff retry
+    into the identical refusal and the turn fails with quota it could have had
+    by waiting. The provider states the wait; this honours it.
+    """
+    slept: list[float] = []
+    client, sdk = make_client(
+        _rate_limited(retry_after="9"),
+        _reply("recovered"),
+        max_retries=2,
+        sleep=slept.append,
+    )
+
+    response = client.complete(system="s", messages=HELLO)
+
+    assert response.text == "recovered"
+    assert len(sdk.payloads) == 2
+    # A shade over the hint, so the retry lands after the refill.
+    assert slept == [9.25]
+
+
+def test_a_rate_limit_hint_in_the_body_is_read_when_there_is_no_header() -> None:
+    """Groq words it as "Please try again in 8.522s" when it sends no header."""
+    slept: list[float] = []
+    client, _ = make_client(
+        _rate_limited(message="Rate limit reached. Please try again in 8.522s. Visit..."),
+        _reply("ok"),
+        max_retries=2,
+        sleep=slept.append,
+    )
+
+    client.complete(system="s", messages=HELLO)
+
+    assert slept == [pytest.approx(8.772)]
+
+
+def test_a_rate_limit_wait_is_still_bounded() -> None:
+    """L§46 either way: an hour-long hint is a failed turn, not an hour's wait."""
+    slept: list[float] = []
+    client, _ = make_client(
+        _rate_limited(retry_after="3600"),
+        _reply("ok"),
+        max_retries=2,
+        sleep=slept.append,
+    )
+
+    client.complete(system="s", messages=HELLO)
+
+    assert slept == [MAX_RETRY_AFTER_SECONDS]
+
+
+def test_a_rate_limit_with_no_hint_falls_back_to_the_exponential_backoff() -> None:
+    slept: list[float] = []
+    client, _ = make_client(
+        _rate_limited(),
+        _reply("ok"),
+        max_retries=2,
+        sleep=slept.append,
+    )
+
+    client.complete(system="s", messages=HELLO)
+
+    assert slept == [0.5]
 
 
 def test_zero_retries_means_one_attempt() -> None:
