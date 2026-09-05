@@ -125,9 +125,7 @@ def upgrade() -> None:
 
     # The one change to an existing table. Nullable, so every row that already
     # exists stays exactly as valid as it was: an anonymous session.
-    op.add_column(
-        "sessions", sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True)
-    )
+    op.add_column("sessions", sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True))
     op.create_foreign_key(
         op.f("fk_sessions_user_id_users"),
         "sessions",
